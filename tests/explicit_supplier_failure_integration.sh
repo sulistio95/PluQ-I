@@ -46,5 +46,16 @@ $q->execute(['failuretest012345678901234']);
 if ($q->fetchColumn() !== 'PAID') {
     fwrite(STDERR, "Supplier failure must not rewrite the gateway payment status.\n"); exit(1);
 }
+
+// A failed refund must remain visible for manual recovery; rechecking supplier
+// failure must not silently create another refund attempt.
+$pdo->prepare("UPDATE refunds SET status='FAILED' WHERE order_id=?")->execute([$orderId]);
+fulfillment_record_explicit_failure($pdo, $orderId);
+$q = $pdo->prepare("SELECT status FROM refunds WHERE order_id=?");
+$q->execute([$orderId]);
+$refundsAfterFailure = $q->fetchAll(PDO::FETCH_COLUMN);
+if (count($refundsAfterFailure) !== 1 || $refundsAfterFailure[0] !== 'FAILED') {
+    fwrite(STDERR, "A failed refund must not be duplicated automatically.\n"); exit(1);
+}
 echo "Explicit supplier failure integration test passed.\n";
 PHP
