@@ -86,6 +86,17 @@ Catalog sync is scheduled every 15 minutes in this example; Digiflazz's full pri
 
 `bin/worker.php` is a read-only queue diagnostic; it never changes job state. `bin/worker-queue.php` is the queue processor, but supplier execution remains disabled unless `SUPPLIER_ORDERS_ENABLED=true`. Do not enable it until provider sandbox behavior and manual reconciliation have been verified. Do not interpret the cron example as evidence that supplier fulfillment is ready.
 
+### Queue capacity, monitoring, and recovery
+
+- The queue is persistent in MySQL, not held in PHP memory. Callback requests only record the verified payment and enqueue a job; supplier API calls happen in the separate worker.
+- The worker is bounded per invocation: default 5 jobs and 20 seconds, with environment limits of at most 20 jobs and 50 seconds. A busy queue should build a backlog rather than make one worker run without a bound. This protects memory/runtime, but it does **not** guarantee immediate fulfillment during a traffic spike.
+- Start with one cron invocation per minute. Monitor it with `php bin/queue-health.php`; the read-only report shows ready backlog, oldest ready-job age, stale locks, and recent failures. A warning exit code means the report should be investigated, not that jobs were changed.
+- Increase `SCHEDULER_BATCH_SIZE` gradually (for example 5 to 10, then at most 20) only after measuring PHP runtime, database load, and each supplier's rate limits. `SCHEDULER_MAX_RUNTIME_SECONDS` is capped at 50 seconds. Do not schedule overlapping workers or add parallel workers until concurrency and provider rate-limit behavior have been tested on the target MySQL/MariaDB version.
+- If backlog repeatedly grows faster than the worker drains it, a once-per-minute shared-hosting cron is not enough. Use hosting-supported more frequent cron if permitted, or move the worker to a dedicated process/queue service on suitable hosting. Do not try to solve a sustained capacity problem by increasing PHP memory or retrying supplier requests blindly.
+- Stale `PROCESSING` jobs older than 10 minutes are moved to manual review, not automatically resubmitted. This is intentionally conservative because a supplier may have accepted an order just before a PHP process crashed.
+- For larger traffic, the next architecture step is a tested worker with concurrent job claiming (for example `SKIP LOCKED` after verifying server-version support), provider-specific rate limiting, and load tests. Those features are not yet claimed as implemented.
+
+
 ## Feature parity target
 
 Dynamic game input forms, username/account validation where supported, Digiflazz/VIPayment catalog synchronization, lowest-price selection, Duitku payment creation/callbacks, idempotent order queue, bounded retries, separate payment/order statuses, provider balance reserves, admin panel, icon management, pricing rules, manual review/refunds, audit logs and health checks.
