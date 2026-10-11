@@ -8,10 +8,10 @@ Shared-hosting edition of PluQ for PHP 8.2+ and MySQL/MariaDB. This repository i
 - Public catalog: read-only game, banner and product endpoints plus a responsive dark storefront with game search and a 3-second banner rotation.
 - Product filtering: hides names/codes containing "joki" or "vilog"; same-named offers prefer an available offer and then the lowest price.
 - Pricing utilities: profit is read from active database pricing rules; invoice admin fee is Rp1,000 for selling prices up to Rp100,000 and Rp2,000 above that.
-- Provider integration: initial HTTPS JSON transport and Digiflazz balance/price-list request helpers are present. They have not yet been tested against live provider credentials.
-- CI: PHP lint, JavaScript syntax check and fee boundary tests are configured. Do not assume the workflow passed until its run is inspected.
+- Provider adapters: HTTPS JSON transport, Digiflazz balance/price-list helpers, and VIPayment profile/game-service helpers are committed. They have not been tested against live credentials.
+- CI: PHP lint, JavaScript syntax check and pricing fee boundary tests are configured. Do not assume the workflow passed until its run is inspected.
 
-**Not production-ready:** checkout, Duitku payment creation/callback verification, supplier transaction execution, retry/fulfillment, admin authentication and provider synchronization are not complete. Do not enable real payments yet.
+**Not production-ready:** checkout, Duitku payment creation/callback verification, supplier order execution, retry/fulfillment, admin authentication and automated catalog synchronization are not complete. Do not enable real payments yet.
 
 ## Target architecture
 
@@ -32,7 +32,7 @@ PHP extensions: pdo_mysql, curl, openssl, json, mbstring, fileinfo. MySQL/MariaD
 1. Create a dedicated MySQL/MariaDB database and database user.
 2. Copy .env.example to .env outside the public document root where possible.
 3. Set database credentials, APP_KEY, and a separate random SCHEDULER_TOKEN.
-4. Configure Digiflazz credentials. Configure the VIPayment endpoint only after confirming the exact API base URL and request/signature format from its documentation.
+4. Configure Digiflazz credentials. VIPayment uses the VIP-Reseller API base URL by default; verify the API ID/key belong to that provider before enabling calls.
 5. Import database/schema.mysql.sql into an empty database.
 6. Then import database/migrations/002_catalog_and_operations.sql.
 7. Point the document root at public/ if supported. Otherwise configure web-server rules to deny direct access to app/, config/, database/ and storage files.
