@@ -16,8 +16,14 @@ function checkout_quote(PDO $pdo, array $input): array
     $stmt->execute(['slug'=>$slug]); $game=$stmt->fetch();
     if (!$game) throw new DomainException('Game tidak tersedia.');
 
-    $stmt=$pdo->prepare("SELECT p.id,p.game_id,p.provider_id,p.name,p.base_price,p.status,pr.status AS provider_status,pr.balance,pr.reserve_percentage
-      FROM products p JOIN providers pr ON pr.id=p.provider_id WHERE p.id=:pid AND p.game_id=:gid LIMIT 1");
+    $stmt=$pdo->prepare("SELECT p.id,p.game_id,p.provider_id,p.provider_product_code,p.name,p.base_price,p.status,
+        pr.status AS provider_status,pr.balance,pr.reserve_percentage
+      FROM products p JOIN providers pr ON pr.id=p.provider_id
+      LEFT JOIN excluded_services ex ON ex.provider_id=p.provider_id AND ex.service_code=p.provider_product_code
+      WHERE p.id=:pid AND p.game_id=:gid AND ex.id IS NULL
+        AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%joki%'
+        AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%vilog%'
+      LIMIT 1");
     $stmt->execute(['pid'=>$productId,'gid'=>$game['id']]); $product=$stmt->fetch();
     if (!$product || $product['status']!=='ACTIVE') throw new DomainException('Produk tidak tersedia.');
     if (!in_array($product['provider_status'],['ACTIVE','LOW_BALANCE'],true) || $product['balance']===null
