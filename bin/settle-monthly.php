@@ -232,7 +232,14 @@ try {
     fclose($handle);
 
     $token = settlement_access_token();
-    $folderId = trim((string) getenv('GOOGLE_DRIVE_FOLDER_ID'));
+    $folderStmt = $pdo->query("SELECT setting_value FROM app_settings WHERE setting_key='google_drive_folder_id' LIMIT 1");
+    $folderId = trim((string) ($folderStmt->fetchColumn() ?: ''));
+    if ($folderId === '') {
+        $folderId = trim((string) getenv('GOOGLE_DRIVE_FOLDER_ID'));
+    }
+    if ($folderId === '') {
+        throw new RuntimeException('Google Drive destination folder is not configured in the admin panel or server environment.');
+    }
     $driveFileId = settlement_find_drive_file($fileName, $month->format('Y-m'), $token)
         ?? settlement_upload_drive($tempPath, $fileName, $month->format('Y-m'), $token, $folderId);
     $stmt = $pdo->prepare("UPDATE monthly_settlement_exports SET status='UPLOADED',drive_file_id=:drive,row_count=:count,total_amount=:total,uploaded_at=NOW(),last_error=NULL WHERE period_start=:start AND period_end=:end");
