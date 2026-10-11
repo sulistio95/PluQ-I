@@ -5,13 +5,14 @@ Shared-hosting edition of PluQ for PHP 8.2+ and MySQL/MariaDB. This repository i
 ## Current implementation status
 
 - Foundation: PHP bootstrap, environment configuration, PDO connection, MySQL schema and operational tables.
-- Public catalog: read-only game, banner and product endpoints plus a responsive dark storefront with game search and a 3-second banner rotation.
-- Product filtering: hides names/codes containing "joki" or "vilog"; same-named offers prefer an available offer and then the lowest price.
-- Pricing utilities: profit is read from active database pricing rules; invoice admin fee is Rp1,000 for selling prices up to Rp100,000 and Rp2,000 above that.
-- Provider adapters: HTTPS JSON transport, Digiflazz balance/price-list helpers, and VIPayment profile/game-service helpers are committed. They have not been tested against live credentials.
-- CI: PHP lint, JavaScript syntax check and pricing fee boundary tests are configured. Do not assume the workflow passed until its run is inspected.
+- Public catalog: game, banner, product and dynamic game-input endpoints plus a responsive dark storefront with search and a 3-second banner rotation.
+- Server-side price quotes validate the game, product, account fields, provider reserve and excluded services; the server recalculates selling price and admin fee.
+- Checkout now has an idempotency key, persistent pending-order/payment records, and Duitku sandbox request support. Set `DUITKU_PAYMENT_METHOD`, credentials, and HTTPS callback/return URLs in the private `.env`.
+- Duitku callback validates HMAC-SHA256, checks the order and exact amount, and only queues a fulfillment job once for a successful pending payment.
+- Supplier adapters and balance sync are committed but have not been tested against live credentials.
+- CI is configured for PHP lint, JavaScript syntax and pricing tests. Verify the actual workflow run before considering checks passed.
 
-**Not production-ready:** checkout, Duitku payment creation/callback verification, supplier order execution, retry/fulfillment, admin authentication and automated catalog synchronization are not complete. Do not enable real payments yet.
+**Not production-ready:** real payments are deliberately blocked; sandbox payment flow has not been tested with merchant credentials. Supplier fulfillment worker, order retries/refunds, account username verification, admin authentication, rate limiting and automated catalog synchronization remain incomplete. Do not enable production payments.
 
 ## Target architecture
 
@@ -35,8 +36,10 @@ PHP extensions: pdo_mysql, curl, openssl, json, mbstring, fileinfo. MySQL/MariaD
 4. Configure Digiflazz credentials. VIPayment uses the VIP-Reseller API base URL by default; verify the API ID/key belong to that provider before enabling calls.
 5. Import database/schema.mysql.sql into an empty database.
 6. Then import database/migrations/002_catalog_and_operations.sql.
-7. Point the document root at public/ if supported. Otherwise configure web-server rules to deny direct access to app/, config/, database/ and storage files.
-8. Do not enable real transactions until provider and payment integrations have been implemented and tested.
+7. Then import database/migrations/003_checkout_payment.sql.
+8. Configure Duitku sandbox credentials and set `DUITKU_PAYMENT_METHOD` to a method enabled for your sandbox merchant; set callback URL to `https://your-domain/duitku-callback.php` and return URL to your public storefront.
+9. Point the document root at public/ if supported. Otherwise configure web-server rules to deny direct access to app/, config/, database/ and storage files.
+10. Do not enable real transactions until provider and payment integrations have been implemented and tested.
 
 ## Scheduled work
 
