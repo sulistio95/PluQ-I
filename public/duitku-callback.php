@@ -21,7 +21,30 @@ try {
     $q=$pdo->prepare("SELECT pt.id,pt.order_id,pt.amount,pt.status FROM payment_transactions pt WHERE pt.merchant_order_id=:oid AND pt.gateway='DUITKU' LIMIT 1 FOR UPDATE");
     $q->execute(['oid'=>$orderId]); $tx=$q->fetch();
     if (!$tx || (int)$tx['amount']!==$amount) { $pdo->rollBack(); json_response(['error'=>'order_mismatch'],400); }
-    if ($tx['status']!=='PENDING') { $pdo->commit(); json_response(['status'=>'ok']); }
+    if ($tx['status']!=='PENDING') {
+        // A late success can arrive after a failure callback was already recorded.
+        // Never silently discard evidence of received money, but do not auto-fulfill:
+        // the original reservation may have been released and provider capacity changed.
+        if ($tx['status']==='FAILED' && $resultCode==='00') {
+            $latePayload=json_encode([
+                'merchantOrderId'=>$orderId,
+                'amount'=>(string)$amount,
+                'resultCode'=>$resultCode,
+                'reference'=>(string)($_POST['reference']??''),
+                'reconciliation'=>'late_success_after_failure'
+            ],JSON_THROW_ON_ERROR);
+            $q=$pdo->prepare("UPDATE payment_transactions SET status='PAID',gateway_reference=COALESCE(NULLIF(:ref,''),gateway_reference),callback_payload=:payload,callback_received_at=NOW() WHERE id=:id AND status='FAILED'");
+            $q->execute(['ref'=>(string)($_POST['reference']??''),'payload'=>$latePayload,'id'=>$tx['id']]);
+            if ($q->rowCount()===1) {
+                $q=$pdo->prepare("UPDATE orders SET payment_status='PAID',order_status='MANUAL_REVIEW',paid_at=COALESCE(paid_at,NOW()),last_error='Late successful Duitku callback received after failure; manual payment and fulfillment reconciliation required' WHERE id=:id");
+                $q->execute(['id'=>$tx['order_id']]);
+            }
+            $pdo->commit();
+            json_response(['status'=>'manual_review']);
+        }
+        $pdo->commit();
+        json_response(['status'=>'ok']);
+    }
     $status=$resultCode==='00'?'PAID':'FAILED';
     $safe=json_encode(['merchantOrderId'=>$orderId,'amount'=>(string)$amount,'resultCode'=>$resultCode,'reference'=>(string)($_POST['reference']??'')],JSON_THROW_ON_ERROR);
     $q=$pdo->prepare("UPDATE payment_transactions SET status=:status,gateway_reference=COALESCE(NULLIF(:ref,''),gateway_reference),callback_payload=:payload,callback_received_at=NOW() WHERE id=:id AND status='PENDING'");
