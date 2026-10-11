@@ -28,8 +28,22 @@ try {
     if ($status==='PAID') {
         $q=$pdo->prepare("UPDATE orders SET payment_status='PAID',order_status='QUEUED',paid_at=NOW() WHERE id=:id AND payment_status='PENDING'");
         $q->execute(['id'=>$tx['order_id']]);
-        $q=$pdo->prepare("INSERT INTO job_queue (job_type,payload,status,available_at) VALUES ('FULFILL_ORDER',:payload,'PENDING',NOW())");
-        $q->execute(['payload'=>json_encode(['order_id'=>(int)$tx['order_id']],JSON_THROW_ON_ERROR)]);
+        if ($q->rowCount() === 1) {
+            // Queue only when this callback performed the first valid PENDING -> PAID transition.
+            // This prevents a stale/inconsistent payment row from enqueuing duplicate fulfillment.
+            $q=$pdo->prepare("INSERT INTO job_queue (job_type,payload,status,available_at) VALUES ('FULFILL_ORDER',:payload,'PENDING',NOW())");
+            $q->execute(['payload'=>json_encode(['order_id'=>(int)$tx['order_id']],JSON_THROW_ON_ERROR)]);
+        } else {
+            $q=$pdo->prepare("SELECT payment_status FROM orders WHERE id=:id LIMIT 1 FOR UPDATE");
+            $q->execute(['id'=>$tx['order_id']]);
+            $orderPaymentStatus=(string)$q->fetchColumn();
+            if ($orderPaymentStatus !== 'PAID') {
+                // Money was reported as paid, but the order could not make the normal transition.
+                // Keep the payment recorded and require reconciliation rather than silently dropping it.
+                $q=$pdo->prepare("UPDATE orders SET payment_status='PAID',order_status='MANUAL_REVIEW',paid_at=COALESCE(paid_at,NOW()),last_error='Paid callback received after an incompatible order state; manual reconciliation required' WHERE id=:id");
+                $q->execute(['id'=>$tx['order_id']]);
+            }
+        }
     } else {
         $q=$pdo->prepare("UPDATE orders SET payment_status='FAILED' WHERE id=:id AND payment_status='PENDING'");
         $q->execute(['id'=>$tx['order_id']]);
