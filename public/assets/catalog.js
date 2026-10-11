@@ -12,6 +12,55 @@
   let gameFields = [];
   let selectedProduct = null;
   let accountDataValid = false;
+  let lastQuote = null;
+  let paymentRequestKey = null;
+  const paymentButton = document.createElement('button');
+  paymentButton.type = 'button';
+  paymentButton.textContent = 'Lanjut ke pembayaran Duitku (sandbox)';
+  paymentButton.hidden = true;
+  $('checkout-note').after(paymentButton);
+  paymentButton.addEventListener('click', async () => {
+    if (!lastQuote || !selectedProduct || !activeGame) return;
+    const email = String($('customer-email')?.value || '').trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showMessage('Masukkan email yang valid untuk pembayaran.', true);
+      $('customer-email')?.focus();
+      return;
+    }
+    paymentButton.disabled = true;
+    paymentButton.textContent = 'Menghubungkan ke Duitku sandbox...';
+    try {
+      const account = {};
+      for (const field of gameFields) {
+        const input = $('account-form').elements.namedItem(field.field_key);
+        if (input) account[field.field_key] = String(input.value || '').trim();
+      }
+      const payload = {
+        game_slug: activeGame.slug,
+        product_id: selectedProduct.id,
+        account,
+        email,
+        idempotency_key: paymentRequestKey || crypto.randomUUID()
+      };
+      const response = await fetch('/create-payment.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', 'Accept': 'application/json'},
+        credentials: 'same-origin',
+        body: new URLSearchParams({payload: JSON.stringify(payload)})
+      });
+      const result = await response.json();
+      if (!response.ok || !result.data || !result.data.payment_url) {
+        throw new Error(result.message || result.error || 'payment_unavailable');
+      }
+      const paymentUrl = new URL(result.data.payment_url);
+      if (paymentUrl.protocol !== 'https:') throw new Error('invalid_payment_url');
+      window.location.assign(paymentUrl.href);
+    } catch (error) {
+      showMessage(error.message || 'Pembayaran sandbox belum dapat dibuat. Periksa konfigurasi server.', true);
+      paymentButton.disabled = false;
+      paymentButton.textContent = 'Coba buka pembayaran sandbox';
+    }
+  });
 
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const rupiah = (value) => new Intl.NumberFormat('id-ID', {style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(value) || 0);
@@ -67,6 +116,10 @@
       const inputMode = field.field_type === 'number' ? ' inputmode="numeric"' : '';
       return '<div class="field">' + label + '<input id="' + escapeHtml(id) + '" name="' + escapeHtml(field.field_key) + '" type="' + type + '"' + inputMode + ' placeholder="' + escapeHtml(field.placeholder || '') + '"' + required + ' autocomplete="off"></div>';
     }).join('');
+    const emailWrap = document.createElement('div');
+    emailWrap.className = 'field';
+    emailWrap.innerHTML = '<label for="customer-email">Email untuk pembayaran <span aria-hidden="true">*</span></label><input id="customer-email" name="customer_email" type="email" maxlength="255" autocomplete="email" required placeholder="nama@contoh.com">';
+    fieldsBox.appendChild(emailWrap);
   }
 
   function showMessage(message, isError) {
@@ -125,7 +178,11 @@
     productsBox.innerHTML = '<div class="notice">Memuat produk...</div>';
     fieldsBox.innerHTML = '<p class="muted">Memuat formulir...</p>';
     $('field-message').classList.add('hidden');
-    $('checkout-note').textContent = 'Pilih game dan isi data akun. Pembelian dan pembayaran online belum diaktifkan.';
+    $('checkout-note').textContent = 'Pilih game dan isi data akun. Pembayaran sandbox belum dimulai.';
+    paymentButton.hidden = true;
+    paymentButton.disabled = false;
+    lastQuote = null;
+    paymentRequestKey = null;
 
     const [productsResult, fieldsResult] = await Promise.allSettled([
       getJson('/api/games/' + encodeURIComponent(game.slug) + '/products'),
@@ -183,6 +240,10 @@
           const result = await response.json();
           if (!response.ok || !result.data) throw new Error(result.message || result.error || 'quote_failed');
           const quote = result.data;
+          lastQuote = quote;
+          paymentRequestKey = crypto.randomUUID();
+          paymentButton.hidden = false;
+          paymentButton.disabled = false;
           showMessage('Harga dihitung ulang oleh server. Belum ada pesanan atau pembayaran yang dibuat.', false);
           $('checkout-note').textContent = 'Rincian: ' + quote.product.name + ' — harga ' + rupiah(quote.price.selling_price) + ', biaya admin ' + rupiah(quote.price.admin_fee) + ', total ' + rupiah(quote.price.total) + '. Ini hanya kutipan; pembayaran belum aktif.';
           productsBox.querySelectorAll('.select-product').forEach((item) => {
@@ -230,16 +291,23 @@
   });
   $('back').addEventListener('click', showCatalog);
   $('account-form').addEventListener('submit', validateAccountForm);
-  $('account-form').addEventListener('input', () => {
+  function invalidateQuoteOnAccountChange() {
     accountDataValid = false;
     selectedProduct = null;
+    lastQuote = null;
+    paymentRequestKey = null;
+    paymentButton.hidden = true;
+    paymentButton.disabled = false;
+    paymentButton.textContent = 'Lanjut ke pembayaran Duitku (sandbox)';
     $('field-message').classList.add('hidden');
-  });
-  $('account-form').addEventListener('change', () => {
-    accountDataValid = false;
-    selectedProduct = null;
-    $('field-message').classList.add('hidden');
-  });
+    productsBox.querySelectorAll('.select-product').forEach((button) => {
+      button.disabled = false;
+      button.textContent = 'Pilih nominal';
+      button.setAttribute('aria-pressed', 'false');
+    });
+  }
+  $('account-form').addEventListener('input', invalidateQuoteOnAccountChange);
+  $('account-form').addEventListener('change', invalidateQuoteOnAccountChange);
 
   Promise.all([getJson('/api/games'), getJson('/api/banners')]).then(([gameResult, bannerResult]) => {
     games = Array.isArray(gameResult.data) ? gameResult.data : [];
