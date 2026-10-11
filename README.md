@@ -1,6 +1,27 @@
 # PluQ-I
 
-Shared-hosting edition of PluQ for PHP 8.2+ and MySQL/MariaDB. This repository is separate from the primary PluQ repository intended for Cloudbaik.
+Shared-hosting edition of PluQ for PHP 8.2+ and MySQL/MariaDB. This repository is separate from the primary `sulistio95/PluQ` repository, which is intended for deployment to Cloudbaik.
+
+## Hosting split
+
+- **PluQ** (`sulistio95/PluQ`): primary edition; Cloudbaik is the planned hosting target.
+- **PluQ-I** (`sulistio95/PluQ-I`): low-cost shared-hosting edition; the target may be Rumahweb/Rumah Hosting or another provider that meets the compatibility checklist below.
+- Keep deployments, environment files, databases, API credentials, and backup destinations separate. Do not copy PluQ-I changes into the primary PluQ repository unless that is explicitly intended.
+- Neither project should be treated as production-ready just because its code is present in GitHub.
+
+### Shared-hosting compatibility checklist
+
+Before buying or selecting a plan for PluQ-I, confirm with the hosting provider that the exact plan supports:
+
+- PHP 8.2 or a newer supported PHP release, with `pdo_mysql`, `curl`, `openssl`, `json`, `mbstring`, and `fileinfo`.
+- MySQL/MariaDB with InnoDB, database creation/import, and a database user restricted to the project database.
+- HTTPS and configurable callback/return URLs for Duitku.
+- A way to keep `.env` and application files outside the public document root, or web-server rules that deny access to private files.
+- Cron jobs running PHP CLI, including the required frequency and execution time. Confirm any process/time limits and whether cron is included in the chosen plan.
+- Outbound HTTPS requests to Duitku, Digiflazz, VIPayment, and Google APIs.
+- Enough storage and database capacity, and a usable database backup/restore facility.
+
+Do not assume every shared-hosting plan supports cron, the needed PHP extensions, or unrestricted outbound API access. If cron is unavailable, we must design and protect a scheduler alternative before enabling scheduled jobs; never expose an unauthenticated job runner.
 
 ## Current implementation status
 
@@ -8,13 +29,13 @@ Shared-hosting edition of PluQ for PHP 8.2+ and MySQL/MariaDB. This repository i
 - Public catalog: game, banner, product and dynamic game-input endpoints plus a responsive dark storefront with search and a 3-second banner rotation.
 - Server-side price quotes validate the game, product, account fields, provider reserve and excluded services; the server recalculates selling price and admin fee.
 - Admin transaction inspection is available at `/admin/` after an administrator account is provisioned. It filters by provider API, gateway, date/time range, payment status, and order status; access is session-authenticated.
-- Monthly settlement backup can export the previous calendar month to CSV and upload it to Google Drive on day 1, after migration 006 and Google OAuth configuration. It does not delete database history; the local temporary CSV is removed after processing.
-- Checkout now has an idempotency key, persistent pending-order/payment records, and Duitku sandbox request support. Set `DUITKU_PAYMENT_METHOD`, credentials, and HTTPS callback/return URLs in the private `.env`.
+- Monthly settlement backup creates a formatted four-tab Google Sheets workbook in Google Drive after migrations 006–007 and OAuth/folder configuration. It is disabled by default and has not been tested against a real Google account from the hosting environment.
+- Checkout has an idempotency key, persistent pending-order/payment records, and Duitku sandbox request support. Configure `DUITKU_PAYMENT_METHOD`, credentials, and HTTPS callback/return URLs in the private `.env`.
 - Duitku callback validates HMAC-SHA256, checks the order and exact amount, and only queues a fulfillment job once for a successful pending payment.
-- Supplier adapters and balance sync are committed but have not been tested against live credentials.
-- CI runs PHP/JavaScript syntax checks, pricing and callback-signature unit tests, account-field mapping tests, plus disposable MySQL integration tests for concurrent Duitku callbacks and stale queue recovery. Check the latest workflow result before treating a change as verified.
+- Supplier adapters and balance sync are committed but have not been verified against the user's real credentials.
+- CI runs syntax checks and automated pricing, callback-signature, mapping, and database integration tests. Review the latest GitHub Actions result for the exact commit being evaluated.
 
-**Not production-ready:** real payments are deliberately blocked; sandbox payment flow has not been tested with merchant credentials. Supplier fulfillment worker, order retries/refunds, account username verification, admin rate limiting, and automated catalog synchronization remain incomplete. The admin transaction inspection panel exists but still requires staging security review. The Google Drive destination folder URL can be saved from the admin panel after migration 007. Do not enable production payments.
+**Not production-ready:** real payments and supplier execution must remain disabled until the payment flow and provider behavior are tested in a controlled staging environment. Supplier fulfillment, retries/refunds, username verification, admin rate limiting, catalog synchronization, and admin-panel security still require implementation or verification. Do not enable production payments or supplier execution.
 
 ## Target architecture
 
@@ -22,42 +43,46 @@ Shared-hosting edition of PluQ for PHP 8.2+ and MySQL/MariaDB. This repository i
 - MySQL/MariaDB through PDO.
 - No Node.js, Redis, BullMQ or permanently running worker.
 - Database-backed jobs processed in bounded batches through cron if available.
-- If cron is unavailable, a protected scheduler endpoint or external scheduler may be used; never expose an unauthenticated job runner.
+- If cron is unavailable, use only a protected and authenticated scheduler design after it is implemented and tested.
 - Payment callbacks must be authenticated and idempotent before fulfillment.
-- Keep API credentials in environment settings or a private .env file, never in Git.
+- Keep API credentials in environment settings or a private `.env` file, never in Git.
 
 ## Requirements
 
-PHP extensions: pdo_mysql, curl, openssl, json, mbstring, fileinfo. MySQL/MariaDB with InnoDB and HTTPS are required.
+PHP extensions: `pdo_mysql`, `curl`, `openssl`, `json`, `mbstring`, and `fileinfo`. MySQL/MariaDB with InnoDB and HTTPS are required.
 
 ## Initial setup
 
 1. Create a dedicated MySQL/MariaDB database and database user.
-2. Copy .env.example to .env outside the public document root where possible.
-3. Set database credentials, APP_KEY, and a separate random SCHEDULER_TOKEN.
-4. Configure Digiflazz credentials. VIPayment uses the VIP-Reseller API base URL by default; verify the API ID/key belong to that provider before enabling calls.
-5. Import database/schema.mysql.sql into an empty database.
-6. Then import database/migrations/002_catalog_and_operations.sql.
-7. Then import database/migrations/003_checkout_payment.sql.
-8. Then import database/migrations/004_supplier_manual_review_status.sql. This migration is required on existing databases because supplier transactions may enter `REVIEW` when an outcome is ambiguous.
-9. Then import database/migrations/005_order_manual_review_status.sql to add the order-level `MANUAL_REVIEW` state used by queue recovery.
-10. Configure Duitku sandbox credentials and set `DUITKU_PAYMENT_METHOD` to a method enabled for your sandbox merchant; set callback URL to `https://your-domain/duitku-callback.php` and return URL to `https://your-domain/order-status.php`.
-14. Point the document root at public/ if supported. Otherwise configure web-server rules to deny direct access to app/, config/, database/ and storage files.
-15. Do not enable real transactions until provider and payment integrations have been implemented and tested.
+2. Put `.env` outside the public document root where possible; otherwise configure server rules to deny web access to it and all private project directories.
+3. Set database credentials, a long random `APP_KEY`, and a separate random `SCHEDULER_TOKEN`.
+4. Configure Digiflazz and VIPayment credentials only in the private environment. Verify the VIPayment API ID/key belong to the intended VIP-Reseller account before making calls.
+5. Import `database/schema.mysql.sql` into an empty database.
+6. Apply migrations in order:
+   - `database/migrations/002_catalog_and_operations.sql`
+   - `database/migrations/003_checkout_payment.sql`
+   - `database/migrations/004_supplier_manual_review_status.sql`
+   - `database/migrations/005_order_manual_review_status.sql`
+   - `database/migrations/006_monthly_settlements.sql` (when enabling settlement records)
+   - `database/migrations/007_admin_drive_folder_setting.sql` (when enabling the admin-managed Drive folder setting)
+7. Configure Duitku sandbox credentials and set `DUITKU_PAYMENT_METHOD` to a method enabled for the sandbox merchant. Configure HTTPS callback URL `https://your-domain/duitku-callback.php` and return URL `https://your-domain/order-status.php`.
+8. Point the document root at `public/` if supported. Otherwise deny direct access to `app/`, `config/`, `database/`, `bin/`, `tests/`, `.env`, and logs.
+9. Run migrations and create the first admin from the server CLI; do not create an admin through a public one-off script.
+10. Keep `SUPPLIER_ORDERS_ENABLED=false` and `SETTLEMENT_BACKUP_ENABLED=false` until their respective staging tests and recovery checks are complete.
+11. Do not enable live payments until the sandbox lifecycle, security review, backup/restore procedure, and provider reconciliation checks have passed.
 
 ## Scheduled work
 
-Monthly settlement backup (after applying migration 006 and verifying Google Drive OAuth):
+The following is an example only. Adapt the PHP executable and absolute paths to the hosting control panel, and confirm that CLI cron is included in the selected plan:
 
-    15 2 1 * * /usr/bin/php /absolute/path/PluQ-I/bin/settle-monthly.php
+```cron
+* * * * * /usr/bin/php /absolute/path/PluQ-I/bin/worker.php
+15 2 1 * * /usr/bin/php /absolute/path/PluQ-I/bin/settle-monthly.php
+```
 
-See `docs/admin-transactions-and-settlement.md` for required environment variables, administrator setup, and safe recovery steps. Do not enable the backup until the destination Drive account/folder is verified.
+Monthly settlement backup is disabled by default. It requires Google OAuth configuration, the intended destination folder, migrations 006–007, and a controlled upload/recovery test before enabling `SETTLEMENT_BACKUP_ENABLED=true`. See `docs/admin-transactions-and-settlement.md`.
 
-Example only; adapt the PHP path and interval to the hosting control panel:
-
-    * * * * * /usr/bin/php /absolute/path/PluQ-I/bin/worker.php
-
-Cron availability depends on the selected hosting plan. The current worker remains a fail-closed scaffold and does not execute supplier jobs.
+The worker is currently a fail-closed scaffold and does not execute supplier jobs. Do not interpret the cron example as evidence that supplier fulfillment is ready.
 
 ## Feature parity target
 
