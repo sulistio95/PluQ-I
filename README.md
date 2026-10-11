@@ -77,7 +77,7 @@ PHP extensions: `pdo_mysql`, `curl`, `openssl`, `json`, `mbstring`, and `fileinf
 The following is an example only. Adapt the PHP executable and absolute paths to the hosting control panel, and confirm that CLI cron is included in the selected plan:
 
 ```cron
-* * * * * /usr/bin/php /absolute/path/PluQ-I/bin/worker.php
+* * * * * /usr/bin/php /absolute/path/PluQ-I/bin/worker-queue.php
 15 2 1 * * /usr/bin/php /absolute/path/PluQ-I/bin/settle-monthly.php
 ```
 
