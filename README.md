@@ -69,7 +69,8 @@ PHP extensions: `pdo_mysql`, `curl`, `openssl`, `json`, `mbstring`, and `fileinf
 8. Point the document root at `public/` if supported. Otherwise deny direct access to `app/`, `config/`, `database/`, `bin/`, `tests/`, `.env`, and logs.
 9. Run migrations and create the first admin from the server CLI; do not create an admin through a public one-off script.
 10. Keep `SUPPLIER_ORDERS_ENABLED=false` and `SETTLEMENT_BACKUP_ENABLED=false` until their respective staging tests and recovery checks are complete.
-11. Do not enable live payments until the sandbox lifecycle, security review, backup/restore procedure, and provider reconciliation checks have passed.
+11. Run `php bin/preflight.php` from the hosting CLI after configuring `.env` and applying migrations. Resolve every failed check; the script never prints secret values.
+12. Do not enable live payments until the sandbox lifecycle, security review, backup/restore procedure, and provider reconciliation checks have passed.
 
 ## Scheduled work
 
