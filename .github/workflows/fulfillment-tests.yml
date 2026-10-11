@@ -96,3 +96,5 @@ jobs:
         run: bash tests/duitku_callback_integration.sh
       - name: Test stale queue recovery against MySQL
         run: bash tests/queue_recovery_integration.sh
+      - name: Test ambiguous supplier outcome handling against MySQL
+        run: bash tests/uncertain_supplier_integration.sh
