@@ -46,7 +46,7 @@ if ($q->fetchColumn() !== "PAID") { fwrite(STDERR, "Expected payment status PAID
 $q = $pdo->prepare("SELECT order_status FROM orders WHERE public_id = ?");
 $q->execute([$orderId]);
 if ($q->fetchColumn() !== "QUEUED") { fwrite(STDERR, "Expected order status QUEUED.\\n"); exit(1); }
-$q = $pdo->query("SELECT COUNT(*) FROM job_queue WHERE job_type = \'FULFILL_ORDER\'");
+$q = $pdo->query("SELECT COUNT(*) FROM job_queue WHERE job_type = " . $pdo->quote("FULFILL_ORDER"));
 if ((int)$q->fetchColumn() !== 1) { fwrite(STDERR, "Expected exactly one fulfillment job after duplicate callbacks.\\n"); exit(1); }
 echo "Duitku MySQL callback idempotency integration test passed.\\n";
 '
