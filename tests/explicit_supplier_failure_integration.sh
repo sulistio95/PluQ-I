@@ -5,12 +5,12 @@ set -euo pipefail
 mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" <<'SQL'
 INSERT INTO orders
   (public_id,game_id,product_id,provider_id,customer_game_data,base_price,selling_price,admin_fee,payment_status,order_status,paid_at)
-SELECT 'failuretest0123456789012345', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','987'), 1000, 1500, 1000, 'PAID', 'PROCESSING', NOW()
+SELECT 'failuretest012345678901234', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','987'), 1000, 1500, 1000, 'PAID', 'PROCESSING', NOW()
 FROM games g JOIN products p ON p.game_id=g.id
 WHERE g.slug='integration-game' AND p.provider_product_code='integration-sku';
 INSERT INTO payment_transactions (order_id,gateway,merchant_order_id,amount,status)
 SELECT id,'DUITKU',public_id,2500,'PAID'
-FROM orders WHERE public_id='failuretest0123456789012345';
+FROM orders WHERE public_id='failuretest012345678901234';
 SQL
 
 php <<'PHP'
@@ -21,7 +21,7 @@ require_once PLUQI_ROOT . '/app/services/fulfillment.php';
 
 $pdo = database();
 $q = $pdo->prepare("SELECT id FROM orders WHERE public_id = ?");
-$q->execute(['failuretest0123456789012345']);
+$q->execute(['failuretest012345678901234']);
 $orderId = (int)$q->fetchColumn();
 if ($orderId < 1) { fwrite(STDERR, "Failure fixture was not created.\n"); exit(1); }
 
@@ -42,7 +42,7 @@ if (count($refunds) !== 1 || $refunds[0]['status'] !== 'PENDING' || (float)$refu
     fwrite(STDERR, "Exactly one pending refund for the paid invoice total must be created.\n"); exit(1);
 }
 $q = $pdo->prepare("SELECT status FROM payment_transactions WHERE merchant_order_id = ?");
-$q->execute(['failuretest0123456789012345']);
+$q->execute(['failuretest012345678901234']);
 if ($q->fetchColumn() !== 'PAID') {
     fwrite(STDERR, "Supplier failure must not rewrite the gateway payment status.\n"); exit(1);
 }
