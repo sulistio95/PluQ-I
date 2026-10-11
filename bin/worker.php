@@ -2,8 +2,11 @@
 declare(strict_types=1);
 
 /**
- * Scheduler entry point for shared hosting.
- * No supplier request is executed until a verified and tested handler exists.
+ * Read-only scheduler diagnostic for shared hosting.
+ *
+ * This legacy entry point must never reset expired locks or change job states.
+ * The queue worker with explicit stale-lock reconciliation is bin/worker-queue.php.
+ * Supplier execution remains disabled unless SUPPLIER_ORDERS_ENABLED=true.
  */
 require dirname(__DIR__) . '/app/bootstrap.php';
 require_once PLUQI_ROOT . '/config/database.php';
@@ -16,36 +19,32 @@ if (PHP_SAPI !== 'cli') {
     }
 }
 
-$startedAt = microtime(true);
 $pdo = database();
-$pdo->prepare(
-    "UPDATE job_queue SET status='RETRY', locked_at=NULL, lock_token=NULL,
-     available_at=NOW(), last_error='Recovered expired worker lock'
-     WHERE status='PROCESSING' AND locked_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE)"
-)->execute();
-
 $statement = $pdo->prepare(
-    "SELECT id, job_type FROM job_queue
-     WHERE status IN ('PENDING','RETRY') AND available_at <= NOW()
-     ORDER BY id ASC LIMIT :batch"
+    "SELECT status, COUNT(*) AS total
+     FROM job_queue
+     GROUP BY status
+     ORDER BY status"
 );
-$statement->bindValue(':batch', $config['scheduler_batch_size'], PDO::PARAM_INT);
 $statement->execute();
-$jobs = $statement->fetchAll();
-
-$unhandled = [];
-foreach ($jobs as $job) {
-    $unhandled[] = ['id' => (int) $job['id'], 'type' => (string) $job['job_type']];
-    if (microtime(true) - $startedAt >= $config['scheduler_max_runtime_seconds']) {
-        break;
-    }
+$counts = [];
+foreach ($statement->fetchAll() as $row) {
+    $counts[(string) $row['status']] = (int) $row['total'];
 }
 
+$pending = $pdo->query(
+    "SELECT id, job_type, status, attempts, available_at
+     FROM job_queue
+     WHERE status IN ('PENDING','RETRY','PROCESSING','FAILED')
+     ORDER BY id DESC
+     LIMIT 50"
+)->fetchAll();
+
 $result = [
-    'status' => 'foundation_only',
-    'jobs_visible' => count($jobs),
-    'handlers_pending' => $unhandled,
-    'message' => 'No jobs were executed: handler registration is not implemented yet.',
+    'status' => 'read_only_diagnostic',
+    'queue_counts' => $counts,
+    'recent_jobs' => $pending,
+    'message' => 'No queue state was changed. Use bin/worker-queue.php only after staging verification.',
 ];
 
 if (PHP_SAPI === 'cli') {
