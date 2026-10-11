@@ -259,8 +259,12 @@ try {
         JOIN games g ON g.id=o.game_id
         JOIN products p ON p.id=o.product_id
         JOIN providers pr ON pr.id=o.provider_id
-        LEFT JOIN payment_transactions pt ON pt.order_id=o.id
-        LEFT JOIN supplier_transactions st ON st.order_id=o.id
+        LEFT JOIN payment_transactions pt ON pt.id = (
+            SELECT MAX(pt2.id) FROM payment_transactions pt2 WHERE pt2.order_id=o.id
+        )
+        LEFT JOIN supplier_transactions st ON st.id = (
+            SELECT MAX(st2.id) FROM supplier_transactions st2 WHERE st2.order_id=o.id
+        )
         WHERE (o.created_at >= :created_start AND o.created_at < :created_end)
            OR (o.paid_at >= :paid_start AND o.paid_at < :paid_end)
            OR (o.fulfilled_at >= :fulfilled_start AND o.fulfilled_at < :fulfilled_end)
@@ -359,7 +363,7 @@ try {
     $summary[] = ['Nilai ringkasan pembayaran dihitung berdasarkan paid_at dalam periode laporan; daftar rincian juga mencakup pesanan dibuat atau top-up selesai pada periode tersebut.', '', '', ''];
     $summary[] = ['Laporan operasional untuk rekonsiliasi dan bahan pembukuan; bukan perhitungan atau nasihat pajak final.', '', '', ''];
     $summary[] = ['Nilai penjualan tidak otomatis sama dengan dasar pengenaan pajak. Konfirmasikan perlakuan omzet, biaya, biaya gateway, dan refund dengan akuntan/konsultan pajak.', '', '', ''];
-    $summary[] = ['Refund tidak dikurangkan otomatis dari ringkasan; periksa lembar Rekonsiliasi dan bukti refund aktual.', '', '', ''];
+    $summary[] = ['Refund sukses pada periode ini dikurangkan dari indikator penerimaan bersih berdasarkan processed_at; cocokkan dengan bukti refund dan laporan gateway.', '', '', ''];
     $summary[] = ['Transaksi yang belum lunas atau berstatus gagal/manual review ditampilkan untuk pemeriksaan, bukan dianggap pendapatan final.', '', '', ''];
 
     $reconciliation = $reviewRows;
