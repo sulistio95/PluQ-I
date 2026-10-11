@@ -20,5 +20,5 @@ try {
 } catch (DomainException $e) {
     json_response(['error'=>'checkout_conflict','message'=>$e->getMessage()],409);
 } catch (Throwable $e) {
-    json_response(['error'=>'payment_unavailable','message'=>$e->getMessage()],503);
+    json_response(['error'=>'payment_unavailable','message'=>'Pembayaran belum dapat dibuat. Periksa konfigurasi server atau hubungi admin.'],503);
 }
