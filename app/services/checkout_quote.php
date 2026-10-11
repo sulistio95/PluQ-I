@@ -2,6 +2,14 @@
 declare(strict_types=1);
 require_once __DIR__ . '/pricing.php';
 
+/** Payments stay off until supplier fulfillment is deliberately enabled for a tested environment. */
+function checkout_payments_enabled(): bool
+{
+    $payments = filter_var(getenv('CHECKOUT_PAYMENTS_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+    $suppliers = filter_var(getenv('SUPPLIER_ORDERS_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+    return $payments && $suppliers;
+}
+
 function checkout_quote(PDO $pdo, array $input): array
 {
     $slug = trim((string)($input['game_slug'] ?? ''));
@@ -90,7 +98,7 @@ function checkout_quote(PDO $pdo, array $input): array
       'product'=>['id'=>(int)$product['id'],'name'=>$product['name']],
       'account'=>$normalized,
       'price'=>['base_price'=>$base,'selling_price'=>$selling,'admin_fee'=>$fee,'total'=>$selling+$fee,'currency'=>'IDR'],
-      'payment_enabled'=>false,
+      'payment_enabled'=>checkout_payments_enabled(),
       'message'=>'Kutipan harga saja. Belum ada pesanan atau pembayaran yang dibuat.'
     ];
 }
