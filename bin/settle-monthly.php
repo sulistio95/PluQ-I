@@ -160,6 +160,10 @@ try {
         fwrite(STDOUT, 'Already uploaded: ' . $fileName . ' (Drive ID ' . (string) $existing['drive_file_id'] . ')' . PHP_EOL);
         exit(0);
     }
+    if ($existing && $existing['status'] === 'PROCESSING' && strtotime((string) $existing['updated_at']) > time() - 1800) {
+        $pdo->commit();
+        settlement_fail('This settlement period is already being processed. Wait 30 minutes before controlled recovery.');
+    }
     if ($existing) {
         $stmt = $pdo->prepare("UPDATE monthly_settlement_exports SET status='PROCESSING',file_name=:file,last_error=NULL WHERE id=:id");
         $stmt->execute(['file' => $fileName, 'id' => $existing['id']]);
