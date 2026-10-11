@@ -49,9 +49,16 @@ function fulfillment_digiflazz(array $order, array $account, string $reference):
     ];
     if (filter_var(getenv('DIGIFLAZZ_TESTING') ?: 'false', FILTER_VALIDATE_BOOLEAN)) $payload['testing'] = true;
     $response = provider_http_json($cfg['base_url'] . '/transaction', $payload);
+    return fulfillment_map_digiflazz_response($response, $reference);
+}
+
+function fulfillment_map_digiflazz_response(array $response, string $reference): array
+{
     $data = $response['data'] ?? null;
-    if (!is_array($data) || !isset($data['status'])) throw new RuntimeException('Digiflazz response has no status.');
-    $status = strtolower((string)$data['status']);
+    if (!is_array($data) || !isset($data['status']) || !is_scalar($data['status'])) {
+        throw new RuntimeException('Digiflazz response has no status.');
+    }
+    $status = strtolower(trim((string)$data['status']));
     $state = $status === 'sukses' ? 'SUCCESS' : ($status === 'pending' ? 'PENDING' : ($status === 'gagal' ? 'FAILED' : 'REVIEW'));
     return ['state'=>$state,'reference'=>(string)($data['sn'] ?? $reference),'response'=>$response];
 }
@@ -60,9 +67,6 @@ function fulfillment_vipayment(array $order, array $account, ?string $trxid): ar
 {
     if ($trxid !== null && $trxid !== '') {
         $response = vipayment_post('/game-feature', ['type'=>'status','trxid'=>$trxid]);
-        $rows = $response['data'] ?? null;
-        if (!is_array($rows) || !isset($rows[0]) || !is_array($rows[0])) return ['state'=>'REVIEW','reference'=>$trxid,'response'=>$response];
-        $row = $rows[0];
     } else {
         $response = vipayment_post('/game-feature', [
             'type'=>'order',
@@ -70,14 +74,29 @@ function fulfillment_vipayment(array $order, array $account, ?string $trxid): ar
             'data_no'=>$account['user'],
             'data_zone'=>$account['zone'],
         ]);
-        $row = $response['data'] ?? null;
-        if (!is_array($row) || empty($row['trxid']) || !isset($row['status'])) return ['state'=>'REVIEW','reference'=>'','response'=>$response];
     }
-    $status = strtolower((string)($row['status'] ?? ''));
+    return fulfillment_map_vipayment_response($response, $trxid);
+}
+
+function fulfillment_map_vipayment_response(array $response, ?string $requestedTrxid = null): array
+{
+    if ($requestedTrxid !== null && $requestedTrxid !== '') {
+        $rows = $response['data'] ?? null;
+        if (!is_array($rows) || !isset($rows[0]) || !is_array($rows[0])) {
+            return ['state'=>'REVIEW','reference'=>$requestedTrxid,'response'=>$response];
+        }
+        $row = $rows[0];
+    } else {
+        $row = $response['data'] ?? null;
+        if (!is_array($row) || empty($row['trxid']) || !isset($row['status'])) {
+            return ['state'=>'REVIEW','reference'=>'','response'=>$response];
+        }
+    }
+    $status = strtolower(trim((string)($row['status'] ?? '')));
     $state = in_array($status,['success','sukses','berhasil'],true) ? 'SUCCESS'
         : (in_array($status,['error','failed','gagal'],true) ? 'FAILED'
         : (in_array($status,['waiting','processing','pending'],true) ? 'PENDING' : 'REVIEW'));
-    return ['state'=>$state,'reference'=>(string)($row['trxid'] ?? ''),'response'=>$response];
+    return ['state'=>$state,'reference'=>(string)($row['trxid'] ?? $requestedTrxid ?? ''),'response'=>$response];
 }
 
 /** Processes a paid order. Network uncertainty is never blindly retried. */
