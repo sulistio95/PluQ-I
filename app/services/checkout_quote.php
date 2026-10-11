@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/pricing.php';
+require_once __DIR__ . '/fulfillment.php';
 
 /** Payments stay off until supplier fulfillment is deliberately enabled for a tested environment. */
 function checkout_payments_enabled(): bool
@@ -90,6 +91,13 @@ function checkout_quote(PDO $pdo, array $input): array
       $normalized[$key]=$value;
     }
     foreach (array_keys($account) as $key) if (!is_string($key)||!in_array($key,$keys,true)) throw new InvalidArgumentException('Ada kolom akun yang tidak dikenal.');
+
+    // Reject unsupported or ambiguous field mappings before any order/payment can be created.
+    try {
+      fulfillment_account($normalized);
+    } catch (DomainException $e) {
+      throw new DomainException('Formulir akun game belum memiliki pemetaan supplier yang aman. Admin harus memperbaiki field ID/zone/server sebelum checkout diaktifkan.');
+    }
 
     $base=(int)round((float)$product['base_price']);
     $selling=pricing_selling_price($pdo,$base); $fee=pricing_admin_fee($selling);
