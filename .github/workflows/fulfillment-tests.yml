@@ -94,3 +94,5 @@ jobs:
           exit 1
       - name: Test duplicate concurrent callbacks against MySQL
         run: bash tests/duitku_callback_integration.sh
+      - name: Test stale queue recovery against MySQL
+        run: bash tests/queue_recovery_integration.sh
