@@ -33,7 +33,7 @@ function checkout_create_payment(PDO $pdo, array $input): array
 
         $productId = filter_var($input['product_id'] ?? null, FILTER_VALIDATE_INT);
         if (!$productId || $productId < 1) throw new InvalidArgumentException('Produk tidak valid.');
-        $lock = $pdo->prepare('SELECT id FROM products WHERE id=:id FOR UPDATE');
+        $lock = $pdo->prepare('SELECT p.id FROM products p JOIN providers pr ON pr.id=p.provider_id WHERE p.id=:id FOR UPDATE');
         $lock->execute(['id' => $productId]);
         if (!$lock->fetch()) throw new DomainException('Produk tidak tersedia.');
 
