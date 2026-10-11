@@ -50,7 +50,7 @@ function catalog_products(PDO $pdo, string $slug): array
         WHERE g.slug=:slug AND g.status='ACTIVE' AND ex.id IS NULL
           AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%joki%'
           AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%vilog%'
-        ORDER BY selling_price,p.name";
+        ORDER BY selling_price,p.name,p.id";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['slug' => $slug]);
     $rows = $stmt->fetchAll();
