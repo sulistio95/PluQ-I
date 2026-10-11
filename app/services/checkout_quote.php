@@ -32,6 +32,11 @@ function checkout_quote(PDO $pdo, array $input): array
       WHERE p.id=:pid AND p.game_id=:gid AND ex.id IS NULL
         AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%joki%'
         AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%vilog%'
+        AND p.base_price <= (pr.balance*(pr.reserve_percentage/100)) - COALESCE((
+          SELECT SUM(r.amount) FROM provider_balance_reservations r
+          WHERE r.provider_id=pr.id
+            AND (r.status IN ('COMMITTED','CONSUMED') OR (r.status='HOLD' AND r.expires_at>NOW()))
+        ),0)
       LIMIT 1");
     $stmt->execute(['pid'=>$productId,'gid'=>$game['id']]); $product=$stmt->fetch();
     if (!$product || $product['status']!=='ACTIVE') throw new DomainException('Produk tidak tersedia.');
@@ -55,7 +60,11 @@ function checkout_quote(PDO $pdo, array $input): array
       WHERE p.game_id=:gid AND LOWER(TRIM(p.name))=LOWER(TRIM(:name))
         AND p.status='ACTIVE' AND pr.status IN ('ACTIVE','LOW_BALANCE')
         AND pr.balance IS NOT NULL
-        AND p.base_price <= pr.balance*(pr.reserve_percentage/100)
+        AND p.base_price <= (pr.balance*(pr.reserve_percentage/100)) - COALESCE((
+          SELECT SUM(r.amount) FROM provider_balance_reservations r
+          WHERE r.provider_id=pr.id
+            AND (r.status IN ('COMMITTED','CONSUMED') OR (r.status='HOLD' AND r.expires_at>NOW()))
+        ),0)
         AND ex.id IS NULL
         AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%joki%'
         AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%vilog%'
