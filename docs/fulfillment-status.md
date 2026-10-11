@@ -7,6 +7,7 @@ Supplier execution is disabled by default. The example environment file sets `SU
 - `app/services/fulfillment.php`: draft provider adapters and order-state handling.
 - `bin/worker-queue.php`: bounded queue runner with scheduler-token protection for HTTP use.
 - `bin/worker.php`: original foundation-only runner; it does not dispatch supplier jobs.
+- `database/migrations/004_supplier_manual_review_status.sql`: adds the `REVIEW` supplier-transaction state used when a provider outcome is ambiguous.
 - `tests/fulfillment_account_test.php`: basic account-field mapping tests.
 - `.github/workflows/fulfillment-tests.yml`: PHP lint and test workflow.
 
