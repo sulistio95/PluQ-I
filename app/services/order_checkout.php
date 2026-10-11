@@ -6,6 +6,9 @@ require_once __DIR__ . '/duitku.php';
 
 function checkout_create_payment(PDO $pdo, array $input): array
 {
+    if (!checkout_payments_enabled()) {
+        throw new DomainException('Checkout pembayaran belum diaktifkan. Pesanan belum dibuat dan tidak ada pembayaran yang diminta.');
+    }
     $email = trim((string)($input['email'] ?? ''));
     $key = strtolower(trim((string)($input['idempotency_key'] ?? '')));
     if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 255) {
