@@ -14,7 +14,7 @@ Shared-hosting edition of PluQ for PHP 8.2+ and MySQL/MariaDB. This repository i
 - Supplier adapters and balance sync are committed but have not been tested against live credentials.
 - CI runs PHP/JavaScript syntax checks, pricing and callback-signature unit tests, account-field mapping tests, plus disposable MySQL integration tests for concurrent Duitku callbacks and stale queue recovery. Check the latest workflow result before treating a change as verified.
 
-**Not production-ready:** real payments are deliberately blocked; sandbox payment flow has not been tested with merchant credentials. Supplier fulfillment worker, order retries/refunds, account username verification, admin rate limiting, and automated catalog synchronization remain incomplete. The admin transaction inspection panel exists but still requires staging security review. Do not enable production payments.
+**Not production-ready:** real payments are deliberately blocked; sandbox payment flow has not been tested with merchant credentials. Supplier fulfillment worker, order retries/refunds, account username verification, admin rate limiting, and automated catalog synchronization remain incomplete. The admin transaction inspection panel exists but still requires staging security review. The Google Drive destination folder URL can be saved from the admin panel after migration 007. Do not enable production payments.
 
 ## Target architecture
 
@@ -42,8 +42,8 @@ PHP extensions: pdo_mysql, curl, openssl, json, mbstring, fileinfo. MySQL/MariaD
 8. Then import database/migrations/004_supplier_manual_review_status.sql. This migration is required on existing databases because supplier transactions may enter `REVIEW` when an outcome is ambiguous.
 9. Then import database/migrations/005_order_manual_review_status.sql to add the order-level `MANUAL_REVIEW` state used by queue recovery.
 10. Configure Duitku sandbox credentials and set `DUITKU_PAYMENT_METHOD` to a method enabled for your sandbox merchant; set callback URL to `https://your-domain/duitku-callback.php` and return URL to `https://your-domain/order-status.php`.
-13. Point the document root at public/ if supported. Otherwise configure web-server rules to deny direct access to app/, config/, database/ and storage files.
-14. Do not enable real transactions until provider and payment integrations have been implemented and tested.
+14. Point the document root at public/ if supported. Otherwise configure web-server rules to deny direct access to app/, config/, database/ and storage files.
+15. Do not enable real transactions until provider and payment integrations have been implemented and tested.
 
 ## Scheduled work
 
