@@ -104,6 +104,8 @@ jobs:
         run: bash tests/queue_recovery_integration.sh
       - name: Test ambiguous supplier outcome handling against MySQL
         run: bash tests/uncertain_supplier_integration.sh
+      - name: Test explicit supplier rejection and refund state against MySQL
+        run: bash tests/explicit_supplier_failure_integration.sh
       - name: Verify unresolved Duitku checkout appears in read-only review report
         run: |
           set -eu
