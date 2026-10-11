@@ -54,7 +54,7 @@ function duitku_create_payment(array $config, string $orderId, int $amount, stri
     $parts = parse_url($url);
     if ((string)($response['statusCode'] ?? '') !== '00' || !is_array($parts)
         || strtolower((string)($parts['scheme'] ?? '')) !== 'https'
-        || !str_ends_with(strtolower((string)($parts['host'] ?? '')), 'duitku.com')) {
+        || !in_array(strtolower((string)($parts['host'] ?? '')), ['duitku.com'], true) && !str_ends_with(strtolower((string)($parts['host'] ?? '')), '.duitku.com')) {
         throw new RuntimeException('Duitku did not return a valid payment URL.');
     }
     return ['payment_url' => $url, 'reference' => isset($response['reference']) ? (string)$response['reference'] : null];
