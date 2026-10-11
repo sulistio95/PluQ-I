@@ -38,6 +38,7 @@ SELECT
   st.last_error AS supplier_error,
   pt.status AS gateway_payment_status,
   pt.gateway_reference,
+  pt.gateway_payment_url,
   (SELECT r.status FROM refunds r WHERE r.order_id = o.id ORDER BY r.id DESC LIMIT 1) AS latest_refund_status,
   o.last_error AS order_error
 FROM orders o
@@ -46,6 +47,9 @@ LEFT JOIN supplier_transactions st ON st.order_id = o.id
 LEFT JOIN payment_transactions pt ON pt.order_id = o.id
 WHERE o.order_status = 'MANUAL_REVIEW'
    OR st.status = 'REVIEW'
+   OR (o.payment_status = 'PENDING' AND pt.status = 'PENDING'
+       AND pt.gateway_payment_url IS NULL
+       AND o.last_error = 'Duitku sandbox request needs manual review')
    OR (o.payment_status = 'REFUND_PENDING' AND NOT EXISTS (
        SELECT 1 FROM refunds r WHERE r.order_id = o.id AND r.status IN ('PENDING','PROCESSING','SUCCESS')
    ))
