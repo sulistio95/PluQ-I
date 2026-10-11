@@ -252,6 +252,8 @@ try {
             o.payment_status, o.order_status, pt.gateway AS payment_gateway, pt.merchant_order_id,
             pt.gateway_reference, st.reference_id AS supplier_reference, st.provider_reference,
             st.status AS supplier_status,
+            EXISTS (SELECT 1 FROM refunds r WHERE r.order_id=o.id AND r.created_at >= :refund_created_check_start AND r.created_at < :refund_created_check_end) AS refund_created_in_period,
+            EXISTS (SELECT 1 FROM refunds r WHERE r.order_id=o.id AND r.processed_at >= :refund_processed_check_start AND r.processed_at < :refund_processed_check_end) AS refund_processed_in_period,
             (SELECT r.status FROM refunds r WHERE r.order_id=o.id ORDER BY r.id DESC LIMIT 1) AS latest_refund_status,
             (SELECT COALESCE(SUM(r.amount),0) FROM refunds r WHERE r.order_id=o.id AND r.status='SUCCESS') AS successful_refund_total,
             o.fulfilled_at
@@ -268,6 +270,8 @@ try {
         WHERE (o.created_at >= :created_start AND o.created_at < :created_end)
            OR (o.paid_at >= :paid_start AND o.paid_at < :paid_end)
            OR (o.fulfilled_at >= :fulfilled_start AND o.fulfilled_at < :fulfilled_end)
+           OR EXISTS (SELECT 1 FROM refunds r WHERE r.order_id=o.id AND r.created_at >= :refund_created_start AND r.created_at < :refund_created_end)
+           OR EXISTS (SELECT 1 FROM refunds r WHERE r.order_id=o.id AND r.processed_at >= :refund_processed_start AND r.processed_at < :refund_processed_end)
         ORDER BY COALESCE(o.paid_at, o.created_at) ASC, o.id ASC
     ");
     $periodStartDateTime = $start . ' 00:00:00';
@@ -276,6 +280,10 @@ try {
         'created_start' => $periodStartDateTime, 'created_end' => $periodEndDateTime,
         'paid_start' => $periodStartDateTime, 'paid_end' => $periodEndDateTime,
         'fulfilled_start' => $periodStartDateTime, 'fulfilled_end' => $periodEndDateTime,
+        'refund_created_check_start' => $periodStartDateTime, 'refund_created_check_end' => $periodEndDateTime,
+        'refund_processed_check_start' => $periodStartDateTime, 'refund_processed_check_end' => $periodEndDateTime,
+        'refund_created_start' => $periodStartDateTime, 'refund_created_end' => $periodEndDateTime,
+        'refund_processed_start' => $periodStartDateTime, 'refund_processed_end' => $periodEndDateTime,
     ]);
     $orders = $query->fetchAll(PDO::FETCH_ASSOC);
 
@@ -310,10 +318,14 @@ try {
         $createdInPeriod = $o['order_created_at'] >= $periodStartDateTime && $o['order_created_at'] < $periodEndDateTime;
         $paidInPeriod = !empty($o['paid_at']) && $o['paid_at'] >= $periodStartDateTime && $o['paid_at'] < $periodEndDateTime;
         $fulfilledInPeriod = !empty($o['fulfilled_at']) && $o['fulfilled_at'] >= $periodStartDateTime && $o['fulfilled_at'] < $periodEndDateTime;
+        $refundCreatedInPeriod = (bool) $o['refund_created_in_period'];
+        $refundProcessedInPeriod = (bool) $o['refund_processed_in_period'];
         $periodReasons = [];
         if ($createdInPeriod) $periodReasons[] = 'Pesanan dibuat';
         if ($paidInPeriod) $periodReasons[] = 'Pembayaran diterima';
         if ($fulfilledInPeriod) $periodReasons[] = 'Top-up selesai';
+        if ($refundCreatedInPeriod) $periodReasons[] = 'Refund dibuat';
+        if ($refundProcessedInPeriod) $periodReasons[] = 'Refund diproses';
         $paymentSummary[$payment] ??= ['count' => 0, 'amount' => 0.0];
         $paymentSummary[$payment]['count']++;
         if ($payment === 'PAID' && $paidInPeriod) $paymentSummary[$payment]['amount'] += $total;
