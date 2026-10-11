@@ -82,7 +82,7 @@ The following is an example only. Adapt the PHP executable and absolute paths to
 
 Monthly settlement backup is disabled by default. It requires Google OAuth configuration, the intended destination folder, migrations 006–007, and a controlled upload/recovery test before enabling `SETTLEMENT_BACKUP_ENABLED=true`. See `docs/admin-transactions-and-settlement.md`.
 
-The worker is currently a fail-closed scaffold and does not execute supplier jobs. Do not interpret the cron example as evidence that supplier fulfillment is ready.
+`bin/worker.php` is a read-only queue diagnostic; it never changes job state. `bin/worker-queue.php` is the queue processor, but supplier execution remains disabled unless `SUPPLIER_ORDERS_ENABLED=true`. Do not enable it until provider sandbox behavior and manual reconciliation have been verified. Do not interpret the cron example as evidence that supplier fulfillment is ready.
 
 ## Feature parity target
 
