@@ -15,7 +15,9 @@ The new runner is not the production scheduler yet. Before using it, review prov
 ## Operational cautions
 
 - Payment callback jobs are created only after a verified successful payment callback.
-- Network errors after a supplier request are treated as uncertain outcomes; they must be reconciled manually rather than blindly resubmitted.
+- Ambiguous `PROCESSING` supplier transactions are blocked from automatic resubmission and moved to manual review with a pending refund record.
+- Digiflazz orders that remain `RETRYING` are also moved to manual review instead of resending `/transaction`; idempotency/status-query behavior has not been verified.
+- VIPayment pending orders use the returned transaction ID for a status query, but this API contract still needs sandbox validation.
 - Refund rows are queued for manual processing; this code does not automatically issue a Duitku refund.
 - The account-field mapping is generic. Configure and test the exact field keys for every game before enabling fulfillment.
 - Confirm the API's status-check endpoint and returned status values for each provider before live use.
