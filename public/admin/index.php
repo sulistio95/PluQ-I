@@ -31,6 +31,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         session_destroy();
         header('Location: /admin/');
         exit;
+    } elseif ($user && isset($_POST['save_drive_folder'])) {
+        $sharedUrl = trim((string) ($_POST['google_drive_folder_url'] ?? ''));
+        $folderId = '';
+        if ($sharedUrl === '') {
+            $error = 'Masukkan URL folder Google Drive yang dibagikan.';
+        } else {
+            $parts = parse_url($sharedUrl);
+            $host = strtolower((string) ($parts['host'] ?? ''));
+            $path = (string) ($parts['path'] ?? '');
+            $query = [];
+            parse_str((string) ($parts['query'] ?? ''), $query);
+            if (!in_array($host, ['drive.google.com', 'www.drive.google.com'], true) || strtolower((string) ($parts['scheme'] ?? '')) !== 'https') {
+                $error = 'Gunakan tautan HTTPS folder Google Drive, bukan tautan file atau situs lain.';
+            } elseif (preg_match('~^/drive/folders/([A-Za-z0-9_-]{10,})/?$~', $path, $matches)) {
+                $folderId = $matches[1];
+            } elseif (preg_match('~^/folder/([A-Za-z0-9_-]{10,})/?$~', $path, $matches)) {
+                $folderId = $matches[1];
+            } else {
+                $error = 'URL belum dikenali sebagai tautan folder. Salin tautan folder dari Google Drive, bukan tautan file.';
+            }
+            if ($error === '' && $folderId !== '') {
+                $stmt = $pdo->prepare("INSERT INTO app_settings (setting_key,setting_value,updated_by) VALUES ('google_drive_folder_id',:value,:admin) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),updated_by=VALUES(updated_by)");
+                $stmt->execute(['value' => $folderId, 'admin' => $user['id']]);
+                $pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,details,ip_address) VALUES ('ADMIN',:id,'DRIVE_BACKUP_FOLDER_UPDATED','APP_SETTING','google_drive_folder_id',:details,:ip)")
+                    ->execute(['id' => $user['id'], 'details' => json_encode(['folder_id_suffix' => substr($folderId, -6)], JSON_UNESCAPED_SLASHES), 'ip' => substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45)]);
+                header('Location: /admin/?drive_folder_saved=1');
+                exit;
+            }
+        }
     } elseif (!$user) {
         $username = trim((string) ($_POST['username'] ?? ''));
         $password = (string) ($_POST['password'] ?? '');
@@ -61,6 +90,7 @@ $user = admin_current_user($pdo);
 $csrf = admin_csrf_token();
 $rows = [];
 $settlements = [];
+$driveFolderId = '';
 $providers = [];
 $summary = ['count' => 0, 'paid_total' => '0.00'];
 $filters = [
@@ -74,6 +104,13 @@ $filters = [
 ];
 
 if ($user) {
+    if (isset($_GET['drive_folder_saved']) && $_GET['drive_folder_saved'] === '1') $error = 'URL folder Google Drive berhasil disimpan.';
+    try {
+        $folderStmt = $pdo->query("SELECT setting_value FROM app_settings WHERE setting_key='google_drive_folder_id' LIMIT 1");
+        $driveFolderId = trim((string) ($folderStmt->fetchColumn() ?: ''));
+    } catch (Throwable $e) {
+        $error = 'Tabel pengaturan belum tersedia. Terapkan migration 007_admin_drive_folder_setting.sql.';
+    }
     $providers = $pdo->query('SELECT code,name FROM providers ORDER BY name')->fetchAll(PDO::FETCH_ASSOC);
     $allowedPayment = ['PENDING','PAID','FAILED','EXPIRED','REFUND_PENDING','REFUNDED'];
     $allowedOrder = ['PENDING','QUEUED','PROCESSING','RETRYING','SUCCESS','FAILED','REFUND_PENDING','REFUNDED','MANUAL_REVIEW'];
@@ -191,6 +228,18 @@ function admin_money(mixed $amount): string {
 <?php foreach($rows as $r): ?><tr><td><?=admin_escape($r['created_at'])?></td><td><?=admin_escape($r['public_id'])?><div class="muted small"><?=admin_escape($r['merchant_order_id'])?></div></td><td><?=admin_escape($r['game_name'])?><div class="muted"><?=admin_escape($r['product_name'])?></div></td><td><?=admin_escape($r['provider_code'])?></td><td><?=admin_escape($r['gateway'] ?? '-')?></td><td><?=admin_money($r['payment_amount'] ?? ((float)$r['selling_price']+(float)$r['admin_fee']))?><div class="muted small">Modal <?=admin_money($r['base_price'])?> · Admin <?=admin_money($r['admin_fee'])?></div></td><td><span class="status"><?=admin_escape($r['payment_status'])?></span><div class="muted small">Gateway: <?=admin_escape($r['gateway_status'] ?? '-')?></div></td><td><span class="status"><?=admin_escape($r['order_status'])?></span></td><td><?=admin_escape($r['supplier_status'] ?? '-')?></td><td class="small"><?=admin_escape($r['supplier_reference'] ?? '-')?><br><?=admin_escape($r['provider_reference'] ?? '')?><br>Refund: <?=admin_escape($r['refund_status'] ?? '-')?></td></tr><?php endforeach; ?>
 </tbody></table></div></section>
 <section class="panel"><h2>Settlement bulanan & backup Google Drive</h2><p class="muted">Arsip berisi ringkasan kolom transaksi tanpa data ID/zone akun game. Status UPLOADED berarti Google Drive mengembalikan ID file. Tidak ada data transaksi di database yang dihapus.</p>
+<form method="post" class="form-grid" style="max-width:760px;margin:16px 0">
+<input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>">
+<label>URL folder Google Drive tujuan backup
+<input type="url" name="google_drive_folder_url" placeholder="https://drive.google.com/drive/folders/..." maxlength="2000" required>
+</label>
+<div class="muted">Tempel tautan folder yang dibagikan dari Google Drive. Akun Google yang dipakai oleh OAuth di konfigurasi server harus memiliki izin untuk membuat file di folder tersebut.</div>
+<label>ID folder tersimpan
+<input value="<?=admin_escape($driveFolderId !== '' ? '••••••' . substr($driveFolderId, -6) : 'Belum diatur')?>" readonly>
+</label>
+<button type="submit" name="save_drive_folder" value="1">Simpan folder tujuan</button>
+</form>
+<p class="muted">Menyimpan URL hanya mengatur tujuan. Kredensial Google OAuth tetap harus diatur di konfigurasi server dan backup tetap nonaktif sampai diuji.</p>
 <div class="table-wrap"><table><thead><tr><th>Periode</th><th>Status</th><th>Baris</th><th>Jumlah order</th><th>File</th><th>Unggah</th><th>Catatan</th></tr></thead><tbody>
 <?php if (!$settlements): ?><tr><td colspan="7" class="muted">Belum ada catatan settlement atau migration 006 belum diterapkan.</td></tr><?php endif; ?>
 <?php foreach($settlements as $s): ?><tr><td><?=admin_escape($s['period_start'])?> – <?=admin_escape($s['period_end'])?></td><td><span class="status"><?=admin_escape($s['status'])?></span></td><td><?=number_format((int)$s['row_count'])?></td><td><?=admin_money($s['total_amount'])?></td><td><?=admin_escape($s['file_name'])?><div class="muted small"><?=admin_escape($s['drive_file_id'] ?? '')?></div></td><td><?=admin_escape($s['uploaded_at'] ?? '-')?></td><td class="small"><?=admin_escape($s['last_error'] ?? '')?></td></tr><?php endforeach; ?>
