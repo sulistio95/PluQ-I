@@ -4,15 +4,16 @@ require dirname(__DIR__) . '/app/bootstrap.php';
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
+
 $orderId = (string)($_GET['merchantOrderId'] ?? '');
 $title = 'Status pesanan PluQ';
 $message = 'Nomor pesanan tidak valid atau tidak ditemukan.';
-$paymentStatus = '';
-$orderStatus = '';
 if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
     try {
         require_once PLUQI_ROOT . '/config/database.php';
-        $stmt = database()->prepare("SELECT o.payment_status,o.order_status FROM orders o
+        $stmt = database()->prepare("SELECT o.payment_status,o.order_status,
+          (SELECT r.status FROM refunds r WHERE r.order_id=o.id ORDER BY r.id DESC LIMIT 1) AS refund_status
+          FROM orders o
           JOIN payment_transactions pt ON pt.order_id=o.id
           WHERE o.public_id=:public_id AND pt.merchant_order_id=:merchant_id LIMIT 1");
         $stmt->execute(['public_id' => $orderId, 'merchant_id' => $orderId]);
@@ -20,12 +21,37 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
         if ($row) {
             $paymentStatus = (string)$row['payment_status'];
             $orderStatus = (string)$row['order_status'];
-            $message = match ($paymentStatus) {
-                'PAID' => 'Pembayaran telah diterima. Status pesanan: ' . $orderStatus . '.',
-                'FAILED' => 'Pembayaran gagal. Jangan melakukan pembayaran ulang untuk nomor pesanan ini sebelum memeriksa statusnya.',
-                'EXPIRED' => 'Waktu pembayaran telah berakhir.',
-                default => 'Pembayaran masih menunggu konfirmasi Duitku. Muat ulang halaman ini beberapa saat lagi.',
-            };
+            $refundStatus = (string)($row['refund_status'] ?? '');
+
+            if ($paymentStatus === 'PAID') {
+                if ($orderStatus === 'FAILED' && in_array($refundStatus, ['PENDING', 'PROCESSING'], true)) {
+                    $message = 'Pembayaran berhasil diterima, tetapi top-up gagal. Pengembalian dana sedang menunggu atau dalam proses pemeriksaan admin.';
+                } elseif ($orderStatus === 'FAILED' && $refundStatus === 'SUCCESS') {
+                    $message = 'Pembayaran diterima, top-up gagal, dan pengembalian dana telah berhasil.';
+                } else {
+                    $orderMessage = match ($orderStatus) {
+                        'PENDING' => 'Pesanan menunggu diproses.',
+                        'QUEUED' => 'Pembayaran diterima. Pesanan masuk antrean.',
+                        'PROCESSING' => 'Pembayaran diterima. Top-up sedang diproses.',
+                        'RETRYING' => 'Top-up masih diproses supplier. Status akan diperbarui setelah pemeriksaan berikutnya.',
+                        'SUCCESS' => 'Top-up berhasil.',
+                        'FAILED' => 'Top-up gagal. Silakan hubungi admin untuk pemeriksaan pengembalian dana.',
+                        'REFUND_PENDING' => 'Top-up gagal. Pengembalian dana menunggu proses.',
+                        'REFUNDED' => 'Top-up gagal dan dana telah dikembalikan.',
+                        'MANUAL_REVIEW' => 'Pembayaran diterima. Pesanan sedang diperiksa admin sebelum tindakan lanjutan.',
+                        default => 'Pembayaran diterima. Status pesanan sedang diperiksa.',
+                    };
+                    $message = 'Pembayaran berhasil diterima. ' . $orderMessage;
+                }
+            } else {
+                $message = match ($paymentStatus) {
+                    'FAILED' => 'Pembayaran gagal. Jangan melakukan pembayaran ulang untuk nomor pesanan ini sebelum memeriksa statusnya.',
+                    'EXPIRED' => 'Waktu pembayaran telah berakhir.',
+                    'REFUND_PENDING' => 'Pengembalian dana sedang menunggu proses.',
+                    'REFUNDED' => 'Dana telah dikembalikan.',
+                    default => 'Pembayaran masih menunggu konfirmasi Duitku. Muat ulang halaman ini beberapa saat lagi.',
+                };
+            }
         }
     } catch (Throwable $e) {
         $message = 'Status pesanan belum dapat diperiksa. Coba lagi nanti.';
