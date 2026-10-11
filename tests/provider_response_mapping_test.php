@@ -73,6 +73,15 @@ provider_map_assert_same(
     'Malformed VIPayment status values must require manual review.'
 );
 
+provider_map_assert_same(
+    'REVIEW',
+    fulfillment_map_vipayment_response(
+        ['data' => [['status' => 'success']]],
+        'VP123'
+    )['state'],
+    'A status response without its transaction ID must require manual review.'
+);
+
 $failed = false;
 try {
     fulfillment_map_digiflazz_response(['data' => []], 'PQI-REF-1');
