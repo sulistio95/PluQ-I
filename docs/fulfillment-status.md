@@ -8,10 +8,11 @@ Supplier execution is disabled by default. The example environment file sets `SU
 - `bin/worker-queue.php`: bounded queue runner with scheduler-token protection for HTTP use.
 - `bin/worker.php`: original foundation-only runner; it does not dispatch supplier jobs.
 - `database/migrations/004_supplier_manual_review_status.sql`: adds the `REVIEW` supplier-transaction state used when a provider outcome is ambiguous.
+- `database/migrations/005_order_manual_review_status.sql`: adds the order-level `MANUAL_REVIEW` state for unresolved fulfillment.
 - `tests/fulfillment_account_test.php`: basic account-field mapping tests.
 - `.github/workflows/fulfillment-tests.yml`: PHP lint and test workflow.
 
-The new runner is not the production scheduler yet. Before using it, review provider API contracts and test the complete lifecycle with non-production credentials. Do not set `SUPPLIER_ORDERS_ENABLED=true` on a live store.
+The queue runner now moves locks older than 10 minutes to manual review rather than automatically resubmitting potentially accepted supplier requests. Retry exhaustion and unexpected worker errors also move paid orders to `MANUAL_REVIEW`; no automatic Duitku refund is issued. The new runner is not the production scheduler yet. Before using it, review provider API contracts and test the complete lifecycle with non-production credentials. Do not set `SUPPLIER_ORDERS_ENABLED=true` on a live store.
 
 ## Operational cautions
 
