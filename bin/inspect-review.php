@@ -50,6 +50,10 @@ WHERE o.order_status = 'MANUAL_REVIEW'
    OR (o.payment_status = 'PENDING' AND pt.status = 'PENDING'
        AND pt.gateway_payment_url IS NULL
        AND o.last_error = 'Duitku sandbox request needs manual review')
+   OR EXISTS (
+       SELECT 1 FROM refunds r
+       WHERE r.order_id = o.id AND r.status IN ('PENDING','PROCESSING','FAILED')
+   )
    OR (o.payment_status = 'REFUND_PENDING' AND NOT EXISTS (
        SELECT 1 FROM refunds r WHERE r.order_id = o.id AND r.status IN ('PENDING','PROCESSING','SUCCESS')
    ))
