@@ -102,9 +102,8 @@ function fulfillment_process(PDO $pdo, int $orderId): string
             ($supplier['status']==='RETRYING' && strtoupper((string)$order['provider_code'])==='DIGI')) {
             // A prior request may have been accepted before a crash or timeout. Digiflazz retry semantics
             // are not verified here, so neither ambiguous state is safe for automatic resubmission.
-            $pdo->prepare("UPDATE orders SET order_status='REFUND_PENDING',payment_status='REFUND_PENDING',last_error='Supplier request outcome is ambiguous; manual reconciliation required' WHERE id=:id")->execute(['id'=>$orderId]);
+            $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Supplier request outcome is ambiguous; manual reconciliation required' WHERE id=:id AND payment_status='PAID'")->execute(['id'=>$orderId]);
             $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error='Ambiguous prior request; automatic resubmission blocked' WHERE order_id=:id")->execute(['id'=>$orderId]);
-            $pdo->prepare("INSERT INTO refunds (order_id,amount,status,reason) SELECT id,selling_price+admin_fee,'PENDING','Ambiguous supplier request; reconcile before refund' FROM orders WHERE id=:id AND NOT EXISTS (SELECT 1 FROM refunds WHERE order_id=:id2 AND status IN ('PENDING','PROCESSING','SUCCESS'))")->execute(['id'=>$orderId,'id2'=>$orderId]);
             $pdo->commit();
             return 'REVIEW';
         } elseif ($supplier['status']==='SUCCESS') {
@@ -127,15 +126,16 @@ function fulfillment_process(PDO $pdo, int $orderId): string
         elseif ($provider==='VIPAY') $result=fulfillment_vipayment($order,$account, !empty($supplier['provider_reference']) ? (string)$supplier['provider_reference'] : null);
         else throw new DomainException('Unsupported supplier code.');
     } catch (Throwable $e) {
-        $pdo->prepare("UPDATE supplier_transactions SET status='FAILED',last_error='Supplier outcome uncertain; manual review required' WHERE order_id=:id")->execute(['id'=>$orderId]);
-        $pdo->prepare("UPDATE orders SET order_status='FAILED',payment_status='REFUND_PENDING',last_error='Supplier outcome uncertain; manual review required' WHERE id=:id")->execute(['id'=>$orderId]);
-        $pdo->prepare("INSERT INTO refunds (order_id,amount,status,reason) SELECT id,selling_price+admin_fee,'PENDING','Supplier outcome uncertain; manual review required' FROM orders WHERE id=:id AND NOT EXISTS (SELECT 1 FROM refunds WHERE order_id=:id2 AND status IN ('PENDING','PROCESSING','SUCCESS'))")->execute(['id'=>$orderId,'id2'=>$orderId]);
+        // A timeout, transport error, or unexpected API response does not prove the supplier rejected the order.
+        // Preserve the paid payment state and require reconciliation; do not create a refund task automatically.
+        $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error='Supplier outcome uncertain; manual review required' WHERE order_id=:id")->execute(['id'=>$orderId]);
+        $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Supplier outcome uncertain; manual review required' WHERE id=:id AND payment_status='PAID'")->execute(['id'=>$orderId]);
         return 'REVIEW';
     }
 
     $safe=json_encode($result['response'],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
     $state=$result['state'];
-    $txStatus=$state==='SUCCESS'?'SUCCESS':($state==='PENDING'?'RETRYING':'FAILED');
+    $txStatus=$state==='SUCCESS'?'SUCCESS':($state==='PENDING'?'RETRYING':($state==='FAILED'?'FAILED':'REVIEW'));
     $pdo->prepare("UPDATE supplier_transactions SET provider_reference=NULLIF(:ref,''),status=:status,attempts=attempts+1,response_payload=:response,last_error=:error WHERE order_id=:id")
       ->execute(['ref'=>$result['reference'],'status'=>$txStatus,'response'=>$safe,'error'=>$state==='REVIEW'?'Supplier response requires manual review':null,'id'=>$orderId]);
     if ($state==='SUCCESS') {
@@ -146,7 +146,13 @@ function fulfillment_process(PDO $pdo, int $orderId): string
         $pdo->prepare("UPDATE orders SET order_status='RETRYING',last_error='Supplier processing; status will be checked again' WHERE id=:id")->execute(['id'=>$orderId]);
         return 'RETRY';
     }
-    $reason=$state==='FAILED'?'Supplier rejected the order':'Supplier response requires manual review';
+    if ($state==='REVIEW') {
+        $reason='Supplier response is ambiguous or unrecognized; manual reconciliation required';
+        $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error=:reason WHERE order_id=:id")->execute(['reason'=>$reason,'id'=>$orderId]);
+        $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error=:reason WHERE id=:id AND payment_status='PAID'")->execute(['reason'=>$reason,'id'=>$orderId]);
+        return 'REVIEW';
+    }
+    $reason='Supplier explicitly rejected the order';
     $pdo->prepare("UPDATE orders SET order_status='FAILED',payment_status='REFUND_PENDING',last_error=:reason WHERE id=:id")->execute(['reason'=>$reason,'id'=>$orderId]);
     $pdo->prepare("INSERT INTO refunds (order_id,amount,status,reason) SELECT id,selling_price+admin_fee,'PENDING',:reason FROM orders WHERE id=:id AND NOT EXISTS (SELECT 1 FROM refunds WHERE order_id=:id2 AND status IN ('PENDING','PROCESSING','SUCCESS'))")->execute(['reason'=>$reason,'id'=>$orderId,'id2'=>$orderId]);
     return 'FAILED';
