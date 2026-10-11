@@ -63,7 +63,13 @@ The script refreshes the OAuth access token at runtime; the refresh token and cl
 
 ## Run and schedule
 
-On the first day of each month, the script exports orders created in the preceding calendar month to a CSV file, uploads it to Drive, records the Drive file ID, and removes its local temporary CSV file. The CSV includes order/payment/provider statuses, amounts, references, game and product names, and fulfillment time. It deliberately excludes the raw customer game-account JSON and raw provider request/response payloads.
+On the first day of each month, the script creates a formatted Google Sheets workbook named `PluQ-Pembukuan-YYYY-MM` in the destination folder and records its spreadsheet ID. The workbook contains three tabs:
+
+1. **Ringkasan Bulanan** — total order count, paid order count, paid product sales, recorded product cost, admin fees, recorded customer payment total, indicative gross margin, and payment/order status summaries.
+2. **Rincian Transaksi** — one row per returned transaction record, with order dates, game/product, supplier API, base/selling price, admin fee, customer total, payment/order/supplier/refund statuses, and payment/supplier references. The header is styled, columns are sized, and IDR columns use currency formatting.
+3. **Rekonsiliasi** — non-paid orders and orders with failed, manual-review, or refund-related statuses that should be checked before closing the books.
+
+The workbook deliberately excludes raw customer game-account JSON and raw supplier request/response payloads. The Google OAuth authorization must include both a Drive scope that permits the app to manage its created files (such as `https://www.googleapis.com/auth/drive.file`) and the Google Sheets scope `https://www.googleapis.com/auth/spreadsheets`.
 
 Cron example (adjust PHP and repository paths for the host):
 
@@ -81,8 +87,9 @@ Do not use the recovery option to overwrite a successful export. The script will
 
 ## Settlement meaning and retention
 
-- The CSV includes all orders created during the period, including pending and failed records, so the monthly report can be reconciled.
-- The recorded `total_amount` is the sum of `selling_price + admin_fee` for orders whose payment status is `PAID`; it is not supplier profit or a bank settlement guarantee.
+- The workbook includes records created during the period, including pending and failed records, so the monthly report can be reconciled.
+- The recorded `total_amount` is the sum of `selling_price + admin_fee` for orders whose payment status is `PAID`; it is not supplier profit or a bank settlement guarantee. The sheet's indicative gross margin is `selling_price - base_price` for PAID records before payment gateway fees, operating expenses, tax adjustments, and confirmed refunds. Refunds are flagged for reconciliation and are not automatically deducted.
 - This feature does not delete or archive-purge orders from MySQL. Keeping transaction history in the database preserves the operational audit trail; only the temporary export file is removed from hosting.
 - A Drive upload success does not replace a database backup and restore plan. Keep independent database backups.
-- No real Google Drive upload has been verified from this repository/hosting environment yet.
+- This report is an operational bookkeeping aid, not a tax calculation or tax advice. Confirm tax treatment and the final tax base with a qualified accountant/tax adviser, and retain payment-gateway statements, supplier invoices, and refund evidence.
+- No real Google Drive/Sheets upload has been verified from this repository/hosting environment yet.
