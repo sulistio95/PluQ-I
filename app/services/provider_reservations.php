@@ -15,6 +15,13 @@ function provider_reservation_hold(PDO $pdo, int $orderId, int $providerId, floa
         throw new InvalidArgumentException('Invalid provider reservation.');
     }
 
+    $orderQuery = $pdo->prepare('SELECT provider_id,base_price FROM orders WHERE id=:id LIMIT 1 FOR UPDATE');
+    $orderQuery->execute(['id'=>$orderId]);
+    $order = $orderQuery->fetch();
+    if (!$order || (int)$order['provider_id'] !== $providerId || abs((float)$order['base_price'] - $amount) > 0.01) {
+        throw new DomainException('Reservation does not match the saved order.');
+    }
+
     $providerQuery = $pdo->prepare("SELECT id,balance,status,reserve_percentage FROM providers WHERE id=:id LIMIT 1 FOR UPDATE");
     $providerQuery->execute(['id'=>$providerId]);
     $provider = $providerQuery->fetch();
@@ -45,6 +52,9 @@ function provider_reservation_hold(PDO $pdo, int $orderId, int $providerId, floa
  */
 function provider_reservation_commit_paid(PDO $pdo, int $orderId): bool
 {
+    if (!$pdo->inTransaction()) {
+        throw new LogicException('A paid reservation must share the callback transaction.');
+    }
     $orderQuery = $pdo->prepare('SELECT provider_id,base_price FROM orders WHERE id=:id LIMIT 1');
     $orderQuery->execute(['id'=>$orderId]);
     $order = $orderQuery->fetch();
@@ -60,6 +70,7 @@ function provider_reservation_commit_paid(PDO $pdo, int $orderId): bool
     $reservationQuery = $pdo->prepare('SELECT id,provider_id,amount,status,expires_at FROM provider_balance_reservations WHERE order_id=:id LIMIT 1 FOR UPDATE');
     $reservationQuery->execute(['id'=>$orderId]);
     $reservation = $reservationQuery->fetch();
+    if ($reservation && (int)$reservation['provider_id'] !== (int)$provider['id']) return false;
     if ($reservation && in_array($reservation['status'], ['COMMITTED','CONSUMED'], true)) return true;
 
     $amount = $reservation ? (float)$reservation['amount'] : (float)$order['base_price'];
