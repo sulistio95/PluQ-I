@@ -27,6 +27,8 @@ jobs:
         run: php tests/duitku_callback_test.php
       - name: Test account field mapping
         run: php tests/fulfillment_account_test.php
+      - name: Test supplier response mapping
+        run: php tests/provider_response_mapping_test.php
 
   mysql-callback-integration:
     runs-on: ubuntu-latest
