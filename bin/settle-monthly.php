@@ -372,7 +372,7 @@ try {
     foreach ($orderSummary as $status => $num) $summary[] = [$status, $num, '', ''];
     $summary[] = ['', '', '', ''];
     $summary[] = ['CATATAN PENTING', '', '', ''];
-    $summary[] = ['Nilai ringkasan pembayaran dihitung berdasarkan paid_at dalam periode laporan; daftar rincian juga mencakup pesanan dibuat atau top-up selesai pada periode tersebut.', '', '', ''];
+    $summary[] = ['Nilai ringkasan pembayaran dihitung berdasarkan paid_at dalam periode laporan; daftar rincian juga mencakup pesanan dibuat, top-up selesai, atau terkait refund pada periode tersebut.', '', '', ''];
     $summary[] = ['Laporan operasional untuk rekonsiliasi dan bahan pembukuan; bukan perhitungan atau nasihat pajak final.', '', '', ''];
     $summary[] = ['Nilai penjualan tidak otomatis sama dengan dasar pengenaan pajak. Konfirmasikan perlakuan omzet, biaya, biaya gateway, dan refund dengan akuntan/konsultan pajak.', '', '', ''];
     $summary[] = ['Refund sukses pada periode ini dikurangkan dari indikator penerimaan bersih berdasarkan processed_at; cocokkan dengan bukti refund dan laporan gateway.', '', '', ''];
