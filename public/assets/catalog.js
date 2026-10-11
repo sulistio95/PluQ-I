@@ -20,7 +20,7 @@
   paymentButton.hidden = true;
   $('checkout-note').after(paymentButton);
   paymentButton.addEventListener('click', async () => {
-    if (!lastQuote || !selectedProduct || !activeGame) return;
+    if (!lastQuote || !lastQuote.payment_enabled || !selectedProduct || !activeGame) return;
     const email = String($('customer-email')?.value || '').trim();
     paymentRequestKey = paymentRequestKey || crypto.randomUUID();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -243,10 +243,12 @@
           const quote = result.data;
           lastQuote = quote;
           paymentRequestKey = crypto.randomUUID();
-          paymentButton.hidden = false;
+          paymentButton.hidden = !quote.payment_enabled;
           paymentButton.disabled = false;
-          showMessage('Harga dihitung ulang oleh server. Belum ada pesanan atau pembayaran yang dibuat.', false);
-          $('checkout-note').textContent = 'Rincian: ' + quote.product.name + ' — harga ' + rupiah(quote.price.selling_price) + ', biaya admin ' + rupiah(quote.price.admin_fee) + ', total ' + rupiah(quote.price.total) + '. Ini hanya kutipan; pembayaran belum aktif.';
+          showMessage(quote.payment_enabled
+            ? 'Harga dihitung ulang oleh server. Pembayaran tersedia pada lingkungan yang diaktifkan.'
+            : 'Harga dihitung ulang oleh server. Pembayaran masih dinonaktifkan; belum ada pesanan yang dibuat.', false);
+          $('checkout-note').textContent = 'Rincian: ' + quote.product.name + ' — harga ' + rupiah(quote.price.selling_price) + ', biaya admin ' + rupiah(quote.price.admin_fee) + ', total ' + rupiah(quote.price.total) + '. ' + (quote.payment_enabled ? 'Pembayaran tersedia pada lingkungan yang diaktifkan.' : 'Ini hanya kutipan; pembayaran belum aktif.');
           productsBox.querySelectorAll('.select-product').forEach((item) => {
             item.textContent = item === button ? 'Harga dihitung' : 'Pilih nominal';
             item.setAttribute('aria-pressed', item === button ? 'true' : 'false');
