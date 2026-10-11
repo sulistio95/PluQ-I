@@ -158,7 +158,7 @@
       '</article>'
     ).join('');
     productsBox.querySelectorAll('button[data-product-index]').forEach((button) => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', async () => {
         if (!accountDataValid) {
           showMessage('Isi dan periksa data akun terlebih dahulu sebelum memilih nominal.', true);
           $('account-form').scrollIntoView({behavior:'smooth', block:'start'});
