@@ -217,6 +217,7 @@ function admin_money(mixed $amount): string {
 </form></section>
 <?php else: ?>
 <header class="bar"><div><h1>Panel Admin PluQ-I</h1><div class="muted">Masuk sebagai <?=admin_escape($user['username'])?> · <?=admin_escape($user['role'])?></div></div>
+<nav><a href="/admin/game-mappings.php" style="color:#a7f3d0;margin-right:14px">Pemetaan game supplier</a></nav>
 <form method="post"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><button name="logout" value="1" type="submit">Keluar</button></form></header>
 <?php if ($error !== ''): ?><div class="error"><?=admin_escape($error)?></div><?php endif; ?>
 <section class="panel"><div class="bar"><h2>Filter transaksi</h2><span class="muted">Maksimal 200 baris per pencarian</span></div>
