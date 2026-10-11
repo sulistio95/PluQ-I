@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/digiflazz.php';
 require_once __DIR__ . '/vipayment.php';
+require_once __DIR__ . '/provider_reservations.php';
 
 function fulfillment_enabled(): bool
 {
@@ -142,6 +143,8 @@ function fulfillment_record_explicit_failure(PDO $pdo, int $orderId, string $rea
                 SELECT id,selling_price+admin_fee,'PENDING',:reason FROM orders WHERE id=:id AND payment_status='PAID'")
                 ->execute(['reason' => $reason, 'id' => $orderId]);
         }
+        // Only an explicit supplier rejection proves the reserved capacity can be released.
+        provider_reservation_release($pdo, $orderId, true);
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
@@ -209,6 +212,9 @@ function fulfillment_process(PDO $pdo, int $orderId): string
       ->execute(['ref'=>$result['reference'],'status'=>$txStatus,'response'=>$safe,'error'=>$state==='REVIEW'?'Supplier response requires manual review':null,'id'=>$orderId]);
     if ($state==='SUCCESS') {
         $pdo->prepare("UPDATE orders SET order_status='SUCCESS',supplier_reference=:ref,fulfilled_at=NOW(),last_error=NULL WHERE id=:id")->execute(['ref'=>$result['reference'],'id'=>$orderId]);
+        // Keep the amount reserved against the last known balance until a later
+        // successful balance snapshot can account for this completed supplier debit.
+        provider_reservation_consume($pdo, $orderId);
         return 'DONE';
     }
     if ($state==='PENDING') {
