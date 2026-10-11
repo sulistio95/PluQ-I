@@ -26,16 +26,21 @@ foreach ($providers as $code => $requiredEnvironment) {
         }
     }
     if (!$configured) {
-        fwrite(STDERR, $code . ': skipped (credentials not configured).\n');
+        fwrite(STDERR, $code . ": skipped (credentials not configured).\n");
         continue;
     }
+
     try {
         $result = sync_provider_balance($pdo, $code);
+        if (!empty($result['skipped'])) {
+            fwrite(STDOUT, $code . ": skipped (provider disabled).\n");
+            continue;
+        }
         fwrite(STDOUT, sprintf("%s: balance %.2f, status %s\n", $result['provider'], $result['balance'], $result['status']));
     } catch (Throwable $e) {
         $failed = true;
         record_provider_balance_error($pdo, $code, $e);
-        fwrite(STDERR, $code . ': sync failed; see provider record for the sanitized error.\n');
+        fwrite(STDERR, $code . ": sync failed; see provider record for the sanitized error.\n");
     }
 }
 
