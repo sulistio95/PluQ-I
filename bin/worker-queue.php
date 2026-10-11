@@ -115,7 +115,9 @@ while ($processed < $config['scheduler_batch_size'] && microtime(true) - $start 
     } else {
         $message = $outcome === 'RETRY'
             ? 'Retry limit reached; manual reconciliation required; automatic retry blocked'
-            : 'Worker failed unexpectedly; inspect supplier and order state before retry or refund';
+            : ($outcome === 'REVIEW'
+                ? 'Supplier outcome requires manual reconciliation; no automatic retry or refund'
+                : 'Worker failed unexpectedly; inspect supplier and order state before retry or refund');
         if ($outcome === 'RETRY' || $outcome === 'ERROR') {
             $jobPayload = json_decode((string)$job['payload'], true);
             $reviewOrderId = filter_var(is_array($jobPayload) ? ($jobPayload['order_id'] ?? null) : null, FILTER_VALIDATE_INT);
