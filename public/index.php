@@ -18,6 +18,13 @@ if ($method === 'GET' && in_array($path,['/api/games','/api/banners'],true)) {
   json_response(['data'=>catalog_banners($pdo)]);
  } catch (Throwable $e) { json_response(['error'=>'catalog_unavailable'],503); }
 }
+if ($method==='GET' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/fields$#D',$path,$m)===1) {
+ try {
+  require_once PLUQI_ROOT.'/config/database.php';
+  require_once PLUQI_ROOT.'/app/services/game_fields.php';
+  json_response(['data'=>catalog_game_fields(database(),$m[1])]);
+ } catch (Throwable $e) { json_response(['error'=>'game_fields_unavailable'],503); }
+}
 if ($method==='GET' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/products$#D',$path,$m)===1) {
  try { require_once PLUQI_ROOT.'/config/database.php'; require_once PLUQI_ROOT.'/app/services/catalog.php'; json_response(['data'=>catalog_products(database(),$m[1])]); }
  catch (Throwable $e) { json_response(['error'=>'catalog_unavailable'],503); }
