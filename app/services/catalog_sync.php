@@ -49,6 +49,20 @@ function catalog_sync_game_id(PDO $pdo, int $providerId, string $providerGameCod
     return $value === false ? null : (int) $value;
 }
 
+/**
+ * Fail closed before applying a complete provider snapshot: entries not returned
+ * by a successful full catalog response stay unavailable until confirmed again.
+ * The caller must run this inside the same transaction as the upserts.
+ */
+function catalog_sync_mark_provider_stale(PDO $pdo, int $providerId): void
+{
+    $providerProducts = $pdo->prepare("UPDATE provider_products SET is_available = 0 WHERE provider_id = :provider_id");
+    $providerProducts->execute(['provider_id' => $providerId]);
+
+    $storeProducts = $pdo->prepare("UPDATE products SET status = 'OUT_OF_STOCK' WHERE provider_id = :provider_id");
+    $storeProducts->execute(['provider_id' => $providerId]);
+}
+
 function catalog_sync_upsert_provider_product(
     PDO $pdo,
     int $providerId,
@@ -121,10 +135,15 @@ function sync_digiflazz_catalog(PDO $pdo): array
     }
 
     $items = digiflazz_price_list();
+    if ($items === []) {
+        throw new RuntimeException('Digiflazz returned an empty catalog; existing products were left unchanged.');
+    }
     $seen = 0;
     $mapped = 0;
+    $validResponseItems = 0;
     $pdo->beginTransaction();
     try {
+        catalog_sync_mark_provider_stale($pdo, (int) $provider['id']);
         foreach ($items as $item) {
             if (!is_array($item)) {
                 continue;
@@ -136,6 +155,7 @@ function sync_digiflazz_catalog(PDO $pdo): array
             if ($code === '' || $name === '' || !is_numeric($item['price'] ?? null)) {
                 continue;
             }
+            $validResponseItems++;
             if (catalog_sync_is_excluded($name, $code)) {
                 continue;
             }
@@ -149,6 +169,9 @@ function sync_digiflazz_catalog(PDO $pdo): array
                 $mapped++;
             }
             $seen++;
+        }
+        if ($validResponseItems === 0) {
+            throw new RuntimeException('Digiflazz catalog had no valid product records; refresh was rolled back.');
         }
         $pdo->commit();
     } catch (Throwable $e) {
@@ -177,10 +200,15 @@ function sync_vipayment_catalog(PDO $pdo): array
         throw new RuntimeException('VIPAYMENT_PRICE_TIER must be basic, premium, or special.');
     }
     $items = vipayment_game_services(null, null);
+    if ($items === []) {
+        throw new RuntimeException('VIPayment returned an empty catalog; existing products were left unchanged.');
+    }
     $seen = 0;
     $mapped = 0;
+    $validResponseItems = 0;
     $pdo->beginTransaction();
     try {
+        catalog_sync_mark_provider_stale($pdo, (int) $provider['id']);
         foreach ($items as $item) {
             if (!is_array($item)) {
                 continue;
@@ -193,6 +221,7 @@ function sync_vipayment_catalog(PDO $pdo): array
             if ($code === '' || $name === '' || !is_array($prices) || !is_numeric($prices[$tier] ?? null)) {
                 continue;
             }
+            $validResponseItems++;
             if (catalog_sync_is_excluded($name, $code) || catalog_sync_is_excluded($gameCode, $code)) {
                 continue;
             }
@@ -210,6 +239,9 @@ function sync_vipayment_catalog(PDO $pdo): array
                 $mapped++;
             }
             $seen++;
+        }
+        if ($validResponseItems === 0) {
+            throw new RuntimeException('VIPayment catalog had no valid service records; refresh was rolled back.');
         }
         $pdo->commit();
     } catch (Throwable $e) {
