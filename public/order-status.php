@@ -14,8 +14,8 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
         require_once PLUQI_ROOT . '/config/database.php';
         $stmt = database()->prepare("SELECT o.payment_status,o.order_status FROM orders o
           JOIN payment_transactions pt ON pt.order_id=o.id
-          WHERE o.public_id=:id AND pt.merchant_order_id=:id LIMIT 1");
-        $stmt->execute(['id' => $orderId]);
+          WHERE o.public_id=:public_id AND pt.merchant_order_id=:merchant_id LIMIT 1");
+        $stmt->execute(['public_id' => $orderId, 'merchant_id' => $orderId]);
         $row = $stmt->fetch();
         if ($row) {
             $paymentStatus = (string)$row['payment_status'];
