@@ -230,12 +230,9 @@ function sync_vipayment_catalog(PDO $pdo): array
             catalog_sync_upsert_provider_product($pdo, (int) $provider['id'], $gameCode, $code, $name, $category, $basePrice, $available, $item);
             $gameId = catalog_sync_game_id($pdo, (int) $provider['id'], $gameCode);
             if ($gameId !== null) {
-                $displayName = $name;
-                $server = catalog_sync_text($item['server'] ?? '', 80);
-                if ($server !== '') {
-                    $displayName .= ' (Server ' . $server . ')';
-                }
-                catalog_sync_upsert_store_product($pdo, (int) $provider['id'], $gameId, $code, $displayName, $basePrice, $available, $item);
+                // Keep server/region in raw metadata and the provider SKU, not the display name.
+                // This lets catalog_products() group equivalent services and expose the cheapest available offer.
+                catalog_sync_upsert_store_product($pdo, (int) $provider['id'], $gameId, $code, $name, $basePrice, $available, $item);
                 $mapped++;
             }
             $seen++;
