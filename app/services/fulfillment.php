@@ -20,7 +20,14 @@ function fulfillment_account(array $data): array
         if (in_array($key, ['zone_id','zone','server','data_zone'], true)) $zone = trim((string)$value);
     }
     if ($user === '') {
-        $values = array_values(array_filter(array_map(static fn($v) => is_scalar($v) ? trim((string)$v) : '', $data), static fn($v) => $v !== ''));
+        $values = [];
+        foreach ($data as $key => $value) {
+            if (!is_scalar($value)) continue;
+            $normalizedKey = strtolower((string)$key);
+            if (in_array($normalizedKey, ['zone_id','zone','server','data_zone'], true)) continue;
+            $value = trim((string)$value);
+            if ($value !== '') $values[] = $value;
+        }
         if (count($values) === 1) $user = $values[0];
         if (count($values) === 2) { $user = $values[0]; $zone = $values[1]; }
     }
