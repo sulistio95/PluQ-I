@@ -117,6 +117,38 @@ function fulfillment_map_vipayment_response(array $response, ?string $requestedT
     return ['state'=>$state,'reference'=>(string)($row['trxid'] ?? $requestedTrxid ?? ''),'response'=>$response];
 }
 
+/**
+ * Record a definitive supplier rejection without rewriting the payment outcome.
+ * Payment remains PAID; refund processing is represented only by the refunds table.
+ */
+function fulfillment_record_explicit_failure(PDO $pdo, int $orderId, string $reason = 'Supplier explicitly rejected the order'): void
+{
+    $pdo->beginTransaction();
+    try {
+        $q = $pdo->prepare("SELECT id, payment_status FROM orders WHERE id=:id LIMIT 1 FOR UPDATE");
+        $q->execute(['id' => $orderId]);
+        $order = $q->fetch();
+        if (!$order || $order['payment_status'] !== 'PAID') {
+            throw new DomainException('Only a paid order can enter supplier-failure refund review.');
+        }
+
+        $pdo->prepare("UPDATE orders SET order_status='FAILED',last_error=:reason WHERE id=:id AND payment_status='PAID'")
+            ->execute(['reason' => $reason, 'id' => $orderId]);
+
+        $q = $pdo->prepare("SELECT id FROM refunds WHERE order_id=:id AND status IN ('PENDING','PROCESSING','SUCCESS') LIMIT 1 FOR UPDATE");
+        $q->execute(['id' => $orderId]);
+        if (!$q->fetch()) {
+            $pdo->prepare("INSERT INTO refunds (order_id,amount,status,reason)
+                SELECT id,selling_price+admin_fee,'PENDING',:reason FROM orders WHERE id=:id AND payment_status='PAID'")
+                ->execute(['reason' => $reason, 'id' => $orderId]);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+}
+
 /** Processes a paid order. Network uncertainty is never blindly retried. */
 function fulfillment_process(PDO $pdo, int $orderId): string
 {
@@ -190,7 +222,6 @@ function fulfillment_process(PDO $pdo, int $orderId): string
         return 'REVIEW';
     }
     $reason='Supplier explicitly rejected the order';
-    $pdo->prepare("UPDATE orders SET order_status='FAILED',payment_status='REFUND_PENDING',last_error=:reason WHERE id=:id")->execute(['reason'=>$reason,'id'=>$orderId]);
-    $pdo->prepare("INSERT INTO refunds (order_id,amount,status,reason) SELECT id,selling_price+admin_fee,'PENDING',:reason FROM orders WHERE id=:id AND NOT EXISTS (SELECT 1 FROM refunds WHERE order_id=:id2 AND status IN ('PENDING','PROCESSING','SUCCESS'))")->execute(['reason'=>$reason,'id'=>$orderId,'id2'=>$orderId]);
+    fulfillment_record_explicit_failure($pdo, $orderId, $reason);
     return 'FAILED';
 }
