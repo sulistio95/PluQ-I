@@ -1,4 +1,4 @@
-name: PHP syntax checks
+name: PHP and JavaScript syntax checks
 
 on:
   push:
@@ -21,3 +21,5 @@ jobs:
         run: |
           set -eu
           find app bin config public -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Check catalog JavaScript syntax
+        run: node --check public/assets/catalog.js
