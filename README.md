@@ -7,6 +7,8 @@ Shared-hosting edition of PluQ for PHP 8.2+ and MySQL/MariaDB. This repository i
 - Foundation: PHP bootstrap, environment configuration, PDO connection, MySQL schema and operational tables.
 - Public catalog: game, banner, product and dynamic game-input endpoints plus a responsive dark storefront with search and a 3-second banner rotation.
 - Server-side price quotes validate the game, product, account fields, provider reserve and excluded services; the server recalculates selling price and admin fee.
+- Admin transaction inspection is available at `/admin/` after an administrator account is provisioned. It filters by provider API, gateway, date/time range, payment status, and order status; access is session-authenticated.
+- Monthly settlement backup can export the previous calendar month to CSV and upload it to Google Drive on day 1, after migration 006 and Google OAuth configuration. It does not delete database history; the local temporary CSV is removed after processing.
 - Checkout now has an idempotency key, persistent pending-order/payment records, and Duitku sandbox request support. Set `DUITKU_PAYMENT_METHOD`, credentials, and HTTPS callback/return URLs in the private `.env`.
 - Duitku callback validates HMAC-SHA256, checks the order and exact amount, and only queues a fulfillment job once for a successful pending payment.
 - Supplier adapters and balance sync are committed but have not been tested against live credentials.
@@ -44,6 +46,12 @@ PHP extensions: pdo_mysql, curl, openssl, json, mbstring, fileinfo. MySQL/MariaD
 12. Do not enable real transactions until provider and payment integrations have been implemented and tested.
 
 ## Scheduled work
+
+Monthly settlement backup (after applying migration 006 and verifying Google Drive OAuth):
+
+    15 2 1 * * /usr/bin/php /absolute/path/PluQ-I/bin/settle-monthly.php
+
+See `docs/admin-transactions-and-settlement.md` for required environment variables, administrator setup, and safe recovery steps. Do not enable the backup until the destination Drive account/folder is verified.
 
 Example only; adapt the PHP path and interval to the hosting control panel:
 
