@@ -86,13 +86,23 @@ function fulfillment_map_vipayment_response(array $response, ?string $requestedT
             return ['state'=>'REVIEW','reference'=>$requestedTrxid,'response'=>$response];
         }
         $row = $rows[0];
+        if (!is_array($row)) {
+            return ['state'=>'REVIEW','reference'=>$requestedTrxid,'response'=>$response];
+        }
+        $returnedTrxid = trim((string)($row['trxid'] ?? ''));
+        if ($returnedTrxid !== '' && !hash_equals($requestedTrxid, $returnedTrxid)) {
+            return ['state'=>'REVIEW','reference'=>$requestedTrxid,'response'=>$response];
+        }
     } else {
         $row = $response['data'] ?? null;
         if (!is_array($row) || empty($row['trxid']) || !isset($row['status'])) {
             return ['state'=>'REVIEW','reference'=>'','response'=>$response];
         }
     }
-    $status = strtolower(trim((string)($row['status'] ?? '')));
+    if (!isset($row['status']) || !is_scalar($row['status'])) {
+        return ['state'=>'REVIEW','reference'=>(string)($row['trxid'] ?? $requestedTrxid ?? ''),'response'=>$response];
+    }
+    $status = strtolower(trim((string)$row['status']));
     $state = in_array($status,['success','sukses','berhasil'],true) ? 'SUCCESS'
         : (in_array($status,['error','failed','gagal'],true) ? 'FAILED'
         : (in_array($status,['waiting','processing','pending'],true) ? 'PENDING' : 'REVIEW'));
