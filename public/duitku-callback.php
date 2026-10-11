@@ -9,6 +9,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 try {
     require_once PLUQI_ROOT.'/config/database.php';
     require_once PLUQI_ROOT.'/app/services/duitku.php';
+    require_once PLUQI_ROOT.'/app/services/provider_reservations.php';
     $config=duitku_config();
     if (!duitku_verify_callback($config,$_POST)) json_response(['error'=>'invalid_signature'],400);
     $orderId=(string)$_POST['merchantOrderId'];
@@ -29,10 +30,17 @@ try {
         $q=$pdo->prepare("UPDATE orders SET payment_status='PAID',order_status='QUEUED',paid_at=NOW() WHERE id=:id AND payment_status='PENDING'");
         $q->execute(['id'=>$tx['order_id']]);
         if ($q->rowCount() === 1) {
-            // Queue only when this callback performed the first valid PENDING -> PAID transition.
-            // This prevents a stale/inconsistent payment row from enqueuing duplicate fulfillment.
-            $q=$pdo->prepare("INSERT INTO job_queue (job_type,payload,status,available_at) VALUES ('FULFILL_ORDER',:payload,'PENDING',NOW())");
-            $q->execute(['payload'=>json_encode(['order_id'=>(int)$tx['order_id']],JSON_THROW_ON_ERROR)]);
+            // A valid payment must also have provider capacity reserved before fulfillment
+            // is queued. If the hold expired and capacity was consumed by other orders,
+            // keep the payment PAID and route the order to manual review.
+            if (provider_reservation_commit_paid($pdo, (int)$tx['order_id'])) {
+                // Queue only on the first valid PENDING -> PAID transition.
+                $q=$pdo->prepare("INSERT INTO job_queue (job_type,payload,status,available_at) VALUES ('FULFILL_ORDER',:payload,'PENDING',NOW())");
+                $q->execute(['payload'=>json_encode(['order_id'=>(int)$tx['order_id']],JSON_THROW_ON_ERROR)]);
+            } else {
+                $q=$pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Payment received but provider capacity could not be reserved; manual reconciliation required' WHERE id=:id AND payment_status='PAID'");
+                $q->execute(['id'=>$tx['order_id']]);
+            }
         } else {
             $q=$pdo->prepare("SELECT payment_status FROM orders WHERE id=:id LIMIT 1 FOR UPDATE");
             $q->execute(['id'=>$tx['order_id']]);
@@ -47,6 +55,7 @@ try {
     } else {
         $q=$pdo->prepare("UPDATE orders SET payment_status='FAILED' WHERE id=:id AND payment_status='PENDING'");
         $q->execute(['id'=>$tx['order_id']]);
+        provider_reservation_release($pdo, (int)$tx['order_id']);
     }
     $pdo->commit();
     json_response(['status'=>'ok']);
