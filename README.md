@@ -38,9 +38,10 @@ PHP extensions: pdo_mysql, curl, openssl, json, mbstring, fileinfo. MySQL/MariaD
 6. Then import database/migrations/002_catalog_and_operations.sql.
 7. Then import database/migrations/003_checkout_payment.sql.
 8. Then import database/migrations/004_supplier_manual_review_status.sql. This migration is required on existing databases because supplier transactions may enter `REVIEW` when an outcome is ambiguous.
-9. Configure Duitku sandbox credentials and set `DUITKU_PAYMENT_METHOD` to a method enabled for your sandbox merchant; set callback URL to `https://your-domain/duitku-callback.php` and return URL to `https://your-domain/order-status.php`.
-10. Point the document root at public/ if supported. Otherwise configure web-server rules to deny direct access to app/, config/, database/ and storage files.
-11. Do not enable real transactions until provider and payment integrations have been implemented and tested.
+9. Then import database/migrations/005_order_manual_review_status.sql to add the order-level `MANUAL_REVIEW` state used by queue recovery.
+10. Configure Duitku sandbox credentials and set `DUITKU_PAYMENT_METHOD` to a method enabled for your sandbox merchant; set callback URL to `https://your-domain/duitku-callback.php` and return URL to `https://your-domain/order-status.php`.
+11. Point the document root at public/ if supported. Otherwise configure web-server rules to deny direct access to app/, config/, database/ and storage files.
+12. Do not enable real transactions until provider and payment integrations have been implemented and tested.
 
 ## Scheduled work
 
