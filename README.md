@@ -10,7 +10,7 @@ Shared-hosting edition of PluQ for PHP 8.2+ and MySQL/MariaDB. This repository i
 - Checkout now has an idempotency key, persistent pending-order/payment records, and Duitku sandbox request support. Set `DUITKU_PAYMENT_METHOD`, credentials, and HTTPS callback/return URLs in the private `.env`.
 - Duitku callback validates HMAC-SHA256, checks the order and exact amount, and only queues a fulfillment job once for a successful pending payment.
 - Supplier adapters and balance sync are committed but have not been tested against live credentials.
-- CI is configured for PHP lint, JavaScript syntax and pricing tests. Verify the actual workflow run before considering checks passed.
+- CI runs PHP/JavaScript syntax checks, pricing and callback-signature unit tests, account-field mapping tests, plus disposable MySQL integration tests for concurrent Duitku callbacks and stale queue recovery. Check the latest workflow result before treating a change as verified.
 
 **Not production-ready:** real payments are deliberately blocked; sandbox payment flow has not been tested with merchant credentials. Supplier fulfillment worker, order retries/refunds, account username verification, admin authentication, rate limiting and automated catalog synchronization remain incomplete. Do not enable production payments.
 
