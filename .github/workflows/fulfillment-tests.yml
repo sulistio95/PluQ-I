@@ -23,6 +23,8 @@ jobs:
           find app bin config public tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Test pricing
         run: php tests/pricing_test.php
+      - name: Test catalog sync helpers
+        run: php tests/catalog_sync_test.php
       - name: Test Duitku callback signatures
         run: php tests/duitku_callback_test.php
       - name: Test account field mapping
