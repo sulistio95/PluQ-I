@@ -88,9 +88,19 @@ function fulfillment_process(PDO $pdo, int $orderId): string
         $reference='PQI-'.$order['public_id'];
         $q=$pdo->prepare('SELECT * FROM supplier_transactions WHERE order_id=:id LIMIT 1 FOR UPDATE');
         $q->execute(['id'=>$orderId]); $supplier=$q->fetch() ?: null;
+        $newSupplierTransaction = false;
         if (!$supplier) {
             $q=$pdo->prepare("INSERT INTO supplier_transactions (order_id,provider_id,reference_id,status,attempts) VALUES (:oid,:pid,:ref,'PROCESSING',1)");
             $q->execute(['oid'=>$orderId,'pid'=>$order['provider_id'],'ref'=>$reference]);
+            $newSupplierTransaction = true;
+        } elseif ($supplier['status']==='PROCESSING' && empty($supplier['provider_reference'])) {
+            // A previous run may have sent the request but crashed before saving the provider reference.
+            // Never submit this order a second time automatically; reconcile it with the provider first.
+            $pdo->prepare("UPDATE orders SET order_status='REFUND_PENDING',payment_status='REFUND_PENDING',last_error='Supplier request outcome is ambiguous; manual reconciliation required' WHERE id=:id")->execute(['id'=>$orderId]);
+            $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error='Ambiguous prior request; automatic resubmission blocked' WHERE order_id=:id")->execute(['id'=>$orderId]);
+            $pdo->prepare("INSERT INTO refunds (order_id,amount,status,reason) SELECT id,selling_price+admin_fee,'PENDING','Ambiguous supplier request; reconcile before refund' FROM orders WHERE id=:id AND NOT EXISTS (SELECT 1 FROM refunds WHERE order_id=:id2 AND status IN ('PENDING','PROCESSING','SUCCESS'))")->execute(['id'=>$orderId,'id2'=>$orderId]);
+            $pdo->commit();
+            return 'REVIEW';
         } elseif ($supplier['status']==='SUCCESS') {
             $pdo->prepare("UPDATE orders SET order_status='SUCCESS',fulfilled_at=COALESCE(fulfilled_at,NOW()) WHERE id=:id")->execute(['id'=>$orderId]);
             $pdo->commit(); return 'DONE';
