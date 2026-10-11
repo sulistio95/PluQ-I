@@ -27,3 +27,70 @@ jobs:
         run: php tests/duitku_callback_test.php
       - name: Test account field mapping
         run: php tests/fulfillment_account_test.php
+
+  mysql-callback-integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: test-root-password
+          MYSQL_DATABASE: pluq_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptest-root-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: pluq_test
+      DB_USERNAME: root
+      DB_PASSWORD: test-root-password
+      DUITKU_ENV: sandbox
+      DUITKU_MERCHANT_CODE: TESTMERCHANT
+      DUITKU_API_KEY: integration-test-key
+      DUITKU_PAYMENT_METHOD: VC
+      DUITKU_CALLBACK_URL: https://example.test/duitku-callback.php
+      DUITKU_RETURN_URL: https://example.test/order-status.php
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, curl, openssl, mbstring, fileinfo
+          coverage: none
+      - name: Apply schema and migrations
+        run: |
+          set -eu
+          for sql in database/schema.mysql.sql database/migrations/002_catalog_and_operations.sql database/migrations/003_checkout_payment.sql database/migrations/004_supplier_manual_review_status.sql database/migrations/005_order_manual_review_status.sql; do
+            mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" < "$sql"
+          done
+      - name: Create disposable paid-callback fixture
+        run: |
+          mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" <<'SQL'
+          INSERT INTO games (slug, name, status) VALUES ('integration-game', 'Integration Game', 'ACTIVE');
+          INSERT INTO products (game_id, provider_id, provider_product_code, name, base_price, selling_price, status)
+          SELECT g.id, pr.id, 'integration-sku', 'Integration Product', 1000, 1500, 'ACTIVE'
+          FROM games g JOIN providers pr ON pr.code = 'DIGI' WHERE g.slug = 'integration-game';
+          INSERT INTO orders (public_id, game_id, product_id, provider_id, customer_game_data, base_price, selling_price, admin_fee, payment_status, order_status)
+          SELECT 'abcdef0123456789abcdef0123', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','123'), 1000, 1500, 1000, 'PENDING', 'PENDING'
+          FROM games g JOIN products p ON p.game_id = g.id WHERE g.slug = 'integration-game' AND p.provider_product_code = 'integration-sku';
+          INSERT INTO payment_transactions (order_id, gateway, merchant_order_id, amount, status)
+          SELECT id, 'DUITKU', public_id, 2500, 'PENDING' FROM orders WHERE public_id = 'abcdef0123456789abcdef0123';
+          SQL
+      - name: Start local PHP callback server
+        run: |
+          php -S 127.0.0.1:8080 -t public >/tmp/pluq-php-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            code="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/duitku-callback.php || true)"
+            if [ "$code" = "405" ]; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/pluq-php-server.log
+          exit 1
+      - name: Test duplicate concurrent callbacks against MySQL
+        run: bash tests/duitku_callback_integration.sh
