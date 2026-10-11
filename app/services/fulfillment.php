@@ -11,26 +11,34 @@ function fulfillment_enabled(): bool
 
 function fulfillment_account(array $data): array
 {
-    $user = '';
-    $zone = '';
+    // Supplier account payloads must be mapped by semantic field names, never by array order.
+    // A wrong ID/zone pairing can top up the wrong account, so unknown or conflicting keys fail closed.
+    $userAliases = ['user_id','userid','user','id','target','data_no','player','player_id','account_id'];
+    $zoneAliases = ['zone_id','zone','server','data_zone'];
+    $users = [];
+    $zones = [];
+
     foreach ($data as $key => $value) {
-        if (!is_scalar($value)) continue;
-        $key = strtolower((string)$key);
-        if (in_array($key, ['user_id','userid','user','id','target','data_no'], true)) $user = trim((string)$value);
-        if (in_array($key, ['zone_id','zone','server','data_zone'], true)) $zone = trim((string)$value);
-    }
-    if ($user === '') {
-        $values = [];
-        foreach ($data as $key => $value) {
-            if (!is_scalar($value)) continue;
-            $normalizedKey = strtolower((string)$key);
-            if (in_array($normalizedKey, ['zone_id','zone','server','data_zone'], true)) continue;
-            $value = trim((string)$value);
-            if ($value !== '') $values[] = $value;
+        if (!is_string($key) || !is_scalar($value)) {
+            throw new DomainException('Account fields cannot be mapped safely.');
         }
-        if (count($values) === 1) $user = $values[0];
-        if (count($values) === 2) { $user = $values[0]; $zone = $values[1]; }
+        $key = strtolower(trim($key));
+        $value = trim((string) $value);
+        if ($value === '') continue;
+        if (in_array($key, $userAliases, true)) {
+            $users[$value] = true;
+        } elseif (in_array($key, $zoneAliases, true)) {
+            $zones[$value] = true;
+        } else {
+            throw new DomainException('Unknown account field cannot be mapped safely.');
+        }
     }
+
+    if (count($users) !== 1 || count($zones) > 1) {
+        throw new DomainException('Account fields are missing or ambiguous.');
+    }
+    $user = (string) array_key_first($users);
+    $zone = $zones ? (string) array_key_first($zones) : '';
     if ($user === '' || strlen($user) > 190 || strlen($zone) > 190) {
         throw new DomainException('Account fields cannot be mapped safely.');
     }
