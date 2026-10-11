@@ -17,6 +17,10 @@ if (PHP_SAPI !== 'cli') {
     fwrite(STDERR, "This script is CLI-only.\n");
     exit(2);
 }
+if (!filter_var(getenv('SETTLEMENT_BACKUP_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN)) {
+    fwrite(STDERR, "Settlement backup is disabled. Set SETTLEMENT_BACKUP_ENABLED=true only after Google Drive OAuth and destination folder are verified.\n");
+    exit(2);
+}
 
 function settlement_fail(string $message): never
 {
