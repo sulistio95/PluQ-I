@@ -66,21 +66,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($username === '' || $password === '' || strlen($username) > 100 || strlen($password) > 4096) {
             $error = 'Username atau kata sandi tidak valid.';
         } else {
-            $stmt = $pdo->prepare("SELECT id,username,password_hash,role FROM admin_users WHERE username=:username AND status='ACTIVE' LIMIT 1");
-            $stmt->execute(['username' => $username]);
-            $candidate = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$candidate || !password_verify($password, (string) $candidate['password_hash'])) {
+            $loginIp = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+            if (admin_login_is_limited($pdo, $loginIp, $username)) {
                 usleep(300000);
-                $error = 'Login gagal. Periksa username dan kata sandi.';
+                $error = 'Terlalu banyak percobaan login. Tunggu 15 menit sebelum mencoba lagi.';
             } else {
-                session_regenerate_id(true);
-                $_SESSION['admin_user_id'] = (int) $candidate['id'];
-                $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
-                $pdo->prepare('UPDATE admin_users SET last_login_at=NOW() WHERE id=:id')->execute(['id' => $candidate['id']]);
-                $pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,ip_address) VALUES ('ADMIN',:id,'ADMIN_LOGIN','ADMIN_USER',:entity,:ip)")
-                    ->execute(['id' => $candidate['id'], 'entity' => (string) $candidate['id'], 'ip' => substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45)]);
-                header('Location: /admin/');
-                exit;
+                $stmt = $pdo->prepare("SELECT id,username,password_hash,role FROM admin_users WHERE username=:username AND status='ACTIVE' LIMIT 1");
+                $stmt->execute(['username' => $username]);
+                $candidate = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$candidate || !password_verify($password, (string) $candidate['password_hash'])) {
+                    admin_login_record_failure($pdo, $loginIp, $username);
+                    usleep(300000);
+                    $error = 'Login gagal. Periksa username dan kata sandi.';
+                } else {
+                    admin_login_clear_failures($pdo, $loginIp, $username);
+                    session_regenerate_id(true);
+                    $_SESSION['admin_user_id'] = (int) $candidate['id'];
+                    $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
+                    $pdo->prepare('UPDATE admin_users SET last_login_at=NOW() WHERE id=:id')->execute(['id' => $candidate['id']]);
+                    $pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,ip_address) VALUES ('ADMIN',:id,'ADMIN_LOGIN','ADMIN_USER',:entity,:ip)")
+                        ->execute(['id' => $candidate['id'], 'entity' => (string) $candidate['id'], 'ip' => substr($loginIp, 0, 45)]);
+                    header('Location: /admin/');
+                    exit;
+                }
             }
         }
     }
