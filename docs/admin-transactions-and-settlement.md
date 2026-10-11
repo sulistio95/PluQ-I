@@ -63,11 +63,12 @@ The script refreshes the OAuth access token at runtime; the refresh token and cl
 
 ## Run and schedule
 
-On the first day of each month, the script creates a formatted Google Sheets workbook named `PluQ-Pembukuan-YYYY-MM` in the destination folder and records its spreadsheet ID. The workbook contains three tabs:
+On the first day of each month, the script creates a formatted Google Sheets workbook named `PluQ-Pembukuan-YYYY-MM` in the destination folder and records its spreadsheet ID. The workbook contains four tabs:
 
 1. **Ringkasan Bulanan** — total order count, paid order count, paid product sales, recorded product cost, admin fees, recorded customer payment total, indicative gross margin, and payment/order status summaries.
 2. **Rincian Transaksi** — one row per order relevant to the month because it was created, paid, or fulfilled in that period, with the reason included in the final column. It includes order dates, game/product, supplier API, base/selling price, admin fee, customer total, payment/order/supplier/refund statuses, and payment/supplier references. The header is styled, columns are sized, and IDR columns use currency formatting.
 3. **Rekonsiliasi** — non-paid orders and orders with failed, manual-review, or refund-related statuses that should be checked before closing the books.
+4. **Refund** — individual refund records created or processed during the month, including amount, status, gateway reference, reason, and timestamps. The summary counts only refunds with `status=SUCCESS` and `processed_at` inside the report month; pending/failed refunds remain visible for review.
 
 The workbook deliberately excludes raw customer game-account JSON and raw supplier request/response payloads. The Google OAuth authorization must include both a Drive scope that permits the app to manage its created files (such as `https://www.googleapis.com/auth/drive.file`) and the Google Sheets scope `https://www.googleapis.com/auth/spreadsheets`.
 
@@ -83,12 +84,12 @@ The command runs only on day 1 unless a completed month is explicitly supplied f
 php bin/settle-monthly.php --period=2026-09
 ```
 
-Do not use the recovery option to overwrite a successful export. The script will skip any month already recorded as `UPLOADED`. Google Drive file metadata includes a month marker to help recover if a file was uploaded but the local database update was interrupted. The temporary CSV is removed even if the upload fails; the database keeps the failed status and error for review.
+Do not use the recovery option to overwrite a successful export. The script will skip any month already recorded as `UPLOADED`. Google Drive file metadata includes a month marker to help recover if a file was uploaded but the local database update was interrupted. No temporary CSV is created; the database keeps the failed status and error for review.
 
 ## Settlement meaning and retention
 
 - The workbook includes records created during the period, including pending and failed records, so the monthly report can be reconciled.
-- The recorded `total_amount` and the summary's paid-sales metrics use orders whose `payment_status` is `PAID` and whose `paid_at` falls inside the report month. The detail list also includes orders created or fulfilled during that month for reconciliation, so its row count can be larger than the count of payments received that month. The amount is the sum of `selling_price + admin_fee`; it is not supplier profit or a bank settlement guarantee. The sheet's indicative gross margin is `selling_price - base_price` for PAID records before payment gateway fees, operating expenses, tax adjustments, and confirmed refunds. Refunds are flagged for reconciliation and are not automatically deducted.
+- The recorded `total_amount` and the summary's paid-sales metrics use orders whose `payment_status` is `PAID` and whose `paid_at` falls inside the report month. The detail list also includes orders created or fulfilled during that month for reconciliation, so its row count can be larger than the count of payments received that month. The amount is the sum of `selling_price + admin_fee`; it is not supplier profit or a bank settlement guarantee. The sheet's indicative gross margin is `selling_price - base_price` for PAID records before payment gateway fees, operating expenses, tax adjustments, and refunds. The summary separately reports refunds marked `SUCCESS` whose `processed_at` falls in the report month, and an indicative net receipt (`paid customer total - confirmed refunds`). Each order's detail also includes its lifetime total of successful refund records. Reconcile these figures against gateway statements and actual refund evidence; do not treat the indicative net receipt as a tax base or final accounting result.
 - This feature does not delete or archive-purge orders from MySQL. Keeping transaction history in the database preserves the operational audit trail; only the temporary export file is removed from hosting.
 - A Drive upload success does not replace a database backup and restore plan. Keep independent database backups.
 - This report is an operational bookkeeping aid, not a tax calculation or tax advice. Confirm tax treatment and the final tax base with a qualified accountant/tax adviser, and retain payment-gateway statements, supplier invoices, and refund evidence.
