@@ -60,16 +60,16 @@ function admin_login_is_limited(PDO $pdo, string $ipAddress, string $username): 
     $ipAddress = substr($ipAddress, 0, 45);
     $usernameHash = hash('sha256', mb_strtolower(trim($username), 'UTF-8'));
     $stmt = $pdo->prepare("SELECT
-        SUM(CASE WHEN ip_address = :ip THEN 1 ELSE 0 END) AS ip_attempts,
-        SUM(CASE WHEN username_hash = :username_hash THEN 1 ELSE 0 END) AS username_attempts
+        SUM(CASE WHEN ip_address = :ip_count THEN 1 ELSE 0 END) AS ip_attempts,
+        SUM(CASE WHEN username_hash = :user_count THEN 1 ELSE 0 END) AS username_attempts
         FROM admin_login_attempts
         WHERE attempted_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)
-          AND (ip_address = :ip_filter OR username_hash = :username_filter)");
+          AND (ip_address = :ip_filter OR username_hash = :user_filter)");
     $stmt->execute([
-        'ip' => $ipAddress,
-        'username_hash' => $usernameHash,
+        'ip_count' => $ipAddress,
+        'user_count' => $usernameHash,
         'ip_filter' => $ipAddress,
-        'username_filter' => $usernameHash,
+        'user_filter' => $usernameHash,
     ]);
     $counts = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     return (int) ($counts['ip_attempts'] ?? 0) >= 10
