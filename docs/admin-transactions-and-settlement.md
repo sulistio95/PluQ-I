@@ -31,7 +31,19 @@ After migrations 001–005, apply:
 mysql -u DB_USER -p DB_NAME < database/migrations/006_monthly_settlements.sql
 ```
 
-This creates `monthly_settlement_exports`, which records each month, upload state, Drive file ID, row count, and the sum of PAID orders. It prevents a completed month from being uploaded twice and blocks a second run while the same period is actively processing.
+This creates `monthly_settlement_exports`, which records each month, upload state, Drive file ID, row count, and the sum of PAID orders. It prevents a completed month from being uploaded twice and blocks a second run while the same period is actively processing. After that, apply migration 007 to enable the admin-managed folder setting.
+
+## Set the destination folder from the admin panel
+
+After applying migration 007, sign in at `/admin/`, open **Settlement bulanan & backup Google Drive**, paste the shared folder URL copied from Google Drive (for example, a URL shaped like `https://drive.google.com/drive/folders/FOLDER_ID`), then choose **Simpan folder tujuan**. The app validates that it is an HTTPS Google Drive folder link and stores only the folder ID in `app_settings`; the panel displays only the last six characters of the saved ID.
+
+The folder link is a destination, not authorization by itself. The Google account represented by the server's OAuth refresh token must have permission to create files in that folder. Do not paste OAuth client secrets or refresh tokens into the panel.
+
+Apply migration 007 after migration 006:
+
+```sh
+mysql -u DB_USER -p DB_NAME < database/migrations/007_admin_drive_folder_setting.sql
+```
 
 ## Google Drive OAuth configuration
 
@@ -44,7 +56,7 @@ The Google Drive connector in ChatGPT is not used by the website's server-side b
    - `GOOGLE_OAUTH_CLIENT_ID=...`
    - `GOOGLE_OAUTH_CLIENT_SECRET=...`
    - `GOOGLE_OAUTH_REFRESH_TOKEN=...`
-   - `GOOGLE_DRIVE_FOLDER_ID=...` (the target folder ID; leave empty only if uploading to the Drive root is intentional)
+   - `GOOGLE_DRIVE_FOLDER_ID=...` (optional fallback folder ID; the folder saved in the admin panel takes priority)
 4. Keep `SETTLEMENT_BACKUP_ENABLED=false` until OAuth permissions, the folder, and a controlled upload have been verified.
 
 The script refreshes the OAuth access token at runtime; the refresh token and client secret remain on the server. If the Google account revokes access or the refresh token expires, the settlement is marked `FAILED` and the panel shows the error for investigation.
