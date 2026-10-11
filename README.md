@@ -35,7 +35,7 @@ Do not assume every shared-hosting plan supports cron, the needed PHP extensions
 - Supplier adapters and balance sync are committed but have not been verified against the user's real credentials.
 - CI runs syntax checks and automated pricing, callback-signature, mapping, and database integration tests. Review the latest GitHub Actions result for the exact commit being evaluated.
 
-**Not production-ready:** real payments and supplier execution must remain disabled until the payment flow and provider behavior are tested in a controlled staging environment. Supplier fulfillment, retries/refunds, username verification, admin rate limiting, catalog synchronization, and admin-panel security still require implementation or verification. Do not enable production payments or supplier execution.
+**Not production-ready:** real payments and supplier execution must remain disabled until the payment flow and provider behavior are tested in a controlled staging environment. Supplier fulfillment, retries/refunds, username verification, live provider API behavior, game mapping setup, and admin-panel security still require implementation or verification. Do not enable production payments or supplier execution.
 
 ## Target architecture
 
@@ -82,7 +82,7 @@ The following is an example only. Adapt the PHP executable and absolute paths to
 15 2 1 * * /usr/bin/php /absolute/path/PluQ-I/bin/settle-monthly.php
 ```
 
-Monthly settlement backup is disabled by default. It requires Google OAuth configuration, the intended destination folder, migrations 006–007, and a controlled upload/recovery test before enabling `SETTLEMENT_BACKUP_ENABLED=true`. See `docs/admin-transactions-and-settlement.md`.
+Catalog sync is scheduled every 15 minutes in this example; Digiflazz's full price list is rate-limited, so do not run it every minute. Before the first sync, add active rows to `game_provider_mappings` so each provider's exact brand/game code points to the correct local `games.id`. For VIPayment, `VIPAYMENT_PRICE_TIER` selects `basic`, `premium`, or `special` (default `basic`). Balance sync runs every minute in this example and requires supplier credentials. Review cron output and provider records after a controlled test.\n\nMonthly settlement backup is disabled by default. It requires Google OAuth configuration, the intended destination folder, migrations 006–007, and a controlled upload/recovery test before enabling `SETTLEMENT_BACKUP_ENABLED=true`. See `docs/admin-transactions-and-settlement.md`.
 
 `bin/worker.php` is a read-only queue diagnostic; it never changes job state. `bin/worker-queue.php` is the queue processor, but supplier execution remains disabled unless `SUPPLIER_ORDERS_ENABLED=true`. Do not enable it until provider sandbox behavior and manual reconciliation have been verified. Do not interpret the cron example as evidence that supplier fulfillment is ready.
 
