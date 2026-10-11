@@ -56,6 +56,23 @@ provider_map_assert_same(
     'Missing VIPayment status data must require manual review.'
 );
 
+provider_map_assert_same(
+    'REVIEW',
+    fulfillment_map_vipayment_response(
+        ['data' => [['trxid' => 'VP999', 'status' => 'success']]],
+        'VP123'
+    )['state'],
+    'A status response for a different transaction ID must never mark this order successful.'
+);
+provider_map_assert_same(
+    'REVIEW',
+    fulfillment_map_vipayment_response(
+        ['data' => [['trxid' => 'VP123', 'status' => ['unexpected']]]],
+        'VP123'
+    )['state'],
+    'Malformed VIPayment status values must require manual review.'
+);
+
 $failed = false;
 try {
     fulfillment_map_digiflazz_response(['data' => []], 'PQI-REF-1');
