@@ -68,7 +68,7 @@ jobs:
       - name: Apply schema and migrations
         run: |
           set -eu
-          for sql in database/schema.mysql.sql database/migrations/002_catalog_and_operations.sql database/migrations/003_checkout_payment.sql database/migrations/004_supplier_manual_review_status.sql database/migrations/005_order_manual_review_status.sql database/migrations/006_monthly_settlements.sql database/migrations/007_admin_drive_folder_setting.sql; do
+          for sql in database/schema.mysql.sql database/migrations/002_catalog_and_operations.sql database/migrations/003_checkout_payment.sql database/migrations/004_supplier_manual_review_status.sql database/migrations/005_order_manual_review_status.sql database/migrations/006_monthly_settlements.sql database/migrations/007_admin_drive_folder_setting.sql database/migrations/008_admin_login_rate_limit.sql; do
             mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" < "$sql"
           done
       - name: Create disposable paid-callback fixture
