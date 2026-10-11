@@ -135,7 +135,7 @@ function fulfillment_record_explicit_failure(PDO $pdo, int $orderId, string $rea
         $pdo->prepare("UPDATE orders SET order_status='FAILED',last_error=:reason WHERE id=:id AND payment_status='PAID'")
             ->execute(['reason' => $reason, 'id' => $orderId]);
 
-        $q = $pdo->prepare("SELECT id FROM refunds WHERE order_id=:id AND status IN ('PENDING','PROCESSING','SUCCESS') LIMIT 1 FOR UPDATE");
+        $q = $pdo->prepare("SELECT id FROM refunds WHERE order_id=:id LIMIT 1 FOR UPDATE");
         $q->execute(['id' => $orderId]);
         if (!$q->fetch()) {
             $pdo->prepare("INSERT INTO refunds (order_id,amount,status,reason)
