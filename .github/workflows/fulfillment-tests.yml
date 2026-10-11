@@ -72,12 +72,13 @@ jobs:
       - name: Apply schema and migrations
         run: |
           set -eu
-          for sql in database/schema.mysql.sql database/migrations/002_catalog_and_operations.sql database/migrations/003_checkout_payment.sql database/migrations/004_supplier_manual_review_status.sql database/migrations/005_order_manual_review_status.sql database/migrations/006_monthly_settlements.sql database/migrations/007_admin_drive_folder_setting.sql database/migrations/008_admin_login_rate_limit.sql; do
+          for sql in database/schema.mysql.sql database/migrations/002_catalog_and_operations.sql database/migrations/003_checkout_payment.sql database/migrations/004_supplier_manual_review_status.sql database/migrations/005_order_manual_review_status.sql database/migrations/006_monthly_settlements.sql database/migrations/007_admin_drive_folder_setting.sql database/migrations/008_admin_login_rate_limit.sql database/migrations/009_provider_balance_reservations.sql; do
             mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" < "$sql"
           done
       - name: Create disposable paid-callback fixture
         run: |
           mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" <<'SQL'
+          UPDATE providers SET balance=1000000,status='ACTIVE',reserve_percentage=50.00 WHERE code='DIGI';
           INSERT INTO games (slug, name, status) VALUES ('integration-game', 'Integration Game', 'ACTIVE');
           INSERT INTO products (game_id, provider_id, provider_product_code, name, base_price, selling_price, status)
           SELECT g.id, pr.id, 'integration-sku', 'Integration Product', 1000, 1500, 'ACTIVE'
@@ -106,6 +107,8 @@ jobs:
         run: bash tests/uncertain_supplier_integration.sh
       - name: Test explicit supplier rejection and refund state against MySQL
         run: bash tests/explicit_supplier_failure_integration.sh
+      - name: Test concurrent provider balance reservations against MySQL
+        run: bash tests/provider_reservation_concurrency.sh
       - name: Verify unresolved Duitku checkout appears in read-only review report
         run: |
           set -eu
