@@ -100,3 +100,18 @@ jobs:
         run: bash tests/queue_recovery_integration.sh
       - name: Test ambiguous supplier outcome handling against MySQL
         run: bash tests/uncertain_supplier_integration.sh
+      - name: Verify unresolved Duitku checkout appears in read-only review report
+        run: |
+          set -eu
+          mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" <<'SQL'
+          INSERT INTO orders (public_id, game_id, product_id, provider_id, customer_game_data, base_price, selling_price, admin_fee, payment_status, order_status, last_error)
+          SELECT 'reviewcheckout012345678901', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','456'), 1000, 1500, 1000, 'PENDING', 'PENDING', 'Duitku sandbox request needs manual review'
+          FROM games g JOIN products p ON p.game_id = g.id
+          WHERE g.slug = 'integration-game' AND p.provider_product_code = 'integration-sku';
+          INSERT INTO payment_transactions (order_id, gateway, merchant_order_id, amount, status)
+          SELECT id, 'DUITKU', public_id, 2500, 'PENDING'
+          FROM orders WHERE public_id = 'reviewcheckout012345678901';
+          SQL
+          php bin/inspect-review.php > /tmp/pluq-review-report.json
+          grep -q 'reviewcheckout012345678901' /tmp/pluq-review-report.json
+          grep -q 'Duitku sandbox request needs manual review' /tmp/pluq-review-report.json
