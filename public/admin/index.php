@@ -66,6 +66,7 @@ $summary = ['count' => 0, 'paid_total' => '0.00'];
 $filters = [
     'provider' => trim((string) ($_GET['provider'] ?? '')),
     'gateway' => trim((string) ($_GET['gateway'] ?? '')),
+    'date_field' => trim((string) ($_GET['date_field'] ?? 'created_at')),
     'from' => trim((string) ($_GET['from'] ?? '')),
     'to' => trim((string) ($_GET['to'] ?? '')),
     'payment_status' => trim((string) ($_GET['payment_status'] ?? '')),
@@ -91,6 +92,9 @@ if ($user) {
         $error = 'Filter payment gateway tidak dikenal.';
         $filters['gateway'] = '';
     }
+    $dateColumns = ['created_at' => 'o.created_at', 'paid_at' => 'o.paid_at', 'fulfilled_at' => 'o.fulfilled_at', 'supplier_created_at' => 'st.created_at'];
+    if (!isset($dateColumns[$filters['date_field']])) { $filters['date_field'] = 'created_at'; $error = 'Dasar waktu tidak valid.'; }
+    $dateColumn = $dateColumns[$filters['date_field']];
     foreach (['from' => '>=', 'to' => '<='] as $key => $operator) {
         if ($filters[$key] === '') continue;
         $dt = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $filters[$key], new DateTimeZone($config['timezone']));
@@ -100,7 +104,7 @@ if ($user) {
             $filters[$key] = '';
             continue;
         }
-        $where[] = 'o.created_at ' . $operator . ' :' . $key;
+        $where[] = $dateColumn . ' ' . $operator . ' :' . $key;
         $params[$key] = $dt->format('Y-m-d H:i:00');
     }
     if ($filters['from'] !== '' && $filters['to'] !== '' && $filters['from'] > $filters['to']) {
@@ -174,6 +178,7 @@ function admin_money(mixed $amount): string {
 <form method="get" class="filters">
 <label>API/provider<select name="provider"><option value="">Semua API provider</option><?php foreach($providers as $provider): ?><option value="<?=admin_escape($provider['code'])?>" <?=$filters['provider']===$provider['code']?'selected':''?>><?=admin_escape($provider['name'])?> (<?=admin_escape($provider['code'])?>)</option><?php endforeach; ?></select></label>
 <label>Payment gateway<select name="gateway"><option value="">Semua gateway</option><option value="DUITKU" <?=$filters['gateway']==='DUITKU'?'selected':''?>>Duitku</option></select></label>
+<label>Dasar tanggal/waktu<select name="date_field"><option value="created_at" <?=$filters['date_field']==='created_at'?'selected':''?>>Pesanan dibuat</option><option value="paid_at" <?=$filters['date_field']==='paid_at'?'selected':''?>>Pembayaran diterima</option><option value="fulfilled_at" <?=$filters['date_field']==='fulfilled_at'?'selected':''?>>Top-up selesai</option><option value="supplier_created_at" <?=$filters['date_field']==='supplier_created_at'?'selected':''?>>Transaksi API supplier dibuat</option></select></label>
 <label>Dari tanggal & waktu<input type="datetime-local" name="from" value="<?=admin_escape($filters['from'])?>"></label>
 <label>Sampai tanggal & waktu<input type="datetime-local" name="to" value="<?=admin_escape($filters['to'])?>"></label>
 <label>Status pembayaran<select name="payment_status"><option value="">Semua status pembayaran</option><?php foreach(['PENDING','PAID','FAILED','EXPIRED','REFUND_PENDING','REFUNDED'] as $s): ?><option <?=$filters['payment_status']===$s?'selected':''?>><?=$s?></option><?php endforeach; ?></select></label>
