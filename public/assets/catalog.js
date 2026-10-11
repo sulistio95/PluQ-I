@@ -22,6 +22,7 @@
   paymentButton.addEventListener('click', async () => {
     if (!lastQuote || !selectedProduct || !activeGame) return;
     const email = String($('customer-email')?.value || '').trim();
+    paymentRequestKey = paymentRequestKey || crypto.randomUUID();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showMessage('Masukkan email yang valid untuk pembayaran.', true);
       $('customer-email')?.focus();
@@ -40,7 +41,7 @@
         product_id: selectedProduct.id,
         account,
         email,
-        idempotency_key: paymentRequestKey || crypto.randomUUID()
+        idempotency_key: paymentRequestKey
       };
       const response = await fetch('/create-payment.php', {
         method: 'POST',
