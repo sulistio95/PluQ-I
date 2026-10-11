@@ -31,6 +31,34 @@ function checkout_quote(PDO $pdo, array $input): array
       throw new DomainException('Saldo provider tidak mencukupi.');
     }
 
+    // A crafted product_id must not let the customer bypass the catalog's cheapest-provider choice.
+    // Match the same normalized product name used by catalog_products(), but only among currently eligible offers.
+    $cheapestStmt = $pdo->prepare("SELECT p.id,
+        p.base_price + (
+          SELECT rr.profit_amount FROM pricing_rules rr
+          WHERE rr.status='ACTIVE' AND rr.min_amount <= p.base_price
+            AND (rr.max_amount IS NULL OR rr.max_amount >= p.base_price)
+          ORDER BY rr.min_amount DESC, rr.id DESC LIMIT 1
+        ) AS selling_price
+      FROM products p
+      JOIN providers pr ON pr.id=p.provider_id
+      LEFT JOIN excluded_services ex ON ex.provider_id=p.provider_id AND ex.service_code=p.provider_product_code
+      WHERE p.game_id=:gid AND LOWER(TRIM(p.name))=LOWER(TRIM(:name))
+        AND p.status='ACTIVE' AND pr.status IN ('ACTIVE','LOW_BALANCE')
+        AND pr.balance IS NOT NULL
+        AND p.base_price <= pr.balance*(pr.reserve_percentage/100)
+        AND ex.id IS NULL
+        AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%joki%'
+        AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%vilog%'
+        AND EXISTS (SELECT 1 FROM pricing_rules rr WHERE rr.status='ACTIVE'
+          AND rr.min_amount <= p.base_price AND (rr.max_amount IS NULL OR rr.max_amount >= p.base_price))
+      ORDER BY selling_price ASC,p.id ASC LIMIT 1");
+    $cheapestStmt->execute(['gid'=>$game['id'],'name'=>$product['name']]);
+    $cheapest = $cheapestStmt->fetch();
+    if (!$cheapest || (int)$cheapest['id'] !== (int)$product['id']) {
+      throw new DomainException('Pilihan produk berubah. Muat ulang katalog dan pilih harga termurah yang tersedia.');
+    }
+
     $stmt=$pdo->prepare("SELECT id,field_key,label,field_type,is_required,validation_regex FROM game_fields WHERE game_id=:gid AND status='ACTIVE'");
     $stmt->execute(['gid'=>$game['id']]); $fields=$stmt->fetchAll();
     if (!$fields) throw new DomainException('Formulir game belum dikonfigurasi.');
