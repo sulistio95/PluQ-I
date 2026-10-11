@@ -146,7 +146,7 @@ function settlement_create_sheet(string $title, string $period, array $summary, 
         ['repeatCell' => ['range' => ['sheetId' => 0, 'startRowIndex' => 12, 'endRowIndex' => 13, 'startColumnIndex' => 0, 'endColumnIndex' => 3],
             'cell' => ['userEnteredFormat' => ['backgroundColor' => $blue, 'textFormat' => ['foregroundColor' => $white, 'bold' => true]]],
             'fields' => 'userEnteredFormat(backgroundColor,textFormat)']],
-        ['repeatCell' => ['range' => ['sheetId' => 1, 'startRowIndex' => 0, 'endRowIndex' => 1, 'startColumnIndex' => 0, 'endColumnIndex' => 20],
+        ['repeatCell' => ['range' => ['sheetId' => 1, 'startRowIndex' => 0, 'endRowIndex' => 1, 'startColumnIndex' => 0, 'endColumnIndex' => 21],
             'cell' => ['userEnteredFormat' => ['backgroundColor' => $navy, 'textFormat' => ['foregroundColor' => $white, 'bold' => true], 'wrapStrategy' => 'WRAP', 'verticalAlignment' => 'MIDDLE']],
             'fields' => 'userEnteredFormat(backgroundColor,textFormat,wrapStrategy,verticalAlignment)']],
         ['repeatCell' => ['range' => ['sheetId' => 2, 'startRowIndex' => 0, 'endRowIndex' => 1, 'startColumnIndex' => 0, 'endColumnIndex' => 8],
@@ -162,7 +162,7 @@ function settlement_create_sheet(string $title, string $period, array $summary, 
         ['repeatCell' => ['range' => ['sheetId' => 0, 'startRowIndex' => 6, 'endRowIndex' => 11, 'startColumnIndex' => 1, 'endColumnIndex' => 2],
             'cell' => ['userEnteredFormat' => ['numberFormat' => ['type' => 'CURRENCY', 'pattern' => '"Rp" #,##0']]],
             'fields' => 'userEnteredFormat.numberFormat']],
-        ['updateDimensionProperties' => ['range' => ['sheetId' => 1, 'dimension' => 'COLUMNS', 'startIndex' => 0, 'endIndex' => 20],
+        ['updateDimensionProperties' => ['range' => ['sheetId' => 1, 'dimension' => 'COLUMNS', 'startIndex' => 0, 'endIndex' => 21],
             'properties' => ['pixelSize' => 150], 'fields' => 'pixelSize']],
         ['updateDimensionProperties' => ['range' => ['sheetId' => 1, 'dimension' => 'COLUMNS', 'startIndex' => 0, 'endIndex' => 1],
             'properties' => ['pixelSize' => 55], 'fields' => 'pixelSize']],
@@ -254,10 +254,18 @@ try {
         JOIN providers pr ON pr.id=o.provider_id
         LEFT JOIN payment_transactions pt ON pt.order_id=o.id
         LEFT JOIN supplier_transactions st ON st.order_id=o.id
-        WHERE o.created_at >= :start AND o.created_at < :end
-        ORDER BY o.created_at ASC, o.id ASC
+        WHERE (o.created_at >= :created_start AND o.created_at < :created_end)
+           OR (o.paid_at >= :paid_start AND o.paid_at < :paid_end)
+           OR (o.fulfilled_at >= :fulfilled_start AND o.fulfilled_at < :fulfilled_end)
+        ORDER BY COALESCE(o.paid_at, o.created_at) ASC, o.id ASC
     ");
-    $query->execute(['start' => $start . ' 00:00:00', 'end' => $endExclusive . ' 00:00:00']);
+    $periodStartDateTime = $start . ' 00:00:00';
+    $periodEndDateTime = $endExclusive . ' 00:00:00';
+    $query->execute([
+        'created_start' => $periodStartDateTime, 'created_end' => $periodEndDateTime,
+        'paid_start' => $periodStartDateTime, 'paid_end' => $periodEndDateTime,
+        'fulfilled_start' => $periodStartDateTime, 'fulfilled_end' => $periodEndDateTime,
+    ]);
     $orders = $query->fetchAll(PDO::FETCH_ASSOC);
 
     $count = count($orders);
@@ -268,7 +276,7 @@ try {
         'No.', 'Nomor Pesanan', 'Dibuat Pada', 'Dibayar Pada', 'Game', 'Produk', 'API Supplier',
         'Biaya Pokok (Rp)', 'Harga Jual (Rp)', 'Biaya Admin (Rp)', 'Total Dibayar (Rp)',
         'Status Pembayaran', 'Status Pesanan', 'Status Supplier', 'Status Refund',
-        'Gateway', 'ID Pesanan Gateway', 'Referensi Gateway', 'Referensi Supplier', 'Selesai Pada',
+        'Gateway', 'ID Pesanan Gateway', 'Referensi Gateway', 'Referensi Supplier', 'Selesai Pada', 'Termasuk Periode Karena',
     ]];
     $reviewRows = [['Nomor Pesanan', 'Tanggal Dibuat', 'Dibayar Pada', 'Status Pembayaran', 'Status Pesanan', 'Status Supplier', 'Status Refund', 'Total Transaksi (Rp)']];
     foreach ($orders as $i => $o) {
@@ -277,11 +285,18 @@ try {
         $supplierStatus = (string) ($o['supplier_status'] ?? 'N/A');
         $refundStatus = (string) ($o['latest_refund_status'] ?? 'N/A');
         $total = (float) $o['customer_total'];
+        $createdInPeriod = $o['order_created_at'] >= $periodStartDateTime && $o['order_created_at'] < $periodEndDateTime;
+        $paidInPeriod = !empty($o['paid_at']) && $o['paid_at'] >= $periodStartDateTime && $o['paid_at'] < $periodEndDateTime;
+        $fulfilledInPeriod = !empty($o['fulfilled_at']) && $o['fulfilled_at'] >= $periodStartDateTime && $o['fulfilled_at'] < $periodEndDateTime;
+        $periodReasons = [];
+        if ($createdInPeriod) $periodReasons[] = 'Pesanan dibuat';
+        if ($paidInPeriod) $periodReasons[] = 'Pembayaran diterima';
+        if ($fulfilledInPeriod) $periodReasons[] = 'Top-up selesai';
         $paymentSummary[$payment] ??= ['count' => 0, 'amount' => 0.0];
         $paymentSummary[$payment]['count']++;
-        if ($payment === 'PAID') $paymentSummary[$payment]['amount'] += $total;
+        if ($payment === 'PAID' && $paidInPeriod) $paymentSummary[$payment]['amount'] += $total;
         $orderSummary[$orderStatus] = ($orderSummary[$orderStatus] ?? 0) + 1;
-        if ($payment === 'PAID') {
+        if ($payment === 'PAID' && $paidInPeriod) {
             $paidCount++; $paidSales += (float) $o['selling_price']; $paidCost += (float) $o['base_price'];
             $paidAdminFee += (float) $o['admin_fee']; $paidTotal += $total;
         }
@@ -290,6 +305,7 @@ try {
             $o['provider_api'], (float) $o['base_price'], (float) $o['selling_price'], (float) $o['admin_fee'], $total,
             $payment, $orderStatus, $supplierStatus, $refundStatus, $o['payment_gateway'] ?? '',
             $o['merchant_order_id'] ?? '', $o['gateway_reference'] ?? '', $o['supplier_reference'] ?? '', $o['fulfilled_at'],
+            implode(', ', $periodReasons),
         ];
         if ($payment !== 'PAID' || in_array($orderStatus, ['MANUAL_REVIEW','REFUND_PENDING','FAILED'], true) ||
             in_array($refundStatus, ['PENDING','REFUND_PENDING','FAILED'], true)) {
@@ -302,8 +318,8 @@ try {
         ['Periode: ' . $month->format('F Y') . ' | Mata uang: Rupiah (IDR) | Waktu: ' . $config['timezone'], '', '', ''],
         ['', '', '', ''],
         ['INDIKATOR UTAMA', 'NILAI', '', ''],
-        ['Jumlah seluruh pesanan', $count, '', ''],
-        ['Pesanan dengan pembayaran PAID', $paidCount, '', ''],
+        ['Jumlah catatan transaksi terkait periode', $count, '', ''],
+        ['Pesanan dengan pembayaran PAID yang diterima pada periode ini', $paidCount, '', ''],
         ['Nilai penjualan produk dari pembayaran PAID (Rp)', round($paidSales, 2), '', ''],
         ['Biaya pokok produk dari pembayaran PAID (Rp)', round($paidCost, 2), '', ''],
         ['Biaya admin tercatat dari pembayaran PAID (Rp)', round($paidAdminFee, 2), '', ''],
@@ -320,6 +336,7 @@ try {
     foreach ($orderSummary as $status => $num) $summary[] = [$status, $num, '', ''];
     $summary[] = ['', '', '', ''];
     $summary[] = ['CATATAN PENTING', '', '', ''];
+    $summary[] = ['Nilai ringkasan pembayaran dihitung berdasarkan paid_at dalam periode laporan; daftar rincian juga mencakup pesanan dibuat atau top-up selesai pada periode tersebut.', '', '', ''];
     $summary[] = ['Laporan operasional untuk rekonsiliasi dan bahan pembukuan; bukan perhitungan atau nasihat pajak final.', '', '', ''];
     $summary[] = ['Nilai penjualan tidak otomatis sama dengan dasar pengenaan pajak. Konfirmasikan perlakuan omzet, biaya, biaya gateway, dan refund dengan akuntan/konsultan pajak.', '', '', ''];
     $summary[] = ['Refund tidak dikurangkan otomatis dari ringkasan; periksa lembar Rekonsiliasi dan bukti refund aktual.', '', '', ''];
