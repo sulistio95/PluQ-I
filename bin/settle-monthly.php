@@ -110,7 +110,7 @@ function settlement_format(string $spreadsheetId, array $requests, string $token
         json_encode(['requests' => $requests], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)
     );
 }
-function settlement_create_sheet(string $title, string $period, array $summary, array $details, array $reconciliation, string $folderId, string $token): string
+function settlement_create_sheet(string $title, string $period, array $summary, array $details, array $reconciliation, array $refundRows, string $folderId, string $token): string
 {
     $spreadsheet = settlement_curl('https://sheets.googleapis.com/v4/spreadsheets', 'POST', [
         'Authorization: Bearer ' . $token, 'Content-Type: application/json',
@@ -120,6 +120,7 @@ function settlement_create_sheet(string $title, string $period, array $summary, 
             ['properties' => ['sheetId' => 0, 'title' => 'Ringkasan Bulanan', 'gridProperties' => ['frozenRowCount' => 4]]],
             ['properties' => ['sheetId' => 1, 'title' => 'Rincian Transaksi', 'gridProperties' => ['frozenRowCount' => 1]]],
             ['properties' => ['sheetId' => 2, 'title' => 'Rekonsiliasi', 'gridProperties' => ['frozenRowCount' => 1]]],
+            ['properties' => ['sheetId' => 3, 'title' => 'Refund', 'gridProperties' => ['frozenRowCount' => 1]]],
         ],
     ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
     $id = trim((string) ($spreadsheet['spreadsheetId'] ?? ''));
@@ -128,6 +129,7 @@ function settlement_create_sheet(string $title, string $period, array $summary, 
     settlement_update_values($id, "'Ringkasan Bulanan'!A1", $summary, $token);
     settlement_update_values($id, "'Rincian Transaksi'!A1", $details, $token);
     settlement_update_values($id, "'Rekonsiliasi'!A1", $reconciliation, $token);
+    settlement_update_values($id, "'Refund'!A1", $refundRows, $token);
 
     $navy = ['red' => 0.10, 'green' => 0.18, 'blue' => 0.32];
     $blue = ['red' => 0.16, 'green' => 0.35, 'blue' => 0.58];
@@ -143,26 +145,30 @@ function settlement_create_sheet(string $title, string $period, array $summary, 
         ['repeatCell' => ['range' => ['sheetId' => 0, 'startRowIndex' => 3, 'endRowIndex' => 4, 'startColumnIndex' => 0, 'endColumnIndex' => 2],
             'cell' => ['userEnteredFormat' => ['backgroundColor' => $blue, 'textFormat' => ['foregroundColor' => $white, 'bold' => true]]],
             'fields' => 'userEnteredFormat(backgroundColor,textFormat)']],
-        ['repeatCell' => ['range' => ['sheetId' => 0, 'startRowIndex' => 12, 'endRowIndex' => 13, 'startColumnIndex' => 0, 'endColumnIndex' => 3],
+        ['repeatCell' => ['range' => ['sheetId' => 0, 'startRowIndex' => 14, 'endRowIndex' => 15, 'startColumnIndex' => 0, 'endColumnIndex' => 3],
             'cell' => ['userEnteredFormat' => ['backgroundColor' => $blue, 'textFormat' => ['foregroundColor' => $white, 'bold' => true]]],
             'fields' => 'userEnteredFormat(backgroundColor,textFormat)']],
-        ['repeatCell' => ['range' => ['sheetId' => 1, 'startRowIndex' => 0, 'endRowIndex' => 1, 'startColumnIndex' => 0, 'endColumnIndex' => 21],
+        ['repeatCell' => ['range' => ['sheetId' => 1, 'startRowIndex' => 0, 'endRowIndex' => 1, 'startColumnIndex' => 0, 'endColumnIndex' => 22],
             'cell' => ['userEnteredFormat' => ['backgroundColor' => $navy, 'textFormat' => ['foregroundColor' => $white, 'bold' => true], 'wrapStrategy' => 'WRAP', 'verticalAlignment' => 'MIDDLE']],
             'fields' => 'userEnteredFormat(backgroundColor,textFormat,wrapStrategy,verticalAlignment)']],
         ['repeatCell' => ['range' => ['sheetId' => 2, 'startRowIndex' => 0, 'endRowIndex' => 1, 'startColumnIndex' => 0, 'endColumnIndex' => 8],
             'cell' => ['userEnteredFormat' => ['backgroundColor' => $navy, 'textFormat' => ['foregroundColor' => $white, 'bold' => true], 'wrapStrategy' => 'WRAP']],
             'fields' => 'userEnteredFormat(backgroundColor,textFormat,wrapStrategy)']],
-        ['addBanding' => ['bandedRange' => ['range' => ['sheetId' => 1, 'startRowIndex' => 0, 'endRowIndex' => max(2, count($details)), 'startColumnIndex' => 0, 'endColumnIndex' => 20],
+        ['addBanding' => ['bandedRange' => ['range' => ['sheetId' => 1, 'startRowIndex' => 0, 'endRowIndex' => max(2, count($details)), 'startColumnIndex' => 0, 'endColumnIndex' => 22],
             'rowProperties' => ['headerColor' => $navy, 'firstBandColor' => $white, 'secondBandColor' => $pale]]]],
         ['addBanding' => ['bandedRange' => ['range' => ['sheetId' => 2, 'startRowIndex' => 0, 'endRowIndex' => max(2, count($reconciliation)), 'startColumnIndex' => 0, 'endColumnIndex' => 8],
             'rowProperties' => ['headerColor' => $navy, 'firstBandColor' => $white, 'secondBandColor' => $pale]]]],
+        ['repeatCell' => ['range' => ['sheetId' => 3, 'startRowIndex' => 0, 'endRowIndex' => 1, 'startColumnIndex' => 0, 'endColumnIndex' => 8], 'cell' => ['userEnteredFormat' => ['backgroundColor' => $navy, 'textFormat' => ['foregroundColor' => $white, 'bold' => true], 'wrapStrategy' => 'WRAP']], 'fields' => 'userEnteredFormat(backgroundColor,textFormat,wrapStrategy)']],
+        ['addBanding' => ['bandedRange' => ['range' => ['sheetId' => 3, 'startRowIndex' => 0, 'endRowIndex' => max(2, count($refundRows)), 'startColumnIndex' => 0, 'endColumnIndex' => 8], 'rowProperties' => ['headerColor' => $navy, 'firstBandColor' => $white, 'secondBandColor' => $pale]]]],
+        ['repeatCell' => ['range' => ['sheetId' => 3, 'startRowIndex' => 1, 'endRowIndex' => max(2, count($refundRows)), 'startColumnIndex' => 4, 'endColumnIndex' => 5], 'cell' => ['userEnteredFormat' => ['numberFormat' => ['type' => 'CURRENCY', 'pattern' => '"Rp" #,##0']]], 'fields' => 'userEnteredFormat.numberFormat']],
         ['repeatCell' => ['range' => ['sheetId' => 1, 'startRowIndex' => 1, 'endRowIndex' => max(2, count($details)), 'startColumnIndex' => 7, 'endColumnIndex' => 11],
             'cell' => ['userEnteredFormat' => ['numberFormat' => ['type' => 'CURRENCY', 'pattern' => '"Rp" #,##0']]],
             'fields' => 'userEnteredFormat.numberFormat']],
         ['repeatCell' => ['range' => ['sheetId' => 0, 'startRowIndex' => 6, 'endRowIndex' => 11, 'startColumnIndex' => 1, 'endColumnIndex' => 2],
             'cell' => ['userEnteredFormat' => ['numberFormat' => ['type' => 'CURRENCY', 'pattern' => '"Rp" #,##0']]],
             'fields' => 'userEnteredFormat.numberFormat']],
-        ['updateDimensionProperties' => ['range' => ['sheetId' => 1, 'dimension' => 'COLUMNS', 'startIndex' => 0, 'endIndex' => 21],
+        ['repeatCell' => ['range' => ['sheetId' => 1, 'startRowIndex' => 1, 'endRowIndex' => max(2, count($details)), 'startColumnIndex' => 21, 'endColumnIndex' => 22], 'cell' => ['userEnteredFormat' => ['numberFormat' => ['type' => 'CURRENCY', 'pattern' => '"Rp" #,##0']]], 'fields' => 'userEnteredFormat.numberFormat']],
+        ['updateDimensionProperties' => ['range' => ['sheetId' => 1, 'dimension' => 'COLUMNS', 'startIndex' => 0, 'endIndex' => 22],
             'properties' => ['pixelSize' => 150], 'fields' => 'pixelSize']],
         ['updateDimensionProperties' => ['range' => ['sheetId' => 1, 'dimension' => 'COLUMNS', 'startIndex' => 0, 'endIndex' => 1],
             'properties' => ['pixelSize' => 55], 'fields' => 'pixelSize']],
@@ -240,13 +246,14 @@ try {
 
 try {
     $query = $pdo->prepare("
-        SELECT o.public_id AS order_number, o.created_at AS order_created_at, o.paid_at,
+        SELECT o.id AS order_id, o.public_id AS order_number, o.created_at AS order_created_at, o.paid_at,
             g.name AS game_name, p.name AS product_name, pr.code AS provider_api,
             o.base_price, o.selling_price, o.admin_fee, (o.selling_price + o.admin_fee) AS customer_total,
             o.payment_status, o.order_status, pt.gateway AS payment_gateway, pt.merchant_order_id,
             pt.gateway_reference, st.reference_id AS supplier_reference, st.provider_reference,
             st.status AS supplier_status,
             (SELECT r.status FROM refunds r WHERE r.order_id=o.id ORDER BY r.id DESC LIMIT 1) AS latest_refund_status,
+            (SELECT COALESCE(SUM(r.amount),0) FROM refunds r WHERE r.order_id=o.id AND r.status='SUCCESS') AS successful_refund_total,
             o.fulfilled_at
         FROM orders o
         JOIN games g ON g.id=o.game_id
@@ -270,13 +277,24 @@ try {
 
     $count = count($orders);
     $paidCount = 0; $paidSales = 0.0; $paidCost = 0.0; $paidAdminFee = 0.0; $paidTotal = 0.0;
+    $refundRows = [['ID Refund', 'Nomor Pesanan', 'Refund Dibuat Pada', 'Diproses Pada', 'Jumlah Refund (Rp)', 'Status Refund', 'Referensi Gateway Refund', 'Alasan']];
+    $refundStmt = $pdo->prepare("SELECT r.id AS refund_id,o.public_id AS order_number,r.created_at,r.processed_at,r.amount,r.status,r.gateway_reference,r.reason FROM refunds r JOIN orders o ON o.id=r.order_id WHERE (r.created_at >= :created_start AND r.created_at < :created_end) OR (r.processed_at >= :processed_start AND r.processed_at < :processed_end) ORDER BY COALESCE(r.processed_at,r.created_at),r.id");
+    $refundStmt->execute(['created_start' => $periodStartDateTime, 'created_end' => $periodEndDateTime, 'processed_start' => $periodStartDateTime, 'processed_end' => $periodEndDateTime]);
+    $refundRecords = $refundStmt->fetchAll(PDO::FETCH_ASSOC);
+    $confirmedRefundTotal = 0.0;
+    foreach ($refundRecords as $refund) {
+        $processedInPeriod = !empty($refund['processed_at']) && $refund['processed_at'] >= $periodStartDateTime && $refund['processed_at'] < $periodEndDateTime;
+        if ($refund['status'] === 'SUCCESS' && $processedInPeriod) $confirmedRefundTotal += (float) $refund['amount'];
+        $refundRows[] = [$refund['refund_id'], $refund['order_number'], $refund['created_at'], $refund['processed_at'], (float) $refund['amount'], $refund['status'], $refund['gateway_reference'] ?? '', $refund['reason'] ?? ''];
+    }
+    if (count($refundRows) === 1) $refundRows[] = ['Tidak ada catatan refund pada periode ini', '', '', '', '', '', '', ''];
     $paymentSummary = [];
     $orderSummary = [];
     $details = [[
         'No.', 'Nomor Pesanan', 'Dibuat Pada', 'Dibayar Pada', 'Game', 'Produk', 'API Supplier',
         'Biaya Pokok (Rp)', 'Harga Jual (Rp)', 'Biaya Admin (Rp)', 'Total Dibayar (Rp)',
         'Status Pembayaran', 'Status Pesanan', 'Status Supplier', 'Status Refund',
-        'Gateway', 'ID Pesanan Gateway', 'Referensi Gateway', 'Referensi Supplier', 'Selesai Pada', 'Termasuk Periode Karena',
+        'Gateway', 'ID Pesanan Gateway', 'Referensi Gateway', 'Referensi Supplier', 'Selesai Pada', 'Termasuk Periode Karena', 'Total Refund Sukses per Pesanan (Rp)',
     ]];
     $reviewRows = [['Nomor Pesanan', 'Tanggal Dibuat', 'Dibayar Pada', 'Status Pembayaran', 'Status Pesanan', 'Status Supplier', 'Status Refund', 'Total Transaksi (Rp)']];
     foreach ($orders as $i => $o) {
@@ -305,7 +323,7 @@ try {
             $o['provider_api'], (float) $o['base_price'], (float) $o['selling_price'], (float) $o['admin_fee'], $total,
             $payment, $orderStatus, $supplierStatus, $refundStatus, $o['payment_gateway'] ?? '',
             $o['merchant_order_id'] ?? '', $o['gateway_reference'] ?? '', $o['supplier_reference'] ?? '', $o['fulfilled_at'],
-            implode(', ', $periodReasons),
+            implode(', ', $periodReasons), (float) $o['successful_refund_total'],
         ];
         if ($payment !== 'PAID' || in_array($orderStatus, ['MANUAL_REVIEW','REFUND_PENDING','FAILED'], true) ||
             in_array($refundStatus, ['PENDING','REFUND_PENDING','FAILED'], true)) {
@@ -325,6 +343,8 @@ try {
         ['Biaya admin tercatat dari pembayaran PAID (Rp)', round($paidAdminFee, 2), '', ''],
         ['Total pembayaran tercatat (harga jual + biaya admin) (Rp)', round($paidTotal, 2), '', ''],
         ['Margin kotor indikatif (harga jual - biaya pokok) (Rp)', round($paidSales - $paidCost, 2), '', ''],
+        ['Refund berhasil diproses pada periode ini (Rp)', round($confirmedRefundTotal, 2), '', ''],
+        ['Penerimaan bersih indikatif setelah refund sukses (Rp)', round($paidTotal - $confirmedRefundTotal, 2), '', ''],
         ['', '', '', ''],
         ['RINGKASAN STATUS PEMBAYARAN', 'JUMLAH PESANAN', 'TOTAL PEMBAYARAN PAID (Rp)', ''],
     ];
@@ -353,7 +373,7 @@ try {
 
     $driveFileId = settlement_find_drive_file($fileName, $periodKey, $token);
     if ($driveFileId === null) {
-        $driveFileId = settlement_create_sheet($fileName, $periodKey, $summary, $details, $reconciliation, $folderId, $token);
+        $driveFileId = settlement_create_sheet($fileName, $periodKey, $summary, $details, $reconciliation, $refundRows, $folderId, $token);
     }
     $stmt = $pdo->prepare("UPDATE monthly_settlement_exports SET status='UPLOADED',drive_file_id=:drive,row_count=:count,total_amount=:total,uploaded_at=NOW(),last_error=NULL WHERE period_start=:start AND period_end=:end");
     $stmt->execute([
@@ -364,7 +384,9 @@ try {
         'status' => 'UPLOADED', 'period' => $periodKey, 'file_name' => $fileName,
         'google_sheets_id' => $driveFileId, 'orders' => $count,
         'paid_customer_total' => number_format($paidTotal, 2, '.', ''),
-        'sheets' => ['Ringkasan Bulanan', 'Rincian Transaksi', 'Rekonsiliasi'],
+        'confirmed_refunds' => number_format($confirmedRefundTotal, 2, '.', ''),
+        'indicative_net_receipt' => number_format($paidTotal - $confirmedRefundTotal, 2, '.', ''),
+        'sheets' => ['Ringkasan Bulanan', 'Rincian Transaksi', 'Rekonsiliasi', 'Refund']
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
 } catch (Throwable $e) {
     $stmt = $pdo->prepare("UPDATE monthly_settlement_exports SET status='FAILED',last_error=:error WHERE period_start=:start AND period_end=:end AND status<>'UPLOADED'");
