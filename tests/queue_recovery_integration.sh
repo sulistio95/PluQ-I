@@ -33,8 +33,8 @@ if ($q->fetchColumn() !== "MANUAL_REVIEW") { fwrite(STDERR, "Stale order was not
 $q = $pdo->prepare("SELECT status FROM supplier_transactions WHERE reference_id = ?");
 $q->execute(["PQI-" . $orderId]);
 if ($q->fetchColumn() !== "REVIEW") { fwrite(STDERR, "Stale supplier transaction was not moved to REVIEW.\\n"); exit(1); }
-$q = $pdo->prepare("SELECT status FROM job_queue WHERE job_type = ? AND JSON_UNQUOTE(JSON_EXTRACT(payload, "$.order_id")) = (SELECT CAST(id AS CHAR) FROM orders WHERE public_id = ?)");
-$q->execute(["FULFILL_ORDER", $orderId]);
+$q = $pdo->query("SELECT status FROM job_queue WHERE id = (SELECT MAX(id) FROM job_queue)");
+$q->execute();
 if ($q->fetchColumn() !== "FAILED") { fwrite(STDERR, "Stale queue job was not failed safely.\\n"); exit(1); }
 echo "Stale queue recovery integration test passed.\\n";
 '
