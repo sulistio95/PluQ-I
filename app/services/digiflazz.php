@@ -1,6 +1,5 @@
 <?php
 declare(strict_types=1);
-
 require_once __DIR__ . '/provider_http.php';
 
 function digiflazz_config(): array
@@ -32,20 +31,18 @@ function digiflazz_balance(): array
     return ['balance' => (float) $data['deposit'], 'raw' => $response];
 }
 
-function digiflazz_price_list(string $type = ' umum'): array
+function digiflazz_price_list(?string $category = null): array
 {
     $cfg = digiflazz_config();
-    $type = trim($type);
-    if (!in_array($type, ['umum', 'prepaid', 'pasca'], true)) {
-        throw new InvalidArgumentException('Unsupported Digiflazz price-list type.');
-    }
-    $response = provider_http_json($cfg['base_url'] . '/price-list', [
+    $payload = [
         'cmd' => 'prepaid',
         'username' => $cfg['username'],
         'sign' => md5($cfg['username'] . $cfg['api_key'] . 'pricelist'),
-        'status' => 'all',
-        'type' => $type,
-    ]);
+    ];
+    if ($category !== null && trim($category) !== '') {
+        $payload['category'] = trim($category);
+    }
+    $response = provider_http_json($cfg['base_url'] . '/price-list', $payload);
     if (!isset($response['data']) || !is_array($response['data'])) {
         throw new RuntimeException('Digiflazz price-list response is missing its data list.');
     }
