@@ -50,7 +50,7 @@ function sync_provider_balance(PDO $pdo, string $providerCode): array
         // after fulfillment while the stored balance may still be stale.
         $release = $pdo->prepare("UPDATE provider_balance_reservations
             SET status='RELEASED',released_at=NOW()
-            WHERE provider_id=:provider_id AND status='CONSUMED' AND consumed_at<=:checked_at");
+            WHERE provider_id=:provider_id AND status='CONSUMED' AND consumed_at<:checked_at");
         $release->execute(['provider_id'=>$provider['id'],'checked_at'=>$snapshotStartedAt]);
         $pdo->commit();
         return ['provider'=>$providerCode,'balance'=>$balance,'status'=>$status,'skipped'=>false];
