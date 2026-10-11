@@ -22,11 +22,17 @@ Order fields include `key`, `sign` (MD5 of API ID + API KEY), `type=order`, `ser
 
 Status checks use the same endpoint with `type=status` and a `trxid`; the documentation describes a list under `data`. Status examples include `waiting`, `processing`, `success`, and `error`. The documentation also describes a `get-nickname` operation for checking a game username, but it needs a per-game code and target mapping.
 
-Current code structure is broadly consistent with the documented order/status shapes, but the configured base URL, request signature, exact response handling, and error cases have not been verified against sandbox/test credentials.
+Current code structure is consistent with the documented order/status shapes. The code maps `waiting` and `processing` to pending, `success` to success, `error` to a definitive failure, and unknown/malformed responses to manual review. This response mapping has unit tests, but the configured base URL, request signature, product codes, and end-to-end API behavior still require validation with the account's test credentials.
 
 ## Digiflazz
 
-Digiflazz request semantics and response reconciliation have not been confirmed in this review. In particular, do not assume that resending a transaction with the same `ref_id` is safe until the official API behavior has been verified.
+Official documentation:
+- Top-up endpoint and response: https://developer.digiflazz.com/api/buyer/topup/
+- Provider test cases: https://developer.digiflazz.com/api/buyer/test-case/
+
+The prepaid transaction endpoint is `POST https://api.digiflazz.com/v1/transaction`. Required fields include `username`, `buyer_sku_code`, `customer_no`, `ref_id`, and `sign` (`md5(username + apiKey + ref_id)`). The response contains a `data` object and documents `Sukses`, `Pending`, and `Gagal`. The documentation says a pending response can be checked by repeating the request with the same `ref_id`; test mode is available through `testing: true` and documented test cases.
+
+The code maps known statuses and sends unknown statuses or transport/API exceptions to manual review. It does not automatically resubmit an ambiguous request. Although official docs describe the same-reference status-check behavior, do not enable automatic retries until it has been tested against this account's configuration and confirmed not to create duplicate fulfillment.
 
 ## Release gate
 
