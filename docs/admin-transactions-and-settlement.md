@@ -6,7 +6,7 @@ The panel is served at `/admin/` and requires an active row in `admin_users`. It
 
 - Supplier API/provider (Digiflazz or VIPayment, based on active provider rows)
 - Payment gateway (Duitku)
-- Start and end date/time, using the configured `APP_TIMEZONE`
+- Start and end date/time, using the configured `APP_TIMEZONE`; choose whether the filter applies to order creation, payment received, top-up completion, or supplier API transaction creation
 - Payment status and order status
 
 The report is read-only, does not expose the saved game-account ID/zone values, and shows at most 200 matching rows per request. It is a transaction inspection view, not a live API ping to each supplier.
@@ -31,7 +31,7 @@ After migrations 001–005, apply:
 mysql -u DB_USER -p DB_NAME < database/migrations/006_monthly_settlements.sql
 ```
 
-This creates `monthly_settlement_exports`, which records each month, upload state, Drive file ID, row count, and the sum of PAID orders. It prevents a completed month from being uploaded twice.
+This creates `monthly_settlement_exports`, which records each month, upload state, Drive file ID, row count, and the sum of PAID orders. It prevents a completed month from being uploaded twice and blocks a second run while the same period is actively processing.
 
 ## Google Drive OAuth configuration
 
