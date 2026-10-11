@@ -22,7 +22,7 @@ Order fields include `key`, `sign` (MD5 of API ID + API KEY), `type=order`, `ser
 
 Status checks use the same endpoint with `type=status` and a `trxid`; the documentation describes a list under `data`. Status examples include `waiting`, `processing`, `success`, and `error`. The documentation also describes a `get-nickname` operation for checking a game username, but it needs a per-game code and target mapping.
 
-Current code structure is consistent with the documented order/status shapes. The code maps `waiting` and `processing` to pending, `success` to success, `error` to a definitive failure, and unknown/malformed responses to manual review. This response mapping has unit tests, but the configured base URL, request signature, product codes, and end-to-end API behavior still require validation with the account's test credentials.
+Current code structure is consistent with the documented order/status shapes. The code maps `waiting` and `processing` to pending, `success` to success, `error` to a definitive failure, and unknown/malformed responses to manual review. For a status lookup, the returned `trxid` must be present and match the requested transaction ID before its status is trusted; a missing or different ID goes to manual review. This response mapping has unit tests, but the configured base URL, request signature, product codes, and end-to-end API behavior still require validation with the account's test credentials.
 
 ## Digiflazz
 
