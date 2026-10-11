@@ -20,6 +20,8 @@ jobs:
       - name: Lint PHP files
         run: |
           set -eu
-          find app bin config public -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          find app bin config public tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Check catalog JavaScript syntax
         run: node --check public/assets/catalog.js
+      - name: Run pricing fee tests
+        run: php tests/pricing_test.php
