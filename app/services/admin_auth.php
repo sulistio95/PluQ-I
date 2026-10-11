@@ -49,3 +49,49 @@ function admin_escape(mixed $value): string
 {
     return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
+
+
+/**
+ * Throttle admin authentication by both remote IP and normalized username.
+ * Requires migration 008_admin_login_rate_limit.sql.
+ */
+function admin_login_is_limited(PDO $pdo, string $ipAddress, string $username): bool
+{
+    $ipAddress = substr($ipAddress, 0, 45);
+    $usernameHash = hash('sha256', mb_strtolower(trim($username), 'UTF-8'));
+    $stmt = $pdo->prepare("SELECT
+        SUM(CASE WHEN ip_address = :ip THEN 1 ELSE 0 END) AS ip_attempts,
+        SUM(CASE WHEN username_hash = :username_hash THEN 1 ELSE 0 END) AS username_attempts
+        FROM admin_login_attempts
+        WHERE attempted_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+          AND (ip_address = :ip_filter OR username_hash = :username_filter)");
+    $stmt->execute([
+        'ip' => $ipAddress,
+        'username_hash' => $usernameHash,
+        'ip_filter' => $ipAddress,
+        'username_filter' => $usernameHash,
+    ]);
+    $counts = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    return (int) ($counts['ip_attempts'] ?? 0) >= 10
+        || (int) ($counts['username_attempts'] ?? 0) >= 10;
+}
+
+function admin_login_record_failure(PDO $pdo, string $ipAddress, string $username): void
+{
+    $stmt = $pdo->prepare('INSERT INTO admin_login_attempts (ip_address, username_hash, attempted_at) VALUES (:ip, :username_hash, NOW())');
+    $stmt->execute([
+        'ip' => substr($ipAddress, 0, 45),
+        'username_hash' => hash('sha256', mb_strtolower(trim($username), 'UTF-8')),
+    ]);
+    // Bounded cleanup; never scan/delete recent attempt rows.
+    $pdo->exec('DELETE FROM admin_login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 2 DAY) LIMIT 500');
+}
+
+function admin_login_clear_failures(PDO $pdo, string $ipAddress, string $username): void
+{
+    $stmt = $pdo->prepare('DELETE FROM admin_login_attempts WHERE ip_address = :ip OR username_hash = :username_hash');
+    $stmt->execute([
+        'ip' => substr($ipAddress, 0, 45),
+        'username_hash' => hash('sha256', mb_strtolower(trim($username), 'UTF-8')),
+    ]);
+}
