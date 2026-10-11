@@ -55,7 +55,7 @@ function provider_reservation_commit_paid(PDO $pdo, int $orderId): bool
     if (!$pdo->inTransaction()) {
         throw new LogicException('A paid reservation must share the callback transaction.');
     }
-    $orderQuery = $pdo->prepare('SELECT provider_id,base_price FROM orders WHERE id=:id LIMIT 1');
+    $orderQuery = $pdo->prepare('SELECT provider_id,base_price FROM orders WHERE id=:id LIMIT 1 FOR UPDATE');
     $orderQuery->execute(['id'=>$orderId]);
     $order = $orderQuery->fetch();
     if (!$order) return false;
