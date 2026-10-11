@@ -72,9 +72,26 @@ function settlement_access_token(): string
     return $token;
 }
 
-function settlement_upload_drive(string $path, string $name, string $token, string $folderId): string
+function settlement_find_drive_file(string $name, string $period, string $token): ?string
 {
-    $metadata = ['name' => $name, 'mimeType' => 'text/csv'];
+    $q = "appProperties has { key='pluqSettlementPeriod' and value='" . addcslashes($period, "\\'") . "' } and trashed=false";
+    $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query([
+        'q' => $q,
+        'pageSize' => 10,
+        'fields' => 'files(id,name,mimeType)',
+        'spaces' => 'drive',
+    ]);
+    $data = settlement_curl($url, 'GET', ['Authorization: Bearer ' . $token]);
+    foreach (($data['files'] ?? []) as $file) {
+        if (!is_array($file) || ($file['name'] ?? '') !== $name || ($file['mimeType'] ?? '') !== 'text/csv' || empty($file['id'])) continue;
+        return (string) $file['id'];
+    }
+    return null;
+}
+
+function settlement_upload_drive(string $path, string $name, string $period, string $token, string $folderId): string
+{
+    $metadata = ['name' => $name, 'mimeType' => 'text/csv', 'appProperties' => ['pluqSettlementPeriod' => $period]];
     if ($folderId !== '') {
         $metadata['parents'] = [$folderId];
     }
@@ -95,8 +112,8 @@ function settlement_upload_drive(string $path, string $name, string $token, stri
         'Content-Type: multipart/related; boundary=' . $boundary,
     ], $body);
     $fileId = trim((string) ($data['id'] ?? ''));
-    if ($fileId === '') {
-        throw new RuntimeException('Google Drive upload response did not include a file ID.');
+    if ($fileId === '' || ($data['name'] ?? '') !== $name || ($data['mimeType'] ?? '') !== 'text/csv') {
+        throw new RuntimeException('Google Drive upload response could not be verified.');
     }
     return $fileId;
 }
@@ -200,7 +217,7 @@ try {
     $count = 0;
     $total = 0.0;
     while ($row = $query->fetch(PDO::FETCH_ASSOC)) {
-        $total += (float) $row['customer_total'];
+        if ($row['payment_status'] === 'PAID') $total += (float) $row['customer_total'];
         fputcsv($handle, array_values($row));
         $count++;
     }
@@ -208,7 +225,8 @@ try {
 
     $token = settlement_access_token();
     $folderId = trim((string) getenv('GOOGLE_DRIVE_FOLDER_ID'));
-    $driveFileId = settlement_upload_drive($tempPath, $fileName, $token, $folderId);
+    $driveFileId = settlement_find_drive_file($fileName, $month->format('Y-m'), $token)
+        ?? settlement_upload_drive($tempPath, $fileName, $month->format('Y-m'), $token, $folderId);
     $stmt = $pdo->prepare("UPDATE monthly_settlement_exports SET status='UPLOADED',drive_file_id=:drive,row_count=:count,total_amount=:total,uploaded_at=NOW(),last_error=NULL WHERE period_start=:start AND period_end=:end");
     $stmt->execute([
         'drive' => $driveFileId, 'count' => $count, 'total' => number_format($total, 2, '.', ''),
