@@ -165,12 +165,35 @@
           return;
         }
         selectedProduct = items[Number(button.dataset.productIndex)];
-        showMessage('Nominal dipilih: ' + selectedProduct.name + '. Checkout belum diaktifkan, sehingga belum ada transaksi atau pembayaran.', false);
-        $('checkout-note').textContent = 'Pilihan sementara: ' + selectedProduct.name + ' — ' + rupiah(selectedProduct.selling_price) + '. Belum ada pesanan yang dibuat.';
-        productsBox.querySelectorAll('.select-product').forEach((item) => {
-          item.textContent = item === button ? 'Dipilih' : 'Pilih nominal';
-          item.setAttribute('aria-pressed', item === button ? 'true' : 'false');
-        });
+        button.disabled = true;
+        button.textContent = 'Menghitung...';
+        try {
+          const account = {};
+          for (const field of gameFields) {
+            const input = $('account-form').elements.namedItem(field.field_key);
+            if (input) account[field.field_key] = String(input.value || '').trim();
+          }
+          const payload = {game_slug: activeGame.slug, product_id: selectedProduct.id, account};
+          const response = await fetch('/checkout-quote.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', 'Accept': 'application/json'},
+            credentials: 'same-origin',
+            body: new URLSearchParams({payload: JSON.stringify(payload)})
+          });
+          const result = await response.json();
+          if (!response.ok || !result.data) throw new Error(result.message || result.error || 'quote_failed');
+          const quote = result.data;
+          showMessage('Harga dihitung ulang oleh server. Belum ada pesanan atau pembayaran yang dibuat.', false);
+          $('checkout-note').textContent = 'Rincian: ' + quote.product.name + ' — harga ' + rupiah(quote.price.selling_price) + ', biaya admin ' + rupiah(quote.price.admin_fee) + ', total ' + rupiah(quote.price.total) + '. Ini hanya kutipan; pembayaran belum aktif.';
+          productsBox.querySelectorAll('.select-product').forEach((item) => {
+            item.textContent = item === button ? 'Harga dihitung' : 'Pilih nominal';
+            item.setAttribute('aria-pressed', item === button ? 'true' : 'false');
+          });
+        } catch (_) {
+          showMessage('Server belum dapat menghitung harga. Periksa konfigurasi database dan aturan harga.', true);
+          button.disabled = false;
+          button.textContent = 'Pilih nominal';
+        }
       });
     });
   }
