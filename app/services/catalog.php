@@ -8,7 +8,7 @@ function catalog_banners(PDO $pdo): array {
 }
 function catalog_products(PDO $pdo,string $slug): array {
  $sql="SELECT p.id,p.name,p.provider_product_code AS code,p.base_price,p.selling_price,p.status,
- CASE WHEN p.status<>'ACTIVE' OR pr.status<>'ACTIVE' OR pr.balance IS NULL OR p.base_price>(pr.balance*(pr.reserve_percentage/100)) THEN 0 ELSE 1 END AS is_available
+ CASE WHEN p.status<>'ACTIVE' OR pr.status NOT IN ('ACTIVE','LOW_BALANCE') OR pr.balance IS NULL OR p.base_price>(pr.balance*(pr.reserve_percentage/100)) THEN 0 ELSE 1 END AS is_available
  FROM products p JOIN games g ON g.id=p.game_id JOIN providers pr ON pr.id=p.provider_id
  LEFT JOIN excluded_services ex ON ex.provider_id=p.provider_id AND ex.service_code=p.provider_product_code
  WHERE g.slug=:slug AND g.status='ACTIVE' AND ex.id IS NULL
