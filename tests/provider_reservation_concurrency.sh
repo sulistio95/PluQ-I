@@ -56,7 +56,7 @@ if [ "$RESULTS" != "$(printf 'REJECTED\nRESERVED')" ]; then
   exit 1
 fi
 
-ACTIVE="$(mysql -N -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" -e "SELECT COUNT(*) FROM provider_balance_reservations WHERE provider_id=(SELECT id FROM providers WHERE code='DIGI') AND (status IN ('COMMITTED','CONSUMED') OR (status='HOLD' AND expires_at>NOW()))")""
+ACTIVE="$(mysql -N -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" -e "SELECT COUNT(*) FROM provider_balance_reservations WHERE provider_id=(SELECT id FROM providers WHERE code='DIGI') AND (status IN ('COMMITTED','CONSUMED') OR (status='HOLD' AND expires_at>NOW()))")"
 if [ "$ACTIVE" -lt 1 ]; then
   echo "No active reservation found after concurrent attempts."
   exit 1
