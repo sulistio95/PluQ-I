@@ -90,7 +90,7 @@ function fulfillment_map_vipayment_response(array $response, ?string $requestedT
             return ['state'=>'REVIEW','reference'=>$requestedTrxid,'response'=>$response];
         }
         $returnedTrxid = trim((string)($row['trxid'] ?? ''));
-        if ($returnedTrxid !== '' && !hash_equals($requestedTrxid, $returnedTrxid)) {
+        if ($returnedTrxid === '' || !hash_equals($requestedTrxid, $returnedTrxid)) {
             return ['state'=>'REVIEW','reference'=>$requestedTrxid,'response'=>$response];
         }
     } else {
