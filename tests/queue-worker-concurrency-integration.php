@@ -9,8 +9,6 @@ if (!function_exists('pcntl_fork') || !function_exists('pcntl_waitpid')) {
     exit(1);
 }
 
-$pdo = database();
-
 function queue_test_fresh_connection(): PDO
 {
     $host = getenv('DB_HOST') ?: '127.0.0.1';
@@ -25,6 +23,7 @@ function queue_test_fresh_connection(): PDO
         PDO::ATTR_TIMEOUT=>5,
     ]);
 }
+$pdo = queue_test_fresh_connection();
 $ready = (int)$pdo->query("SELECT COUNT(*) FROM job_queue WHERE status IN ('PENDING','RETRY') AND available_at<=NOW()")->fetchColumn();
 if ($ready !== 0) {
     fwrite(STDERR, "Queue must have no ready jobs before this isolated concurrency test; found {$ready}.\n");
@@ -47,6 +46,9 @@ try {
         $ids[] = (int)$pdo->lastInsertId();
     }
 
+    // Do not carry a live parent MySQL socket across fork(): inherited PDO sockets
+    // can be closed by a child and make the parent's connection go away.
+    $pdo = null;
     $children = [];
     for ($i=0; $i<2; $i++) {
         $pid = pcntl_fork();
@@ -89,6 +91,7 @@ try {
         throw new RuntimeException('Concurrent claim child failed: ' . implode('; ', array_map(static fn($p)=>file_get_contents($p), $errors)));
     }
 
+    $pdo = queue_test_fresh_connection();
     $results = [];
     foreach (glob($dir . '/*.json') ?: [] as $file) {
         $data = json_decode((string)file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
@@ -108,7 +111,8 @@ try {
     }
     echo "Two concurrent DB workers claimed distinct jobs with separate lease tokens.\n";
 } finally {
-    $cleanup = $pdo->prepare("DELETE FROM job_queue WHERE id=:id");
+    $cleanupPdo = queue_test_fresh_connection();
+    $cleanup = $cleanupPdo->prepare("DELETE FROM job_queue WHERE id=:id");
     foreach ($ids as $id) $cleanup->execute(['id'=>$id]);
     foreach (glob($dir . '/*') ?: [] as $file) @unlink($file);
     @rmdir($dir);
