@@ -27,6 +27,10 @@ Audit baseline: GitHub default branch at the time this file was added. This is a
 | CI and tests | GitHub Actions lints PHP files and runs callback-state, checkout-fingerprint, supplier-mapping, and admin-authorization tests. Run `38201655600` showed lint and all four test steps successful; overall workflow was still `in_progress` at the last check due to the final post-job step. | Recheck the final workflow conclusion. The separate `fulfillment-tests.yml` workflow includes MySQL 8.4 integration cases for duplicate callbacks, queue recovery, ambiguous supplier outcomes, explicit rejection/refund state, and duplicate queue processing. Run `38202791455` completed successfully with both the PHP tests and all MySQL integration steps passing after the bootstrap path fix. The follow-up code/test change (`e221f01`, `7908e11`) adds recovery for a crash after supplier failure is persisted but before the refund record is created; both jobs passed in run `38203732917`. Commit `30c0735` adds conditional writes to stop a late supplier response from overriding stale-lock recovery; its CI is pending. Live provider calls are not run by these workflows. |
 | Deployment and production | Preflight and queue-health CLI diagnostics exist. | **Blocked for production** until all staging tests, restore rehearsal, API reconciliation, cron monitoring, and incident/manual-review procedures pass. |
 
+## Preflight schema coverage
+
+`bin/preflight.php` now checks the recorded foundation migration `001_shared_hosting_foundation` and additional core tables (`audit_logs`, `provider_products`, `product_variants`, `settings`, `banners`, `webhook_events`, `account_validations`) in addition to the previously checked tables. If `SETTLEMENT_BACKUP_ENABLED=true`, it also checks `monthly_settlement_exports` and `app_settings` alongside migrations 006–007. This improves missing-schema detection but is still a source change pending CI; it does not replace running preflight against the target database.
+
 ## Callback result-state rule
 
 - `00`: payment reported successful; the callback may transition a pending payment and enqueue fulfillment once.
