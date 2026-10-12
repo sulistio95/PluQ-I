@@ -34,3 +34,5 @@ jobs:
         run: php tests/checkout-request-fingerprint.php
       - name: Test supplier account and response mapping
         run: php tests/fulfillment-mapping.php
+      - name: Test admin authorization roles
+        run: php tests/admin-authorization.php
