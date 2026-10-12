@@ -98,6 +98,8 @@ jobs:
           done
           cat /tmp/pluq-php-server.log
           exit 1
+      - name: Test duplicate queue job during active supplier request
+        run: php tests/duplicate-queue-processing-integration.php
       - name: Test duplicate concurrent callbacks against MySQL
         run: bash tests/duitku_callback_integration.sh
       - name: Test stale queue recovery against MySQL
