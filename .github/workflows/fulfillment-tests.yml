@@ -111,6 +111,8 @@ jobs:
         run: bash tests/explicit_supplier_failure_integration.sh
       - name: Test concurrent provider balance reservations against MySQL
         run: bash tests/provider_reservation_concurrency.sh
+      - name: Test completed supplier order reservation recovery against MySQL
+        run: bash tests/completed_order_reservation_recovery.sh
       - name: Verify unresolved Duitku checkout appears in read-only review report
         run: |
           set -eu
