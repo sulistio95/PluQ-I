@@ -98,3 +98,8 @@ Commit `fc7b8788890d6de2` extends the MySQL callback integration script with two
 
 
 Verification update: callback rejection coverage from commit `fc7b8788890d6de2c62f231b9016d67a39c30765` passed all three CI workflows (quality `38251844581`, syntax `38251844521`, fulfillment `38251844517`). The MySQL integration step confirms invalid HMAC and mismatched amount return HTTP 400 while leaving the payment/order pending and adding no fulfillment job; the duplicate-success and failed-payment callback assertions also pass. Full-path deadlock recovery in `checkout_create_payment()` remains an open production-readiness test gap.
+
+
+## Checkout concurrency regression strengthened (2026-10-13)
+
+Commits `93a13db9ac` and `f7508904ed` modify `tests/checkout-idempotency-concurrency-integration.php` to start both same-key checkout workers without the previous 300 ms stagger, using a shared filesystem gate to release them together. Assertions remain: exactly one order, one payment, one mocked Duitku request, both callers receive the same order/payment URL, and mismatched payload reuse is rejected. CI is pending; verify the MySQL integration job before considering this test change green. This stress test increases race coverage but does not alone prove that error 1213 was triggered within `checkout_create_payment()`; full-path deadlock recovery remains unproven until the deadlock is observed deterministically. No live gateway/supplier calls; live transaction flags remain disabled.
