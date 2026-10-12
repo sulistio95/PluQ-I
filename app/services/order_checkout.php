@@ -25,6 +25,11 @@ function checkout_request_fingerprint(string $email, string $gameSlug, int $prod
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 }
 
+function checkout_idempotency_key_is_valid(string $key): bool
+{
+    return preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/D', strtolower(trim($key))) === 1;
+}
+
 function checkout_create_payment(PDO $pdo, array $input): array
 {
     if (!checkout_payments_enabled()) {
@@ -35,7 +40,7 @@ function checkout_create_payment(PDO $pdo, array $input): array
     if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 255) {
         throw new InvalidArgumentException('Email tidak valid.');
     }
-    if (!preg_match('/^[a-f0-9-]{36}$/D', $key)) {
+    if (!checkout_idempotency_key_is_valid($key)) {
         throw new InvalidArgumentException('Kunci permintaan tidak valid.');
     }
     $productId = filter_var($input['product_id'] ?? null, FILTER_VALIDATE_INT);
