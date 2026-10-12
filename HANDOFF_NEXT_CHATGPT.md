@@ -187,3 +187,10 @@ Commit `58ee5b048800c490538ad04cb754b58befc680a0` updates `tests/checkout-idempo
 ### Verification after reverting the unproven deadlock choreography (2026-10-13)
 
 Commit `065a10ca522f9d24ed213dd7c9ac583a7e49d4ac` passed all three workflows: PHP quality `38319787900`, PHP/JavaScript syntax `38319788215`, and fulfillment safety `38319788002`. The fulfillment run's PHP tests and MySQL integration job both completed successfully, including the restored concurrent checkout idempotency stress test. This verifies the restored stress coverage only; full-path recovery after an actual deadlock inside `checkout_create_payment()` remains unproven. Documentation-only follow-up commit `ef5e72894d4ffa7bcc51ca2c577a356102f4511e` passed quality `38319827522` and syntax `38319827634`; its fulfillment run `38319827341` was still in progress at last check. No live APIs or deployment.
+
+
+### New deterministic checkout deadlock integration attempt — awaiting CI (2026-10-13)
+
+- Commit `69b4cd0e3105d5fa061c34e16e42d08f36a0b01c` adds an optional pre-product-lock callback to `checkout_create_payment()`, guarded so it is accepted only when `APP_ENV=test`. Production callers omit the callback.
+- Commit `d9ad0feb8d0fa98a18a4f0f64bf967d038bbf524` changes the MySQL checkout integration test so two independent same-key checkout transactions lock seeded provider rows in opposite order inside the checkout transaction. Both workers synchronize at a filesystem barrier before requesting the second row, so InnoDB should choose one real deadlock victim (1213). The test then requires both checkout calls to succeed, exactly one mock gateway call/order/payment, the same payment URL for both callers, rejection of a mismatched account payload, and an increased global `Innodb_deadlocks` counter.
+- This is a new test strategy and is **not yet verified**. Await MySQL integration CI and inspect exact logs. If it fails, record the observed error and do not claim recovery. The hook is guarded by `APP_ENV=test`; no live APIs or deployment were used, and production transaction flags remain disabled.
