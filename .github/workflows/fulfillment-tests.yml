@@ -91,6 +91,11 @@ jobs:
           FROM games g JOIN products p ON p.game_id = g.id WHERE g.slug = 'integration-game' AND p.provider_product_code = 'integration-sku';
           INSERT INTO payment_transactions (order_id, gateway, merchant_order_id, amount, status)
           SELECT id, 'DUITKU', public_id, 2500, 'PENDING' FROM orders WHERE public_id = 'abcdef0123456789abcdef0123';
+          INSERT INTO orders (public_id, game_id, product_id, provider_id, customer_game_data, base_price, selling_price, admin_fee, payment_status, order_status)
+          SELECT 'fedcba9876543210fedcba9876', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','789'), 1000, 1500, 1000, 'PENDING', 'PENDING'
+          FROM games g JOIN products p ON p.game_id = g.id WHERE g.slug = 'integration-game' AND p.provider_product_code = 'integration-sku';
+          INSERT INTO payment_transactions (order_id, gateway, merchant_order_id, amount, status)
+          SELECT id, 'DUITKU', public_id, 2500, 'PENDING' FROM orders WHERE public_id = 'fedcba9876543210fedcba9876';
           SQL
       - name: Start local PHP callback server
         run: |
