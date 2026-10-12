@@ -112,3 +112,10 @@ Commits `93a13db9ac` and `f7508904ed` modify `tests/checkout-idempotency-concurr
 
 
 CI finding for the three-iteration stress test: the first run passed twice and then exposed an order-dependent assertion: the test assumed child process 1 always wins, which is not guaranteed by OS scheduling. Commit `d518075b5d8b3b8bfa5c4b8f284eb4d072a24813` changes assertions to require exactly one creator and one reuser regardless of which child wins. This is a test-harness correction, not evidence of a checkout application failure. Re-run CI before marking the stress test green. Full-path deadlock recovery remains unproven.
+
+
+## MySQL checkout race verification update (2026-10-13)
+
+- The scheduling-independent checkout race test passed in all three workflows for commit `4e33bf5dcd08`: PHP quality `38283808180`, syntax `38283808125`, and fulfillment safety `38283808131`. The fulfillment run's MySQL integration job passed, including all three checkout iterations and the existing real-deadlock classification integration.
+- Follow-up commit `570d6daf401375feb4fd39f822d63d8e0d7a6284` strengthens the checkout stress step: it snapshots MySQL's global `Innodb_deadlocks` counter, runs the three concurrent checkout iterations (mock Duitku only), then requires the counter to increase. Because the checkout integration assertions also require both calls to succeed, exactly one gateway call, one order/payment, and the same persisted URL, a passing run will provide direct evidence that at least one real InnoDB deadlock occurred during the checkout stress window and the checkout flow recovered. The separate classifier test still verifies the 1213 classification independently.
+- This new assertion is not yet verified; wait for CI. If no deadlock occurs in the three runs, the step intentionally fails rather than falsely claiming full-path recovery coverage. No live API calls or deployment; production flags remain disabled.
