@@ -207,13 +207,27 @@ function fulfillment_process(PDO $pdo, int $orderId): string
         else throw new DomainException('Unsupported supplier code.');
     } catch (Throwable $e) {
         // A timeout, transport error, or unexpected API response does not prove the supplier rejected the order.
-        // Preserve the paid payment state and require reconciliation; do not create a refund task automatically.
-        // A stale-lock recovery may have changed PROCESSING to REVIEW while this HTTP call was
-        // still in flight. Never let the old worker overwrite that newer reconciliation decision.
-        $guard = $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error='Supplier outcome uncertain; manual review required' WHERE order_id=:id AND status IN ('PROCESSING','RETRYING')");
-        $guard->execute(['id'=>$orderId]);
-        if ($guard->rowCount() === 1) {
-            $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Supplier outcome uncertain; manual review required' WHERE id=:id AND payment_status='PAID' AND order_status IN ('PROCESSING','RETRYING')")->execute(['id'=>$orderId]);
+        // Lock order first, matching stale-lock recovery, and never overwrite a newer REVIEW decision.
+        $pdo->beginTransaction();
+        try {
+            $orderLock=$pdo->prepare("SELECT payment_status,order_status FROM orders WHERE id=:id LIMIT 1 FOR UPDATE");
+            $orderLock->execute(['id'=>$orderId]);
+            $lockedOrder=$orderLock->fetch(PDO::FETCH_ASSOC);
+            $supplierLock=$pdo->prepare("SELECT status FROM supplier_transactions WHERE order_id=:id LIMIT 1 FOR UPDATE");
+            $supplierLock->execute(['id'=>$orderId]);
+            $lockedSupplier=$supplierLock->fetch(PDO::FETCH_ASSOC);
+            if ($lockedOrder && $lockedOrder['payment_status']==='PAID'
+                && in_array($lockedOrder['order_status'],['PROCESSING','RETRYING'],true)
+                && $lockedSupplier && in_array($lockedSupplier['status'],['PROCESSING','RETRYING'],true)) {
+                $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error='Supplier outcome uncertain; manual review required' WHERE order_id=:id AND status IN ('PROCESSING','RETRYING')")
+                    ->execute(['id'=>$orderId]);
+                $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Supplier outcome uncertain; manual review required' WHERE id=:id AND payment_status='PAID' AND order_status IN ('PROCESSING','RETRYING')")
+                    ->execute(['id'=>$orderId]);
+            }
+            $pdo->commit();
+        } catch (Throwable $persistError) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $persistError;
         }
         return 'REVIEW';
     }
