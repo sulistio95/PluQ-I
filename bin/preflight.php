@@ -67,6 +67,7 @@ try {
             '005_order_manual_review_status',
             '008_admin_login_rate_limit',
             '009_refund_order_latest_index',
+            '010_checkout_payload_fingerprint',
         ] as $migration) {
             $ok = in_array($migration, $applied, true);
             $add('Database migration: ' . $migration, $ok, $ok ? 'applied' : 'missing; apply migrations in order');
