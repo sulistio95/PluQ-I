@@ -1,6 +1,6 @@
 # PluQ-I — Handoff for the next ChatGPT session
 
-Last updated: 2026-10-12 (Asia/Jakarta) — failed Duitku callback integration verified; latest CI green
+Last updated: 2026-10-13 (Asia/Jakarta) — deterministic deadlock attempt did not trigger a real deadlock; reverted to passing stress-test design, CI pending
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
@@ -174,3 +174,11 @@ Workflow verification for commit `7113cdae9c22007fcf5b90db523b03354aef2960`: PHP
 ## Deterministic checkout deadlock choreography added (2026-10-13; CI pending)
 
 Commit `58ee5b048800c490538ad04cb754b58befc680a0` updates `tests/checkout-idempotency-concurrency-integration.php`: after both child processes are forked, the parent acquires a lock on the test product row, releases the child start gate, and polls `performance_schema.data_lock_waits` until both checkout workers are blocked by that parent lock. The parent then releases the product row. This is intended to make both children retain their missing-checkout-key gap locks while competing for the same product row, provoking an InnoDB deadlock in the real `checkout_create_payment()` transaction. The test asserts both callers succeed, exactly one order/payment and mock gateway call exist, both callers share the winning URL, and the global InnoDB deadlock counter increases during that test. This is not verified until CI passes; if the lock choreography does not trigger a deadlock or the recovery fails, inspect MySQL job logs and revise rather than claiming success. No live APIs or deployment; production flags remain disabled.
+
+
+### Deterministic checkout deadlock attempt — negative result (2026-10-13)
+
+- CI for test commit `58ee5b048800c490538ad04cb754b58befc680a0` failed at the new assertion: the MySQL global `Innodb_deadlocks` counter remained `before=0 after=0`. The test had observed both workers waiting on the parent-held product row, but releasing that lock did not produce a deadlock. Therefore the choreography did **not** prove full-path deadlock recovery; do not interpret the failed assertion as a confirmed product-code regression.
+- Reverted only `tests/checkout-idempotency-concurrency-integration.php` to the previously passing synchronized stress test in commit `065a10ca522f9d24ed213dd7c9ac583a7e49d4ac`. It continues to verify same-key concurrency, one order/payment, one mocked Duitku call, URL reuse, and payload-mismatch rejection. CI for the revert is pending.
+- The separate MySQL deadlock integration still proves the SQLSTATE/driver error classifier handles a real 1213 victim, but it does not prove that the complete checkout function recovers after a real deadlock. Keep this gap explicit. Next work should design a deterministic full-path test without relying on the current product-row lock choreography, or leave the gap open rather than claim success.
+- No live gateway/supplier APIs or deployment were used; production flags remain disabled.
