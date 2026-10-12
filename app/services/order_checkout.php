@@ -39,7 +39,37 @@ function checkout_idempotency_key_is_valid(string $key): bool
     return preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/D', strtolower(trim($key))) === 1;
 }
 
-function checkout_create_payment(PDO $pdo, array $input): array
+/**
+ * Wait briefly for the winning request to persist its gateway URL. Order/payment rows
+ * are committed before the gateway call, so a concurrent request may see the winner
+ * before the external response has been saved.
+ */
+function checkout_reuse_winning_request(PDO $pdo, string $checkoutKey, string $fingerprint, int $waitMilliseconds = 22000): array
+{
+    $deadline = microtime(true) + max(0, $waitMilliseconds) / 1000;
+    do {
+        $stmt = $pdo->prepare("SELECT o.public_id,o.checkout_payload_hash,pt.gateway_payment_url
+            FROM orders o LEFT JOIN payment_transactions pt ON pt.order_id=o.id
+            WHERE o.checkout_key=:key LIMIT 1");
+        $stmt->execute(['key' => $checkoutKey]);
+        $existing = $stmt->fetch();
+        if ($existing) {
+            if (!is_string($existing['checkout_payload_hash'])
+                || !hash_equals($existing['checkout_payload_hash'], $fingerprint)) {
+                throw new DomainException('Kunci idempotensi sudah dipakai untuk data checkout berbeda atau pesanan lama perlu diperiksa admin.');
+            }
+            if (!empty($existing['gateway_payment_url'])) {
+                return ['order_id' => $existing['public_id'], 'payment_url' => $existing['gateway_payment_url'], 'reused' => true];
+            }
+        }
+        if (microtime(true) >= $deadline) break;
+        usleep(200000);
+    } while (true);
+
+    throw new DomainException('Permintaan sudah tercatat tetapi tautan pembayaran belum tersedia; perlu pemeriksaan admin.');
+}
+
+function checkout_create_payment(PDO $pdo, array $input, ?callable $paymentCreator = null): array
 {
     if (!checkout_payments_enabled()) {
         throw new DomainException('Checkout pembayaran belum diaktifkan. Pesanan belum dibuat dan tidak ada pembayaran yang diminta.');
@@ -75,10 +105,7 @@ function checkout_create_payment(PDO $pdo, array $input): array
                 throw new DomainException('Kunci idempotensi sudah dipakai untuk data checkout berbeda atau pesanan lama perlu diperiksa admin.');
             }
             $pdo->commit();
-            if (!empty($old['gateway_payment_url'])) {
-                return ['order_id' => $old['public_id'], 'payment_url' => $old['gateway_payment_url'], 'reused' => true];
-            }
-            throw new DomainException('Permintaan sudah tercatat dan perlu diperiksa admin.');
+            return checkout_reuse_winning_request($pdo, $checkoutKey, $fingerprint);
         }
 
         $lock = $pdo->prepare('SELECT p.id FROM products p JOIN providers pr ON pr.id=p.provider_id WHERE p.id=:id FOR UPDATE');
@@ -113,21 +140,7 @@ function checkout_create_payment(PDO $pdo, array $input): array
             // A concurrent request may win the unique-key insert or make this transaction
             // deadlock while locking the same absent key. Re-read after rollback; never
             // repeat the external Duitku request from this recovery path.
-            $existingStmt = $pdo->prepare("SELECT o.public_id,o.checkout_payload_hash,pt.gateway_payment_url
-                FROM orders o LEFT JOIN payment_transactions pt ON pt.order_id=o.id
-                WHERE o.checkout_key=:key LIMIT 1");
-            $existingStmt->execute(['key' => $checkoutKey]);
-            $existing = $existingStmt->fetch();
-            if ($existing) {
-                if (!is_string($existing['checkout_payload_hash'])
-                    || !hash_equals($existing['checkout_payload_hash'], $fingerprint)) {
-                    throw new DomainException('Kunci idempotensi sudah dipakai untuk data checkout berbeda atau pesanan lama perlu diperiksa admin.');
-                }
-                if (!empty($existing['gateway_payment_url'])) {
-                    return ['order_id' => $existing['public_id'], 'payment_url' => $existing['gateway_payment_url'], 'reused' => true];
-                }
-                throw new DomainException('Permintaan sudah tercatat dan perlu diperiksa admin.');
-            }
+            return checkout_reuse_winning_request($pdo, $checkoutKey, $fingerprint);
         }
         throw $e;
     } catch (Throwable $e) {
@@ -136,7 +149,8 @@ function checkout_create_payment(PDO $pdo, array $input): array
     }
 
     try {
-        $payment = duitku_create_payment($config,$publicId,$amount,$quote['game']['name'].' - '.$quote['product']['name'],$email);
+        $creator = $paymentCreator ?? 'duitku_create_payment';
+        $payment = $creator($config,$publicId,$amount,$quote['game']['name'].' - '.$quote['product']['name'],$email);
         // A fast callback may mark the transaction paid before this response is persisted.
         // Store the payment URL regardless of current status, without overwriting a callback reference.
         $stmt = $pdo->prepare("UPDATE payment_transactions
