@@ -31,6 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         session_destroy();
         header('Location: /admin/');
         exit;
+    } elseif ($user && isset($_POST['save_drive_folder']) && !in_array($user['role'], ['SUPER_ADMIN', 'ADMIN'], true)) {
+        http_response_code(403);
+        $error = 'Peran akun Anda tidak diizinkan mengubah pengaturan folder Google Drive.';
     } elseif ($user && isset($_POST['save_drive_folder'])) {
         $sharedUrl = trim((string) ($_POST['google_drive_folder_url'] ?? ''));
         $folderId = '';
