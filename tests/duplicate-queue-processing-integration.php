@@ -71,7 +71,23 @@ try {
             . var_export($orderStatus, true) . ", supplier=" . var_export($supplierStatus, true));
     }
 
-    echo "Duplicate queue job preserves fresh supplier PROCESSING state.\n";
+    // Older ambiguous requests must fail closed into review, never be resubmitted.
+    $pdo->prepare("UPDATE supplier_transactions SET updated_at=DATE_SUB(NOW(), INTERVAL 11 MINUTE) WHERE order_id=:id")
+        ->execute(['id' => $orderId]);
+    $staleOutcome = fulfillment_process($pdo, $orderId);
+    if ($staleOutcome !== 'REVIEW') {
+        throw new RuntimeException("Expected stale ambiguous supplier request to enter REVIEW, got " . $staleOutcome);
+    }
+    $checkOrder->execute(['id' => $orderId]);
+    $staleOrderStatus = $checkOrder->fetchColumn();
+    $checkSupplier->execute(['id' => $orderId]);
+    $staleSupplierStatus = $checkSupplier->fetchColumn();
+    if ($staleOrderStatus !== 'MANUAL_REVIEW' || $staleSupplierStatus !== 'REVIEW') {
+        throw new RuntimeException("Stale supplier PROCESSING was not moved to manual review: order="
+            . var_export($staleOrderStatus, true) . ", supplier=" . var_export($staleSupplierStatus, true));
+    }
+
+    echo "Duplicate queue job preserves fresh PROCESSING state; stale ambiguous requests enter manual review without resubmission.\\n";
 } finally {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
