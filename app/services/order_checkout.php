@@ -93,6 +93,30 @@ function checkout_create_payment(PDO $pdo, array $input): array
           VALUES (:order_id,'DUITKU',:merchant_order_id,:amount,'PENDING')");
         $stmt->execute(['order_id'=>$orderDbId,'merchant_order_id'=>$publicId,'amount'=>$amount]);
         $pdo->commit();
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $duplicateKey = (string)$e->getCode() === '23000'
+            || (int)($e->errorInfo[1] ?? 0) === 1062;
+        if ($duplicateKey) {
+            // A concurrent request may have won the unique checkout_key race after our initial lookup.
+            // Re-read the winner after rollback and reuse only if its normalized payload matches.
+            $existingStmt = $pdo->prepare("SELECT o.public_id,o.checkout_payload_hash,pt.gateway_payment_url
+                FROM orders o LEFT JOIN payment_transactions pt ON pt.order_id=o.id
+                WHERE o.checkout_key=:key LIMIT 1");
+            $existingStmt->execute(['key' => $checkoutKey]);
+            $existing = $existingStmt->fetch();
+            if ($existing) {
+                if (!is_string($existing['checkout_payload_hash'])
+                    || !hash_equals($existing['checkout_payload_hash'], $fingerprint)) {
+                    throw new DomainException('Kunci idempotensi sudah dipakai untuk data checkout berbeda atau pesanan lama perlu diperiksa admin.');
+                }
+                if (!empty($existing['gateway_payment_url'])) {
+                    return ['order_id' => $existing['public_id'], 'payment_url' => $existing['gateway_payment_url'], 'reused' => true];
+                }
+                throw new DomainException('Permintaan sudah tercatat dan perlu diperiksa admin.');
+            }
+        }
+        throw $e;
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $e;
