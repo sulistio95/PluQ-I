@@ -151,3 +151,8 @@ The deterministic test attempt in commit `58ee5b048800c490538ad04cb754b58befc680
 ### Verification after reverting deadlock choreography (2026-10-13)
 
 The restored checkout idempotency stress test in commit `065a10ca522f9d24ed213dd7c9ac583a7e49d4ac` passed PHP quality (`38319787900`), syntax (`38319788215`), and fulfillment safety (`38319788002`). Both PHP tests and the MySQL integration job passed. This confirms the prior same-key concurrency/idempotency assertions, not full-path recovery after a real deadlock inside `checkout_create_payment()`; keep that item open. The docs-only follow-up commit `ef5e72894d4ffa7bcc51ca2c577a356102f4511e` passed quality (`38319827522`) and syntax (`38319827634`); fulfillment run `38319827341` was still in progress at last check. No live payment/supplier API calls or deployment.
+
+
+## Deterministic checkout deadlock integration attempt (2026-10-13)
+
+Commits `69b4cd0e3105d5fa061c34e16e42d08f36a0b01c` and `d9ad0feb8d0fa98a18a4f0f64bf967d038bbf524` introduce a test-only callback seam guarded by `APP_ENV=test` and use it to make two same-key checkout transactions lock the seeded DIGI and VIPAY rows in opposite order. Both workers synchronize after taking their first row lock, then request the second row inside `checkout_create_payment()`; the MySQL test asserts a real increase in `Innodb_deadlocks`, successful recovery for both requests, one order/payment, one mock Duitku call, URL reuse, and changed-payload rejection. CI is pending. This is only a test strategy until the MySQL job passes and logs confirm the intended deadlock counter increase. No live API calls/deployment; production payment and supplier flags remain disabled.
