@@ -89,7 +89,6 @@ try {
         }
     }
 
-    usleep(300000);
     $pid2 = pcntl_fork();
     if ($pid2 === -1) throw new RuntimeException('Could not fork second checkout process.');
     if ($pid2 === 0) {
