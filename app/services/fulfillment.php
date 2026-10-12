@@ -208,28 +208,35 @@ function fulfillment_process(PDO $pdo, int $orderId): string
     } catch (Throwable $e) {
         // A timeout, transport error, or unexpected API response does not prove the supplier rejected the order.
         // Preserve the paid payment state and require reconciliation; do not create a refund task automatically.
-        $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error='Supplier outcome uncertain; manual review required' WHERE order_id=:id")->execute(['id'=>$orderId]);
-        $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Supplier outcome uncertain; manual review required' WHERE id=:id AND payment_status='PAID'")->execute(['id'=>$orderId]);
+        // A stale-lock recovery may have changed PROCESSING to REVIEW while this HTTP call was
+        // still in flight. Never let the old worker overwrite that newer reconciliation decision.
+        $guard = $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error='Supplier outcome uncertain; manual review required' WHERE order_id=:id AND status IN ('PROCESSING','RETRYING')");
+        $guard->execute(['id'=>$orderId]);
+        if ($guard->rowCount() === 1) {
+            $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Supplier outcome uncertain; manual review required' WHERE id=:id AND payment_status='PAID' AND order_status IN ('PROCESSING','RETRYING')")->execute(['id'=>$orderId]);
+        }
         return 'REVIEW';
     }
 
     $safe=json_encode($result['response'],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
     $state=$result['state'];
     $txStatus=$state==='SUCCESS'?'SUCCESS':($state==='PENDING'?'RETRYING':($state==='FAILED'?'FAILED':'REVIEW'));
-    $pdo->prepare("UPDATE supplier_transactions SET provider_reference=NULLIF(:ref,''),status=:status,attempts=attempts+1,response_payload=:response,last_error=:error WHERE order_id=:id")
-      ->execute(['ref'=>$result['reference'],'status'=>$txStatus,'response'=>$safe,'error'=>$state==='REVIEW'?'Supplier response requires manual review':null,'id'=>$orderId]);
+    // A late HTTP response must not overwrite stale-lock recovery's REVIEW state.
+    $guard=$pdo->prepare("UPDATE supplier_transactions SET provider_reference=NULLIF(:ref,''),status=:status,attempts=attempts+1,response_payload=:response,last_error=:error WHERE order_id=:id AND status IN ('PROCESSING','RETRYING')");
+    $guard->execute(['ref'=>$result['reference'],'status'=>$txStatus,'response'=>$safe,'error'=>$state==='REVIEW'?'Supplier response requires manual review':null,'id'=>$orderId]);
+    if ($guard->rowCount() !== 1) return 'REVIEW';
     if ($state==='SUCCESS') {
-        $pdo->prepare("UPDATE orders SET order_status='SUCCESS',supplier_reference=:ref,fulfilled_at=NOW(),last_error=NULL WHERE id=:id")->execute(['ref'=>$result['reference'],'id'=>$orderId]);
+        $pdo->prepare("UPDATE orders SET order_status='SUCCESS',supplier_reference=:ref,fulfilled_at=NOW(),last_error=NULL WHERE id=:id AND payment_status='PAID' AND order_status IN ('PROCESSING','RETRYING')")->execute(['ref'=>$result['reference'],'id'=>$orderId]);
         return 'DONE';
     }
     if ($state==='PENDING') {
-        $pdo->prepare("UPDATE orders SET order_status='RETRYING',last_error='Supplier processing; status will be checked again' WHERE id=:id")->execute(['id'=>$orderId]);
+        $pdo->prepare("UPDATE orders SET order_status='RETRYING',last_error='Supplier processing; status will be checked again' WHERE id=:id AND payment_status='PAID' AND order_status IN ('PROCESSING','RETRYING')")->execute(['id'=>$orderId]);
         return 'RETRY';
     }
     if ($state==='REVIEW') {
         $reason='Supplier response is ambiguous or unrecognized; manual reconciliation required';
         $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error=:reason WHERE order_id=:id")->execute(['reason'=>$reason,'id'=>$orderId]);
-        $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error=:reason WHERE id=:id AND payment_status='PAID'")->execute(['reason'=>$reason,'id'=>$orderId]);
+        $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error=:reason WHERE id=:id AND payment_status='PAID' AND order_status IN ('PROCESSING','RETRYING')")->execute(['reason'=>$reason,'id'=>$orderId]);
         return 'REVIEW';
     }
     $reason='Supplier explicitly rejected the order';
