@@ -90,3 +90,8 @@ Integration-test fixture correction: commit `649d3e2` fixes shell variable expan
 ## Verification update — 2026-10-12
 
 The failed Duitku callback state-consistency regression is now verified. Commit `649d3e2cd1` corrected variable expansion in the shell integration fixture. Fulfillment run `38246227164` passed both MySQL callback integration and PHP tests. Follow-up documentation commit `7e7723095e` passed all three workflows: quality `38246259533`, syntax `38246259565`, and fulfillment `38246259539`. Full `checkout_create_payment()` recovery after an induced deadlock remains a separate test gap; do not mistake the existing deadlock-classification test for full-path proof. Production remains blocked pending staging checks, and all live transaction flags stay disabled.
+
+
+## Additional Duitku callback rejection coverage (2026-10-12)
+
+Commit `fc7b8788890d6de2` extends the MySQL callback integration script with two negative cases: invalid HMAC signature and validly signed callback with an amount that does not match the payment row. Each must return HTTP 400 and preserve pending payment/order state without enqueuing fulfillment. The change is committed; CI is pending and must be checked before marking the cases verified. No live API calls were made.
