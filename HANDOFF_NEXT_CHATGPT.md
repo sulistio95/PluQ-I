@@ -155,3 +155,6 @@ Verification update: callback rejection coverage from commit `fc7b8788890d6de2c6
 ## Latest MySQL integration work (2026-10-13)
 
 Workflow commit `bb8549257b9b35bf5214152c50905192e6ab05a4` changes the concurrent checkout idempotency test to run three independent iterations against MySQL with mocked Duitku. Existing checks still assert one order/payment, exactly one gateway mock call, identical payment URL reuse, and rejection of a changed account payload. Await CI for this workflow commit. This increases stress coverage but does not prove full-path deadlock recovery inside `checkout_create_payment()`; keep that gap open. Do not enable live checkout/supplier flags or deploy. No live APIs were called.
+
+
+CI note: initial 3-iteration MySQL stress run found the test incorrectly assumed child 1 always wins; two iterations passed and the third failed that assertion. Commit `d518075b5d8b3b8bfa5c4b8f284eb4d072a24813` makes the assertions scheduling-independent (exactly one creator and one reuser). Verify the new CI before considering it green. This was a test assertion flaw, not evidence of checkout code failure. Full-path deadlock recovery remains an open test gap.
