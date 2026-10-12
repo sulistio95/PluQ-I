@@ -81,7 +81,12 @@ The real MySQL deadlock classification integration passed in fulfillment run `38
 
 - Audit found the definitive `resultCode=01` callback marked `payment_transactions.status=FAILED` and `orders.payment_status=FAILED` but left a still-pending `orders.order_status=PENDING` behind. Commit `e9ffef5` now also transitions order status from `PENDING` to `FAILED`, without overwriting later/non-pending order states.
 - Added a second disposable pending order fixture to `.github/workflows/fulfillment-tests.yml` and extended `tests/duitku_callback_integration.sh` (commit `dabd808`) to send a valid signed `01` callback and assert payment/order both become `FAILED` and no fulfillment job is added. This is test-only fixture data; no live API calls.
-- CI for this callback-state change and integration assertion must be checked before marking it verified. Keep live payment/supplier flags disabled.
+- Verification complete: after correcting shell variable expansion in commit `649d3e2cd1`, fulfillment run `38246227164` passed both `mysql-callback-integration` and `php-tests`. The follow-up documentation commit `7e7723095e` passed PHP quality (`38246259533`), syntax (`38246259565`), and fulfillment (`38246259539`). The MySQL test confirms the signed `resultCode=01` callback sets payment and still-pending order to `FAILED`, adds no fulfillment job, and duplicate successful callbacks enqueue exactly once. No live gateway/supplier calls were made. Keep live payment/supplier flags disabled.
 
 
 Integration-test fixture correction: commit `649d3e2` fixes shell variable expansion in the failed-callback test (`tests/duitku_callback_integration.sh`). The latest CI triggered by this correction is pending; verify the MySQL integration job before considering the regression covered.
+
+
+## Verification update — 2026-10-12
+
+The failed Duitku callback state-consistency regression is now verified. Commit `649d3e2cd1` corrected variable expansion in the shell integration fixture. Fulfillment run `38246227164` passed both MySQL callback integration and PHP tests. Follow-up documentation commit `7e7723095e` passed all three workflows: quality `38246259533`, syntax `38246259565`, and fulfillment `38246259539`. Full `checkout_create_payment()` recovery after an induced deadlock remains a separate test gap; do not mistake the existing deadlock-classification test for full-path proof. Production remains blocked pending staging checks, and all live transaction flags stay disabled.
