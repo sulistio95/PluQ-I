@@ -126,8 +126,11 @@ try {
     $first = json_decode((string)file_get_contents($firstResult), true, 512, JSON_THROW_ON_ERROR);
     $second = json_decode((string)file_get_contents($secondResult), true, 512, JSON_THROW_ON_ERROR);
     checkout_integration_assert(empty($first['error']) && empty($second['error']), 'Checkout process returned an error.');
-    checkout_integration_assert(($first['reused'] ?? null) === false, 'First request must create the gateway payment.');
-    checkout_integration_assert(($second['reused'] ?? null) === true, 'Second request must reuse the winning payment URL.');
+    // Process scheduling is nondeterministic: either child may win the insert race.
+    checkout_integration_assert(in_array(($first['reused'] ?? null), [true, false], true), 'First result must report whether it reused the payment.');
+    checkout_integration_assert(in_array(($second['reused'] ?? null), [true, false], true), 'Second result must report whether it reused the payment.');
+    checkout_integration_assert((int)(($first['reused'] ?? null) === false) + (int)(($second['reused'] ?? null) === false) === 1, 'Exactly one concurrent checkout request must create the gateway payment.');
+    checkout_integration_assert((int)(($first['reused'] ?? null) === true) + (int)(($second['reused'] ?? null) === true) === 1, 'Exactly one concurrent checkout request must reuse the winning payment.');
     checkout_integration_assert(($first['order_id'] ?? null) === ($second['order_id'] ?? null), 'Both requests must return the same order.');
     checkout_integration_assert(($first['payment_url'] ?? null) === ($second['payment_url'] ?? null), 'Both requests must return the same persisted payment URL.');
     $calls = is_file($callLog) ? file($callLog, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) : [];
