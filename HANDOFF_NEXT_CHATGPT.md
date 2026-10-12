@@ -1,6 +1,6 @@
 # PluQ-I — Handoff for the next ChatGPT session
 
-Last updated: 2026-10-12 (Asia/Jakarta) — checkout winner-URL wait and MySQL concurrency integration added; CI pending
+Last updated: 2026-10-12 (Asia/Jakarta) — checkout concurrency integration passed; deadlock classifier narrowed; latest CI pending
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
