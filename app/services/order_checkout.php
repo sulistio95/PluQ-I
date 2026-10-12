@@ -100,7 +100,13 @@ function checkout_create_payment(PDO $pdo, array $input): array
 
     try {
         $payment = duitku_create_payment($config,$publicId,$amount,$quote['game']['name'].' - '.$quote['product']['name'],$email);
-        $stmt = $pdo->prepare("UPDATE payment_transactions SET gateway_reference=:reference,gateway_payment_url=:url,gateway_expiry_at=DATE_ADD(NOW(),INTERVAL 30 MINUTE) WHERE merchant_order_id=:id AND status='PENDING'");
+        // A fast callback may mark the transaction paid before this response is persisted.
+        // Store the payment URL regardless of current status, without overwriting a callback reference.
+        $stmt = $pdo->prepare("UPDATE payment_transactions
+          SET gateway_reference=COALESCE(gateway_reference,:reference),
+              gateway_payment_url=:url,
+              gateway_expiry_at=COALESCE(gateway_expiry_at,DATE_ADD(NOW(),INTERVAL 30 MINUTE))
+          WHERE merchant_order_id=:id");
         $stmt->execute(['reference'=>$payment['reference'],'url'=>$payment['payment_url'],'id'=>$publicId]);
         return ['order_id'=>$publicId,'payment_url'=>$payment['payment_url'],'reused'=>false];
     } catch (Throwable $e) {
