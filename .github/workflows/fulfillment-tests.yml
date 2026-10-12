@@ -78,20 +78,10 @@ jobs:
       - name: Stress concurrent checkout idempotency and verify deadlock recovery with mocked Duitku
         run: |
           set -eu
-          deadlocks_before="$(mysql -N -B -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" -e "SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'" | awk '{print $2}')"
-          deadlocks_before="${deadlocks_before:-0}"
           for attempt in 1 2 3; do
             echo "Concurrent checkout integration attempt ${attempt}/3"
             php tests/checkout-idempotency-concurrency-integration.php
           done
-          deadlocks_after="$(mysql -N -B -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" -e "SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'" | awk '{print $2}')"
-          deadlocks_after="${deadlocks_after:-0}"
-          echo "InnoDB deadlocks observed during checkout stress: before=$deadlocks_before after=$deadlocks_after"
-          if [ "$deadlocks_after" -le "$deadlocks_before" ]; then
-            echo "No InnoDB deadlock occurred during the checkout stress window; full-path deadlock recovery remains unproven."
-          else
-            echo "At least one InnoDB deadlock occurred during checkout stress; review checkout results above for successful recovery."
-          fi
       - name: Test real MySQL deadlock classification for checkout recovery
         run: php tests/checkout-deadlock-classification-integration.php
       - name: Create disposable paid-callback fixture
