@@ -1,6 +1,6 @@
 # PluQ-I — Handoff for the next ChatGPT session
 
-Last updated: 2026-10-12 (Asia/Jakarta) — admin authorization audit continued
+Last updated: 2026-10-12 (Asia/Jakarta) — admin authorization and duplicate-queue audit continued
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
@@ -44,6 +44,8 @@ Read this file first, then read `README.md` and `docs/production-readiness-audit
 - Admin role checks were centralized in `admin_can_manage_settings()` in `app/services/admin_auth.php` (commit `a9b8c4c7321fab6924f4175d1419ce0acaa74c65`). Both `public/admin/index.php` (Drive setting) and `public/admin/game-mappings.php` (supplier mapping mutations) now call that helper (commits `da72aa030fe641a4a3ed7b11191e303b790fc78f` and `b13b7ade7f24af5cb742e67c001da28ffb916d89`).
 - Added `tests/admin-authorization.php` for role allow/deny cases and wired it into `.github/workflows/php-quality.yml` (commits `6134f52527d8d0882b92e237847ba3ed3086b197` and `a6a15d6131b21d577611153075ff8b1106665ed6`).
 - Audit row updated in `docs/production-readiness-audit.md` (commit `6f19570577ed02383dfb4a571e8d018b1f9b6c6c`).
+- Queue race audit: found that a duplicate queue job could see a supplier transaction in fresh `PROCESSING` state while another worker was still making the supplier request, and incorrectly force manual review. `app/services/fulfillment.php` now treats `PROCESSING` rows updated within the last 10 minutes as active and returns `IGNORED` for the duplicate job; older ambiguous states still go to manual review (commit `43ba2b74f1dae5644cc0d0fdfe5574ad09a7d5c9`). This is source-level mitigation; DB-backed concurrency tests are still required.
+- Updated audit notes with the queue finding and observed CI step results (commit `ef878ab554a96271401df9c468fed3c7c40e5eab`).
 
 ## Latest work log (2026-10-12)
 
@@ -60,8 +62,9 @@ GitHub Actions workflow: `.github/workflows/php-quality.yml`
 - `tests/duitku-callback-result-state.php`
 - `tests/checkout-request-fingerprint.php`
 - `tests/fulfillment-mapping.php`
+- `tests/admin-authorization.php`
 
-Important limitation: at the last check, the GitHub combined commit status returned no status entries, and a local clone failed because the execution environment could not resolve `github.com`. Therefore **do not claim CI passed or PHP/tests were run locally** unless a new check confirms it. These are source files and intended checks, not proof of a successful runtime run.
+Latest observed CI run `38201655600` completed PHP setup, lint, and all four test steps with `success`, but the overall run was still `in_progress` at the last observation because GitHub was running its final post-job step. Recheck the final conclusion before saying the entire workflow passed. A local clone previously failed because the execution environment could not resolve `github.com`. CI tests are not database-backed and do not certify live provider/payment behavior.
 
 ## Production safety — hard stop
 
