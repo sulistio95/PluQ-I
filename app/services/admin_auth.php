@@ -1,11 +1,23 @@
 <?php
 declare(strict_types=1);
 
+function admin_request_is_https(): bool
+{
+    if (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') {
+        return true;
+    }
+    // Forwarded headers are client-spoofable unless a trusted proxy sanitizes them.
+    // Honor X-Forwarded-Proto only when the deployment explicitly opts in.
+    if (strtolower(trim((string) (getenv('ADMIN_TRUST_PROXY_HTTPS') ?: 'false'))) !== 'true') {
+        return false;
+    }
+    return strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))) === 'https';
+}
+
 function admin_session_start(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) return;
-    $https = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
-        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string) $_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
+    $https = admin_request_is_https();
     session_name('PLUQI_ADMIN');
     session_set_cookie_params([
         'lifetime' => 0,
