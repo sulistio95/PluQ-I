@@ -75,3 +75,10 @@ Keep `CHECKOUT_PAYMENTS_ENABLED=false`, `SUPPLIER_ORDERS_ENABLED=false`, and `SE
 The admin session helper no longer trusts `X-Forwarded-Proto: https` unless the deployment explicitly sets `ADMIN_TRUST_PROXY_HTTPS=true`. This reduces reliance on a client-spoofable forwarded header. Direct HTTPS detection through the server's `HTTPS` variable remains supported. The environment example defaults the option to false; enable it only when the reverse proxy is trusted and configured to overwrite/strip incoming forwarded-proto headers. Regression coverage was added to `tests/admin-authorization.php`. PHP quality (`38244155564`) and syntax (`38244155580`) passed for commit `022fe0052b`; fulfillment (`38244155610`) was pending at the last check. Verify the final CI conclusion and confirm cookie `Secure` behavior on the actual hosting/proxy before production.
 
 The real MySQL deadlock classification integration passed in fulfillment run `38242948715`; it validates MySQL error classification, not the full `checkout_create_payment()` recovery path. A deterministic full-path regression test remains outstanding.
+
+
+## Duitku failed-callback state consistency (2026-10-12)
+
+- Audit found the definitive `resultCode=01` callback marked `payment_transactions.status=FAILED` and `orders.payment_status=FAILED` but left a still-pending `orders.order_status=PENDING` behind. Commit `e9ffef5` now also transitions order status from `PENDING` to `FAILED`, without overwriting later/non-pending order states.
+- Added a second disposable pending order fixture to `.github/workflows/fulfillment-tests.yml` and extended `tests/duitku_callback_integration.sh` (commit `dabd808`) to send a valid signed `01` callback and assert payment/order both become `FAILED` and no fulfillment job is added. This is test-only fixture data; no live API calls.
+- CI for this callback-state change and integration assertion must be checked before marking it verified. Keep live payment/supplier flags disabled.
