@@ -162,11 +162,16 @@ function fulfillment_process(PDO $pdo, int $orderId): string
         if (!$order || $order['payment_status']!=='PAID') { $pdo->commit(); return 'IGNORED'; }
         if ($order['order_status']==='SUCCESS') { $pdo->commit(); return 'DONE'; }
         $reference='PQI-'.$order['public_id'];
-        $q=$pdo->prepare('SELECT * FROM supplier_transactions WHERE order_id=:id LIMIT 1 FOR UPDATE');
+        $q=$pdo->prepare("SELECT *, (updated_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)) AS is_recent FROM supplier_transactions WHERE order_id=:id LIMIT 1 FOR UPDATE");
         $q->execute(['id'=>$orderId]); $supplier=$q->fetch() ?: null;
         if (!$supplier) {
             $q=$pdo->prepare("INSERT INTO supplier_transactions (order_id,provider_id,reference_id,status,attempts) VALUES (:oid,:pid,:ref,'PROCESSING',1)");
             $q->execute(['oid'=>$orderId,'pid'=>$order['provider_id'],'ref'=>$reference]);
+        } elseif ($supplier['status']==='PROCESSING' && (int)($supplier['is_recent'] ?? 0) === 1) {
+            // A second queue entry may encounter the first worker while its supplier HTTP call is still active.
+            // Treat a fresh PROCESSING record as an active lease, not as proof of a crash; the duplicate job can finish safely.
+            $pdo->commit();
+            return 'IGNORED';
         } elseif ($supplier['status']==='PROCESSING' ||
             ($supplier['status']==='RETRYING' && strtoupper((string)$order['provider_code'])==='DIGI')) {
             // A prior request may have been accepted before a crash or timeout. Digiflazz retry semantics
