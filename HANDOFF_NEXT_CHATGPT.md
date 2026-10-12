@@ -110,3 +110,10 @@ Do not deploy or initiate live transactions, real supplier orders, or Google Dri
 - Keep explanations in Indonesian.
 - Do not claim completion merely because files exist. State what was changed, which checks were actually performed, and what remains blocked.
 - If a tool/network restriction prevents a test or edit, record that limitation here and in the audit notes.
+
+
+## Latest work — checkout deadlock and admin HTTPS proxy trust (2026-10-12)
+
+- The real MySQL deadlock classification test passed in fulfillment run `38242948715`; both `mysql-callback-integration` and `php-tests` completed successfully. Documentation follow-up workflows on commit `e33a8140be` passed quality (`38242987438`), syntax (`38242987397`), and fulfillment (`38242987424`). Full-path recovery from a deliberately induced deadlock inside `checkout_create_payment()` remains untested and is still a production-readiness gap.
+- Admin session cookie setup previously trusted `HTTP_X_FORWARDED_PROTO=https` unconditionally. Commit `875866f` introduces `admin_request_is_https()`; forwarded proto is accepted only when `ADMIN_TRUST_PROXY_HTTPS=true`, while direct `HTTPS=on` remains accepted. `.env.example` documents the setting as false by default; only enable it when the trusted reverse proxy strips client-supplied forwarded headers. Regression tests in `tests/admin-authorization.php` cover untrusted forwarded headers, explicit proxy trust, multi-value headers, and direct HTTPS.
+- For commit `022fe0052b`, PHP quality run `38244155564` and syntax run `38244155580` passed. Fulfillment run `38244155610` was still in progress at the last check; recheck it before claiming all workflows passed. Do not deploy or enable live payment/supplier flags.
