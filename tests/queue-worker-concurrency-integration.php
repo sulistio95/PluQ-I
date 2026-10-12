@@ -10,6 +10,21 @@ if (!function_exists('pcntl_fork') || !function_exists('pcntl_waitpid')) {
 }
 
 $pdo = database();
+
+function queue_test_fresh_connection(): PDO
+{
+    $host = getenv('DB_HOST') ?: '127.0.0.1';
+    $port = (int)(getenv('DB_PORT') ?: 3306);
+    $name = getenv('DB_DATABASE') ?: '';
+    $user = getenv('DB_USERNAME') ?: '';
+    $pass = getenv('DB_PASSWORD') ?: '';
+    return new PDO(sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',$host,$port,$name),$user,$pass,[
+        PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES=>false,
+        PDO::ATTR_TIMEOUT=>5,
+    ]);
+}
 $ready = (int)$pdo->query("SELECT COUNT(*) FROM job_queue WHERE status IN ('PENDING','RETRY') AND available_at<=NOW()")->fetchColumn();
 if ($ready !== 0) {
     fwrite(STDERR, "Queue must have no ready jobs before this isolated concurrency test; found {$ready}.\n");
@@ -39,7 +54,7 @@ try {
         if ($pid === 0) {
             try {
                 // Each child opens its own connection, just like independent cron workers.
-                $childPdo = database();
+                $childPdo = queue_test_fresh_connection();
                 $token = bin2hex(random_bytes(16));
                 $childPdo->beginTransaction();
                 $q = $childPdo->query("SELECT id,job_type,payload,attempts FROM job_queue
