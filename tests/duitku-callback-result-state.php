@@ -5,7 +5,7 @@ require_once dirname(__DIR__) . '/app/services/duitku.php';
 
 $cases = [
     '00' => 'PAID',
-    '01' => 'PENDING',
+    '01' => 'FAILED',
 ];
 foreach ($cases as $code => $expected) {
     $actual = duitku_callback_result_state($code);
