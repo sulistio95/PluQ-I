@@ -15,7 +15,7 @@ SQL
 
 php <<'PHP'
 <?php
-require __DIR__ . '/../app/bootstrap.php';
+require getcwd() . '/app/bootstrap.php';
 require_once PLUQI_ROOT . '/config/database.php';
 require_once PLUQI_ROOT . '/app/services/fulfillment.php';
 
