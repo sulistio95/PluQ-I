@@ -2,6 +2,10 @@
 
 Shared-hosting edition of PluQ for PHP 8.2+ and MySQL/MariaDB. This repository is separate from the primary `sulistio95/PluQ` repository, which is intended for deployment to Cloudbaik.
 
+## Continuing work in a new ChatGPT chat
+
+Read [`HANDOFF_NEXT_CHATGPT.md`](HANDOFF_NEXT_CHATGPT.md) first, then [`docs/production-readiness-audit.md`](docs/production-readiness-audit.md). The handoff records project boundaries, latest verified changes, test limitations, production safety flags, and the prioritized next steps. Update it as work progresses; do not treat unverified tests as passing.
+
 ## Hosting split
 
 - **PluQ** (`sulistio95/PluQ`): primary edition; Cloudbaik is the planned hosting target.
