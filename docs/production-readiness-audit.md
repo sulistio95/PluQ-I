@@ -103,3 +103,9 @@ Verification update: callback rejection coverage from commit `fc7b8788890d6de2c6
 ## Checkout concurrency regression strengthened (2026-10-13)
 
 Commits `93a13db9ac` and `f7508904ed` modify `tests/checkout-idempotency-concurrency-integration.php` to start both same-key checkout workers without the previous 300 ms stagger, using a shared filesystem gate to release them together. Assertions remain: exactly one order, one payment, one mocked Duitku request, both callers receive the same order/payment URL, and mismatched payload reuse is rejected. CI is pending; verify the MySQL integration job before considering this test change green. This stress test increases race coverage but does not alone prove that error 1213 was triggered within `checkout_create_payment()`; full-path deadlock recovery remains unproven until the deadlock is observed deterministically. No live gateway/supplier calls; live transaction flags remain disabled.
+
+
+## MySQL checkout race stress run (2026-10-13)
+
+- CI now executes `tests/checkout-idempotency-concurrency-integration.php` three times with independent random fixtures on each run, using the synchronized start gate and mocked Duitku only (workflow commit `bb8549257b9b35bf5214152c50905192e6ab05a4`). This raises the chance of catching intermittent concurrency regressions while asserting one order/payment, one gateway mock call, the same persisted payment URL for both callers, and rejection of changed payload reuse.
+- This is stress coverage, not deterministic proof that `checkout_create_payment()` itself receives MySQL error 1213 and completes winner recovery. The separate deadlock test proves real MySQL classification only. Keep the full-path deadlock-recovery gap open until a deterministic integration test observes that exact sequence. Await CI for the new workflow change; do not claim it passed yet. No live gateway or supplier API calls were made.
