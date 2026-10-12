@@ -94,4 +94,7 @@ The failed Duitku callback state-consistency regression is now verified. Commit 
 
 ## Additional Duitku callback rejection coverage (2026-10-12)
 
-Commit `fc7b8788890d6de2` extends the MySQL callback integration script with two negative cases: invalid HMAC signature and validly signed callback with an amount that does not match the payment row. Each must return HTTP 400 and preserve pending payment/order state without enqueuing fulfillment. The change is committed; CI is pending and must be checked before marking the cases verified. No live API calls were made.
+Commit `fc7b8788890d6de2` extends the MySQL callback integration script with two negative cases: invalid HMAC signature and validly signed callback with an amount that does not match the payment row. Each must return HTTP 400 and preserve pending payment/order state without enqueuing fulfillment. The cases are verified in CI for commit `fc7b8788890d6de2c62f231b9016d67a39c30765`: PHP quality run `38251844581`, syntax run `38251844521`, and fulfillment run `38251844517` all passed. The fulfillment run's MySQL integration job completed successfully. No live API calls were made.
+
+
+Verification update: callback rejection coverage from commit `fc7b8788890d6de2c62f231b9016d67a39c30765` passed all three CI workflows (quality `38251844581`, syntax `38251844521`, fulfillment `38251844517`). The MySQL integration step confirms invalid HMAC and mismatched amount return HTTP 400 while leaving the payment/order pending and adding no fulfillment job; the duplicate-success and failed-payment callback assertions also pass. Full-path deadlock recovery in `checkout_create_payment()` remains an open production-readiness test gap.
