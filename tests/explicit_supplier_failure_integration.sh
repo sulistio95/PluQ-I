@@ -57,5 +57,40 @@ $refundsAfterFailure = $q->fetchAll(PDO::FETCH_COLUMN);
 if (count($refundsAfterFailure) !== 1 || $refundsAfterFailure[0] !== 'FAILED') {
     fwrite(STDERR, "A failed refund must not be duplicated automatically.\n"); exit(1);
 }
-echo "Explicit supplier failure integration test passed.\n";
+// Simulate a worker crash after supplier failure was persisted but before
+// the refund row was inserted.
+$pdo->prepare("INSERT INTO orders
+    (public_id,game_id,product_id,provider_id,customer_game_data,base_price,selling_price,admin_fee,payment_status,order_status,paid_at)
+    SELECT 'crashrefund012345678901234', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','321'),
+           1000, 1500, 1000, 'PAID', 'PROCESSING', NOW()
+    FROM games g JOIN products p ON p.game_id=g.id
+    WHERE g.slug='integration-game' AND p.provider_product_code='integration-sku'")->execute();
+$q = $pdo->prepare("SELECT id,provider_id FROM orders WHERE public_id=?");
+$q->execute(['crashrefund012345678901234']);
+$recovery = $q->fetch(PDO::FETCH_ASSOC);
+if (!$recovery) { fwrite(STDERR, "Crash-window fixture was not created.\\n"); exit(1); }
+$pdo->prepare("INSERT INTO supplier_transactions (order_id,provider_id,reference_id,status,attempts)
+    VALUES (?,?,?,'FAILED',1)")->execute([
+        $recovery['id'], $recovery['provider_id'], 'PQI-crashrefund012345678901234'
+    ]);
+putenv('SUPPLIER_ORDERS_ENABLED=true');
+$outcome = fulfillment_process($pdo, (int)$recovery['id']);
+if ($outcome !== 'FAILED') {
+    fwrite(STDERR, "Persisted supplier failure should remain FAILED during recovery.\\n"); exit(1);
+}
+$q = $pdo->prepare("SELECT payment_status,order_status FROM orders WHERE id=?");
+$q->execute([$recovery['id']]);
+$recoveredOrder = $q->fetch(PDO::FETCH_ASSOC);
+$q = $pdo->prepare("SELECT status,amount FROM refunds WHERE order_id=?");
+$q->execute([$recovery['id']]);
+$recoveredRefunds = $q->fetchAll(PDO::FETCH_ASSOC);
+if (!$recoveredOrder || $recoveredOrder['payment_status'] !== 'PAID'
+    || $recoveredOrder['order_status'] !== 'FAILED'
+    || count($recoveredRefunds) !== 1 || $recoveredRefunds[0]['status'] !== 'PENDING'
+    || (float)$recoveredRefunds[0]['amount'] !== 2500.0) {
+    fwrite(STDERR, "Recovery did not create exactly one pending refund after persisted supplier failure.\\n");
+    exit(1);
+}
+
+echo "Explicit supplier failure and crash-window recovery integration test passed.\\n";
 PHP
