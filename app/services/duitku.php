@@ -60,6 +60,16 @@ function duitku_create_payment(array $config, string $orderId, int $amount, stri
     return ['payment_url' => $url, 'reference' => isset($response['reference']) ? (string)$response['reference'] : null];
 }
 
+/** Map Duitku callback result codes without treating a pending payment as a failure. */
+function duitku_callback_result_state(string $resultCode): string
+{
+    return match ($resultCode) {
+        '00' => 'PAID',
+        '01' => 'PENDING',
+        default => throw new InvalidArgumentException('Unsupported Duitku callback result code.'),
+    };
+}
+
 function duitku_verify_callback(array $config, array $data): bool
 {
     $merchant = (string)($data['merchantCode'] ?? '');
