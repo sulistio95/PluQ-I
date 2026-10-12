@@ -20,7 +20,7 @@ try {
     fwrite(STDERR, "Unsupported result code should throw.\n");
     exit(1);
 } catch (InvalidArgumentException $expected) {
-    // Expected: only documented success/pending states may be accepted by this endpoint.
+    // Expected: only documented success/failure callback states are mapped here.
 }
 
 echo "Duitku callback result-state tests passed.\n";
