@@ -48,6 +48,7 @@ try {
 
     // Do not carry a live parent MySQL socket across fork(): inherited PDO sockets
     // can be closed by a child and make the parent's connection go away.
+    unset($insert);
     $pdo = null;
     $children = [];
     for ($i=0; $i<2; $i++) {
