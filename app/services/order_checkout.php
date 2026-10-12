@@ -4,6 +4,27 @@ declare(strict_types=1);
 require_once __DIR__ . '/checkout_quote.php';
 require_once __DIR__ . '/duitku.php';
 
+function checkout_request_fingerprint(string $email, string $gameSlug, int $productId, array $account): string
+{
+    if ($productId < 1 || array_is_list($account) || count($account) > 20) {
+        throw new InvalidArgumentException('Data checkout tidak valid.');
+    }
+    $normalizedAccount = [];
+    foreach ($account as $field => $value) {
+        if (!is_string($field) || !is_scalar($value)) {
+            throw new InvalidArgumentException('Data akun tidak valid.');
+        }
+        $normalizedAccount[$field] = trim((string)$value);
+    }
+    ksort($normalizedAccount, SORT_STRING);
+    return hash('sha256', json_encode([
+        'email' => strtolower(trim($email)),
+        'game_slug' => trim($gameSlug),
+        'product_id' => $productId,
+        'account' => $normalizedAccount,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+}
+
 function checkout_create_payment(PDO $pdo, array $input): array
 {
     if (!checkout_payments_enabled()) {
@@ -24,20 +45,7 @@ function checkout_create_payment(PDO $pdo, array $input): array
     if (!is_array($account) || array_is_list($account) || count($account) > 20) {
         throw new InvalidArgumentException('Data akun tidak valid.');
     }
-    $normalizedAccount = [];
-    foreach ($account as $field => $value) {
-        if (!is_string($field) || !is_scalar($value)) {
-            throw new InvalidArgumentException('Data akun tidak valid.');
-        }
-        $normalizedAccount[$field] = trim((string)$value);
-    }
-    ksort($normalizedAccount, SORT_STRING);
-    $fingerprint = hash('sha256', json_encode([
-        'email' => strtolower($email),
-        'game_slug' => $gameSlug,
-        'product_id' => (int)$productId,
-        'account' => $normalizedAccount,
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+    $fingerprint = checkout_request_fingerprint($email, $gameSlug, (int)$productId, $account);
 
     $config = duitku_config();
     $checkoutKey = hash('sha256', $key);
