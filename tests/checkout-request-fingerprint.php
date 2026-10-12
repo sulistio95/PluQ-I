@@ -36,7 +36,7 @@ $validKeys = [
 ];
 foreach ($validKeys as $key) {
     if (!checkout_idempotency_key_is_valid($key)) {
-        fwrite(STDERR, "A valid UUID key should be accepted, including normalized case/whitespace.\\n");
+        fwrite(STDERR, "A valid UUID key should be accepted, including normalized case/whitespace.\n");
         exit(1);
     }
 }
@@ -49,7 +49,7 @@ foreach ([
     'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
 ] as $key) {
     if (checkout_idempotency_key_is_valid($key)) {
-        fwrite(STDERR, "Malformed UUID idempotency key should be rejected.\\n");
+        fwrite(STDERR, "Malformed UUID idempotency key should be rejected.\n");
         exit(1);
     }
 }
