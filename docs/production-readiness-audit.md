@@ -68,3 +68,10 @@ Duplicate callbacks for a transaction already in a non-pending state are acknowl
 ## Safety defaults
 
 Keep `CHECKOUT_PAYMENTS_ENABLED=false`, `SUPPLIER_ORDERS_ENABLED=false`, and `SETTLEMENT_BACKUP_ENABLED=false` until staging evidence is recorded. A successful syntax check is not proof that external APIs, database transactions, or production hosting work correctly.
+
+
+## Admin session cookie proxy trust review (2026-10-12)
+
+The admin session helper no longer trusts `X-Forwarded-Proto: https` unless the deployment explicitly sets `ADMIN_TRUST_PROXY_HTTPS=true`. This reduces reliance on a client-spoofable forwarded header. Direct HTTPS detection through the server's `HTTPS` variable remains supported. The environment example defaults the option to false; enable it only when the reverse proxy is trusted and configured to overwrite/strip incoming forwarded-proto headers. Regression coverage was added to `tests/admin-authorization.php`. PHP quality (`38244155564`) and syntax (`38244155580`) passed for commit `022fe0052b`; fulfillment (`38244155610`) was pending at the last check. Verify the final CI conclusion and confirm cookie `Secure` behavior on the actual hosting/proxy before production.
+
+The real MySQL deadlock classification integration passed in fulfillment run `38242948715`; it validates MySQL error classification, not the full `checkout_create_payment()` recovery path. A deterministic full-path regression test remains outstanding.
