@@ -1,6 +1,6 @@
 # PluQ-I — Handoff for the next ChatGPT session
 
-Last updated: 2026-10-12 (Asia/Jakarta) — checkout concurrency passed; real MySQL deadlock test added; CI pending
+Last updated: 2026-10-12 (Asia/Jakarta) — failed Duitku callback integration verified; latest CI green
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
@@ -127,3 +127,11 @@ Do not deploy or initiate live transactions, real supplier orders, or Google Dri
 
 
 Integration-test fixture correction: commit `649d3e2` fixes shell variable expansion in the failed-callback test (`tests/duitku_callback_integration.sh`). The latest CI triggered by this correction is pending; verify the MySQL integration job before considering the regression covered.
+
+
+## Latest verification — failed Duitku callback state consistency (2026-10-12)
+
+- Code change: commit `e9ffef5` closes a still-pending order as `FAILED` when a valid Duitku server-to-server callback has `resultCode=01`; it does not overwrite non-pending order status.
+- Integration fixture correction: commit `649d3e2cd1` fixes shell variable expansion in `tests/duitku_callback_integration.sh`. The MySQL integration job and PHP test job both passed in fulfillment run `38246227164`; the `mysql-callback-integration` job specifically completed successfully. Follow-up documentation workflows on commit `7e7723095e` also passed: PHP quality `38246259533`, PHP/JavaScript syntax `38246259565`, and fulfillment safety `38246259539`.
+- The integration test verifies the signed failed callback marks payment and pending order failed, does not enqueue fulfillment, and that duplicate successful callbacks enqueue only one job. No live gateway/supplier calls were made.
+- Next focused audit gap: build a controlled integration test for full `checkout_create_payment()` recovery after a real deadlock, not just classifier behavior. Keep checkout/payment, supplier order, and settlement backup flags disabled; do not deploy.
