@@ -40,6 +40,8 @@ $secondResult = sys_get_temp_dir() . '/pluq-checkout-second-' . $token . '.json'
 $gameId = 0;
 $productId = 0;
 $orderIds = [];
+$locker = null;
+$deadlocksBefore = 0;
 
 try {
     $pdo->beginTransaction();
@@ -117,7 +119,35 @@ try {
         }
     }
 
+    // Deterministically make both checkouts hold the absent-key gap lock while waiting
+    // for the same product row. Releasing this parent lock creates the insert/gap-lock
+    // deadlock window that checkout_create_payment() must recover from.
+    $locker = new PDO(
+        sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', getenv('DB_HOST') ?: '127.0.0.1', (int)(getenv('DB_PORT') ?: 3306), getenv('DB_DATABASE') ?: ''),
+        getenv('DB_USERNAME') ?: '',
+        getenv('DB_PASSWORD') ?: '',
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_EMULATE_PREPARES => false]
+    );
+    $deadlockRow = $locker->query("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->fetch(PDO::FETCH_NUM);
+    $deadlocksBefore = (int)($deadlockRow[1] ?? 0);
+    $locker->beginTransaction();
+    $lockProduct = $locker->prepare('SELECT id FROM products WHERE id=:id FOR UPDATE');
+    $lockProduct->execute(['id' => $productId]);
+    $lockerConnectionId = (int)$locker->query('SELECT CONNECTION_ID()')->fetchColumn();
     if (file_put_contents($startGate, 'go') === false) throw new RuntimeException('Could not release checkout race barrier.');
+
+    $waitDeadline = microtime(true) + 8.0;
+    $blockedChildren = 0;
+    do {
+        $waitStmt = $locker->prepare('SELECT COUNT(*) FROM performance_schema.data_lock_waits w JOIN performance_schema.threads bt ON bt.THREAD_ID=w.BLOCKING_THREAD_ID WHERE bt.PROCESSLIST_ID=:connection_id');
+        $waitStmt->execute(['connection_id' => $lockerConnectionId]);
+        $blockedChildren = (int)$waitStmt->fetchColumn();
+        if ($blockedChildren >= 2) break;
+        usleep(20000);
+    } while (microtime(true) < $waitDeadline);
+    checkout_integration_assert($blockedChildren >= 2, 'Both checkout workers did not reach the forced product-row lock; refusing to claim deterministic deadlock coverage. Observed lock waits: ' . $blockedChildren);
+    $locker->commit();
+    $locker = null;
     pcntl_waitpid($pid1, $status1);
     pcntl_waitpid($pid2, $status2);
     checkout_integration_assert(pcntl_wifexited($status1) && pcntl_wexitstatus($status1) === 0, 'First checkout process failed: ' . (file_get_contents($firstResult) ?: 'no result'));
@@ -135,6 +165,10 @@ try {
     checkout_integration_assert(($first['payment_url'] ?? null) === ($second['payment_url'] ?? null), 'Both requests must return the same persisted payment URL.');
     $calls = is_file($callLog) ? file($callLog, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) : [];
     checkout_integration_assert(count($calls) === 1, 'Mock Duitku must be called exactly once.');
+
+    $deadlockCheck = database()->query("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->fetch(PDO::FETCH_NUM);
+    $deadlocksAfter = (int)($deadlockCheck[1] ?? 0);
+    checkout_integration_assert($deadlocksAfter > $deadlocksBefore, 'The forced checkout race did not increment InnoDB deadlocks; full-path recovery is not proven. before=' . $deadlocksBefore . ' after=' . $deadlocksAfter);
 
     $pdo = database();
     $stmt = $pdo->prepare('SELECT id FROM orders WHERE checkout_key=:key');
@@ -164,6 +198,7 @@ try {
 
     echo "Concurrent MySQL checkout idempotency tests passed (mock Duitku; one order, one payment, one gateway call, winner URL reused, changed payload rejected).\n";
 } finally {
+    if ($locker instanceof PDO && $locker->inTransaction()) $locker->rollBack();
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
     if (!isset($pdo) || !$pdo instanceof PDO) {
         try { $pdo = database(); } catch (Throwable $ignored) { $pdo = null; }
