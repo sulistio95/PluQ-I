@@ -34,6 +34,7 @@ $slug = 'checkout-race-' . $token;
 $key = sprintf('%08x-%04x-4%03x-a%03x-%012x', random_int(1, 0xffffffff), random_int(0, 0xffff), random_int(0, 0xfff), random_int(0, 0xfff), random_int(0, 0xffffffffffff));
 $checkoutHash = hash('sha256', $key);
 $callLog = sys_get_temp_dir() . '/pluq-duitku-mock-' . $token . '.log';
+$startGate = sys_get_temp_dir() . '/pluq-checkout-start-' . $token . '.gate';
 $firstResult = sys_get_temp_dir() . '/pluq-checkout-first-' . $token . '.json';
 $secondResult = sys_get_temp_dir() . '/pluq-checkout-second-' . $token . '.json';
 $gameId = 0;
@@ -60,6 +61,7 @@ try {
     $pid1 = pcntl_fork();
     if ($pid1 === -1) throw new RuntimeException('Could not fork first checkout process.');
     if ($pid1 === 0) {
+        while (!is_file($startGate)) usleep(1000);
         try {
             $childPdo = database();
             $creator = static function (array $config, string $orderId, int $amount, string $product, string $email) use ($callLog): array {
@@ -92,6 +94,7 @@ try {
     $pid2 = pcntl_fork();
     if ($pid2 === -1) throw new RuntimeException('Could not fork second checkout process.');
     if ($pid2 === 0) {
+        while (!is_file($startGate)) usleep(1000);
         try {
             $childPdo = database();
             $creator = static function (array $config, string $orderId, int $amount, string $product, string $email) use ($callLog): array {
@@ -114,6 +117,7 @@ try {
         }
     }
 
+    if (file_put_contents($startGate, 'go') === false) throw new RuntimeException('Could not release checkout race barrier.');
     pcntl_waitpid($pid1, $status1);
     pcntl_waitpid($pid2, $status2);
     checkout_integration_assert(pcntl_wifexited($status1) && pcntl_wexitstatus($status1) === 0, 'First checkout process failed: ' . (file_get_contents($firstResult) ?: 'no result'));
@@ -170,5 +174,5 @@ try {
             $pdo->prepare('DELETE FROM games WHERE id=:id')->execute(['id' => $gameId]);
         }
     }
-    foreach ([$callLog, $firstResult, $secondResult] as $path) if (is_file($path)) unlink($path);
+    foreach ([$callLog, $firstResult, $secondResult, $startGate] as $path) if (is_file($path)) unlink($path);
 }
