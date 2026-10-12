@@ -109,6 +109,7 @@ $filters = [
     'to' => trim((string) ($_GET['to'] ?? '')),
     'payment_status' => trim((string) ($_GET['payment_status'] ?? '')),
     'order_status' => trim((string) ($_GET['order_status'] ?? '')),
+    'refund_status' => trim((string) ($_GET['refund_status'] ?? '')),
 ];
 
 if ($user) {
@@ -163,6 +164,11 @@ if ($user) {
     if (in_array($filters['order_status'], $allowedOrder, true)) {
         $where[] = 'o.order_status = :order_status'; $params['order_status'] = $filters['order_status'];
     } elseif ($filters['order_status'] !== '') { $error = 'Status pesanan tidak valid.'; $filters['order_status'] = ''; }
+    $allowedRefund = ['PENDING','PROCESSING','SUCCESS','FAILED'];
+    if (in_array($filters['refund_status'], $allowedRefund, true)) {
+        $where[] = "(SELECT rf.status FROM refunds rf WHERE rf.order_id=o.id ORDER BY rf.id DESC LIMIT 1) = :refund_status";
+        $params['refund_status'] = $filters['refund_status'];
+    } elseif ($filters['refund_status'] !== '') { $error = 'Status refund tidak valid.'; $filters['refund_status'] = ''; }
 
     $sql = "SELECT o.public_id,o.created_at,o.paid_at,o.fulfilled_at,o.payment_status,o.order_status,
               g.name AS game_name,p.name AS product_name,pr.code AS provider_code,
@@ -229,6 +235,7 @@ function admin_money(mixed $amount): string {
 <label>Sampai tanggal & waktu<input type="datetime-local" name="to" value="<?=admin_escape($filters['to'])?>"></label>
 <label>Status pembayaran<select name="payment_status"><option value="">Semua status pembayaran</option><?php foreach(['PENDING','PAID','FAILED','EXPIRED','REFUND_PENDING','REFUNDED'] as $s): ?><option <?=$filters['payment_status']===$s?'selected':''?>><?=$s?></option><?php endforeach; ?></select></label>
 <label>Status pesanan<select name="order_status"><option value="">Semua status pesanan</option><?php foreach(['PENDING','QUEUED','PROCESSING','RETRYING','SUCCESS','FAILED','REFUND_PENDING','REFUNDED','MANUAL_REVIEW'] as $s): ?><option <?=$filters['order_status']===$s?'selected':''?>><?=$s?></option><?php endforeach; ?></select></label>
+<label>Status refund<select name="refund_status"><option value="">Semua status refund</option><?php foreach(['PENDING','PROCESSING','SUCCESS','FAILED'] as $s): ?><option <?=$filters['refund_status']===$s?'selected':''?>><?=$s?></option><?php endforeach; ?></select></label>
 <div class="actions"><button type="submit">Terapkan filter</button><a href="/admin/">Reset</a></div>
 </form></section>
 <section class="panel"><div class="bar"><div><h2>Hasil transaksi</h2><div class="muted">Total hasil yang ditampilkan, bukan seluruh hasil jika batas 200 tercapai.</div></div><div><div class="stat"><?=number_format($summary['count'])?></div><div class="muted">Baris</div></div><div><div class="stat"><?=admin_money($summary['paid_total'])?></div><div class="muted">Jumlah payment PAID pada hasil</div></div></div>
