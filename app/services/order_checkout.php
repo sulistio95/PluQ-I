@@ -17,16 +17,41 @@ function checkout_create_payment(PDO $pdo, array $input): array
     if (!preg_match('/^[a-f0-9-]{36}$/D', $key)) {
         throw new InvalidArgumentException('Kunci permintaan tidak valid.');
     }
+    $productId = filter_var($input['product_id'] ?? null, FILTER_VALIDATE_INT);
+    if (!$productId || $productId < 1) throw new InvalidArgumentException('Produk tidak valid.');
+    $gameSlug = trim((string)($input['game_slug'] ?? ''));
+    $account = $input['account'] ?? null;
+    if (!is_array($account) || array_is_list($account) || count($account) > 20) {
+        throw new InvalidArgumentException('Data akun tidak valid.');
+    }
+    $normalizedAccount = [];
+    foreach ($account as $field => $value) {
+        if (!is_string($field) || !is_scalar($value)) {
+            throw new InvalidArgumentException('Data akun tidak valid.');
+        }
+        $normalizedAccount[$field] = trim((string)$value);
+    }
+    ksort($normalizedAccount, SORT_STRING);
+    $fingerprint = hash('sha256', json_encode([
+        'email' => strtolower($email),
+        'game_slug' => $gameSlug,
+        'product_id' => (int)$productId,
+        'account' => $normalizedAccount,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+
     $config = duitku_config();
     $checkoutKey = hash('sha256', $key);
     $pdo->beginTransaction();
     try {
-        $stmt = $pdo->prepare("SELECT o.public_id,pt.gateway_payment_url FROM orders o
+        $stmt = $pdo->prepare("SELECT o.public_id,o.checkout_payload_hash,pt.gateway_payment_url FROM orders o
           LEFT JOIN payment_transactions pt ON pt.order_id=o.id
           WHERE o.checkout_key=:key LIMIT 1 FOR UPDATE");
         $stmt->execute(['key' => $checkoutKey]);
         $old = $stmt->fetch();
         if ($old) {
+            if (!is_string($old['checkout_payload_hash']) || !hash_equals($old['checkout_payload_hash'], $fingerprint)) {
+                throw new DomainException('Kunci idempotensi sudah dipakai untuk data checkout berbeda atau pesanan lama perlu diperiksa admin.');
+            }
             $pdo->commit();
             if (!empty($old['gateway_payment_url'])) {
                 return ['order_id' => $old['public_id'], 'payment_url' => $old['gateway_payment_url'], 'reused' => true];
@@ -34,8 +59,6 @@ function checkout_create_payment(PDO $pdo, array $input): array
             throw new DomainException('Permintaan sudah tercatat dan perlu diperiksa admin.');
         }
 
-        $productId = filter_var($input['product_id'] ?? null, FILTER_VALIDATE_INT);
-        if (!$productId || $productId < 1) throw new InvalidArgumentException('Produk tidak valid.');
         $lock = $pdo->prepare('SELECT p.id FROM products p JOIN providers pr ON pr.id=p.provider_id WHERE p.id=:id FOR UPDATE');
         $lock->execute(['id' => $productId]);
         if (!$lock->fetch()) throw new DomainException('Produk tidak tersedia.');
@@ -49,10 +72,10 @@ function checkout_create_payment(PDO $pdo, array $input): array
         $publicId = bin2hex(random_bytes(13));
         $gameData = json_encode($quote['account'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $stmt = $pdo->prepare("INSERT INTO orders
-          (public_id,checkout_key,game_id,product_id,provider_id,customer_email,customer_game_data,base_price,selling_price,admin_fee,payment_status,order_status)
-          VALUES (:public_id,:checkout_key,:game_id,:product_id,:provider_id,:email,:game_data,:base,:selling,:fee,'PENDING','PENDING')");
+          (public_id,checkout_key,checkout_payload_hash,game_id,product_id,provider_id,customer_email,customer_game_data,base_price,selling_price,admin_fee,payment_status,order_status)
+          VALUES (:public_id,:checkout_key,:fingerprint,:game_id,:product_id,:provider_id,:email,:game_data,:base,:selling,:fee,'PENDING','PENDING')");
         $stmt->execute([
-          'public_id'=>$publicId,'checkout_key'=>$checkoutKey,'game_id'=>$refs['game_id'],
+          'public_id'=>$publicId,'checkout_key'=>$checkoutKey,'fingerprint'=>$fingerprint,'game_id'=>$refs['game_id'],
           'product_id'=>$productId,'provider_id'=>$refs['provider_id'],'email'=>$email,'game_data'=>$gameData,
           'base'=>$quote['price']['base_price'],'selling'=>$quote['price']['selling_price'],'fee'=>$quote['price']['admin_fee']
         ]);
