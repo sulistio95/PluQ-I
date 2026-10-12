@@ -199,3 +199,8 @@ Commit `065a10ca522f9d24ed213dd7c9ac583a7e49d4ac` passed all three workflows: PH
 ### Deadlock integration test harness correction (2026-10-13)
 
 The first CI attempt for commit `d9ad0feb8d0fa98a18a4f0f64bf967d038bbf524` failed before checking the deadlock counter because the test had deliberately unset the parent PDO before forking and then tried to query the counter through that unset variable. This was a test-harness connection-lifecycle bug, not a deadlock-recovery result; no claim about the application path can be drawn from that run. Commit `5b9452144202d8e97aa5c5d8259db5e36643ad04` reconnects through `database()` before reading the post-run counter and is awaiting CI. Continue by inspecting the MySQL integration logs for all three attempts and the counter assertion. Production flags remain disabled; mock gateway only.
+
+
+### Direct deadlock evidence replaces status-counter inference (2026-10-13)
+
+The corrected test run for commit `5b9452144202d8e97aa5c5d8259db5e36643ad04` reached the checkout assertion but reported `before=0 after=0`. The integration test did not produce a recorded exception, and the global status counter path is not a reliable proof source in this run. Commit `80eeec3f6ef66798b684a4eb66424719e51cc4c1` now captures the actual `PDOException` from each worker's second provider-row lock and asserts exactly one driver error `1213` classified by `checkout_is_idempotency_race()`; both checkout calls must still return the same order/URL with one mock gateway call. Workflow commit `eb30fe8539b6a7cdb9d8f5417ddcfd3dde744c70` removes the misleading global status counter and runs the deterministic test three times. CI is pending. Do not claim full-path recovery until the MySQL integration job passes all three iterations.
