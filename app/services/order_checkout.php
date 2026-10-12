@@ -71,8 +71,11 @@ function checkout_reuse_winning_request(PDO $pdo, string $checkoutKey, string $f
     throw new DomainException('Permintaan sudah tercatat tetapi tautan pembayaran belum tersedia; perlu pemeriksaan admin.');
 }
 
-function checkout_create_payment(PDO $pdo, array $input, ?callable $paymentCreator = null): array
+function checkout_create_payment(PDO $pdo, array $input, ?callable $paymentCreator = null, ?callable $beforeProductLock = null): array
 {
+    if ($beforeProductLock !== null && strtolower((string)(getenv('APP_ENV') ?: '')) !== 'test') {
+        throw new LogicException('Checkout transaction hooks are only available in the test environment.');
+    }
     if (!checkout_payments_enabled()) {
         throw new DomainException('Checkout pembayaran belum diaktifkan. Pesanan belum dibuat dan tidak ada pembayaran yang diminta.');
     }
@@ -109,6 +112,10 @@ function checkout_create_payment(PDO $pdo, array $input, ?callable $paymentCreat
             $pdo->commit();
             return checkout_reuse_winning_request($pdo, $checkoutKey, $fingerprint);
         }
+
+        // A guarded test-only hook lets the MySQL integration suite inject lock contention
+        // inside this transaction. Production callers must omit it.
+        if ($beforeProductLock !== null) $beforeProductLock($pdo);
 
         $lock = $pdo->prepare('SELECT p.id FROM products p JOIN providers pr ON pr.id=p.provider_id WHERE p.id=:id FOR UPDATE');
         $lock->execute(['id' => $productId]);
