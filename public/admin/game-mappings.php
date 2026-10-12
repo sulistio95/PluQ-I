@@ -21,7 +21,7 @@ if (!$user) {
 
 $error = '';
 $notice = '';
-$canManage = in_array($user['role'], ['SUPER_ADMIN', 'ADMIN'], true);
+$canManage = admin_can_manage_settings($user);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!admin_csrf_valid($_POST['csrf'] ?? null)) {
