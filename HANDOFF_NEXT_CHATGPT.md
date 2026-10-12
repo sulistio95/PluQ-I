@@ -182,3 +182,8 @@ Commit `58ee5b048800c490538ad04cb754b58befc680a0` updates `tests/checkout-idempo
 - Reverted only `tests/checkout-idempotency-concurrency-integration.php` to the previously passing synchronized stress test in commit `065a10ca522f9d24ed213dd7c9ac583a7e49d4ac`. It continues to verify same-key concurrency, one order/payment, one mocked Duitku call, URL reuse, and payload-mismatch rejection. CI for the revert is pending.
 - The separate MySQL deadlock integration still proves the SQLSTATE/driver error classifier handles a real 1213 victim, but it does not prove that the complete checkout function recovers after a real deadlock. Keep this gap explicit. Next work should design a deterministic full-path test without relying on the current product-row lock choreography, or leave the gap open rather than claim success.
 - No live gateway/supplier APIs or deployment were used; production flags remain disabled.
+
+
+### Verification after reverting the unproven deadlock choreography (2026-10-13)
+
+Commit `065a10ca522f9d24ed213dd7c9ac583a7e49d4ac` passed all three workflows: PHP quality `38319787900`, PHP/JavaScript syntax `38319788215`, and fulfillment safety `38319788002`. The fulfillment run's PHP tests and MySQL integration job both completed successfully, including the restored concurrent checkout idempotency stress test. This verifies the restored stress coverage only; full-path recovery after an actual deadlock inside `checkout_create_payment()` remains unproven. Documentation-only follow-up commit `ef5e72894d4ffa7bcc51ca2c577a356102f4511e` passed quality `38319827522` and syntax `38319827634`; its fulfillment run `38319827341` was still in progress at last check. No live APIs or deployment.
