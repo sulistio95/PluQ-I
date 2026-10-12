@@ -45,6 +45,12 @@ function admin_current_user(PDO $pdo): ?array
     return $user;
 }
 
+/** Only privileged admin roles may change supplier mappings or Drive settings. */
+function admin_can_manage_settings(array $user): bool
+{
+    return in_array((string) ($user['role'] ?? ''), ['SUPER_ADMIN', 'ADMIN'], true);
+}
+
 function admin_escape(mixed $value): string
 {
     return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
