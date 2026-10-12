@@ -65,7 +65,7 @@ function duitku_callback_result_state(string $resultCode): string
 {
     return match ($resultCode) {
         '00' => 'PAID',
-        '01' => 'PENDING',
+        '01' => 'FAILED',
         default => throw new InvalidArgumentException('Unsupported Duitku callback result code.'),
     };
 }
