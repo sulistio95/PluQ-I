@@ -1,6 +1,6 @@
 # PluQ-I — Handoff for the next ChatGPT session
 
-Last updated: 2026-10-12 (Asia/Jakarta) — refund crash-window recovery CI passed; late supplier-response guard added, CI pending
+Last updated: 2026-10-12 (Asia/Jakarta) — late-response guard verified; response persistence serialized with stale-lock recovery, CI pending
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
@@ -67,7 +67,7 @@ GitHub Actions workflow: `.github/workflows/php-quality.yml`
 - `tests/admin-authorization.php`
 - `tests/duplicate-queue-processing-integration.php` (MySQL integration workflow only; pending run result)
 
-Runs `38202791491` (PHP quality), `38202791510` (PHP/JavaScript syntax), and `38202791455` (fulfillment safety tests) all completed successfully for commit `455499aa42c3f99fdd31587db2e21d36613da408`. The refund crash-window recovery (`e221f01`) and integration test (`7908e11`) were verified by fulfillment run `38203732917`: both `php-tests` and `mysql-callback-integration` passed, including the explicit supplier rejection/refund integration step. After that, `app/services/fulfillment.php` was hardened in commit `30c0735` so a late supplier HTTP response cannot overwrite a `REVIEW` state written by stale-lock recovery; CI for this newest change is pending. A local clone previously failed because the execution environment could not resolve `github.com`. CI does not certify live provider/payment behavior.
+Runs `38202791491` (PHP quality), `38202791510` (PHP/JavaScript syntax), and `38202791455` (fulfillment safety tests) all completed successfully for commit `455499aa42c3f99fdd31587db2e21d36613da408`. The refund crash-window recovery (`e221f01`) and integration test (`7908e11`) were verified by fulfillment run `38203732917`: both `php-tests` and `mysql-callback-integration` passed, including the explicit supplier rejection/refund integration step. After that, `app/services/fulfillment.php` was hardened in commit `30c0735` so a late supplier HTTP response cannot overwrite a `REVIEW` state written by stale-lock recovery. PHP quality, syntax, and fulfillment safety workflows for `30c0735` all passed (runs `38204088585`, `38204088548`, `38204088535`). A deeper follow-up in commits `3cf9eaf` and `b039424` serializes both normal and uncertain supplier response persistence in a DB transaction that locks the order before the supplier transaction, matching stale-lock recovery's lock order. CI for these newest commits is pending. A local clone previously failed because the execution environment could not resolve `github.com`. CI does not certify live provider/payment behavior.
 
 ## Production safety — hard stop
 
@@ -85,7 +85,7 @@ Do not deploy or initiate live transactions, real supplier orders, or Google Dri
 3. Review the queue and fulfillment transaction boundaries: concurrent worker claims, lock-token conditional updates, pending supplier responses, retry limits, stale-lock recovery, duplicate queue jobs, and reconciliation path. Add DB integration tests where feasible; do not alter safe manual-review behavior without evidence.
 4. Review all migrations 001–010 and `bin/preflight.php` against a clean MySQL/MariaDB install and an upgrade path. Execute only when a real test DB/runtime is available.
 5. Expand tests for pricing/reserve boundaries, callback duplicate/conflicting transitions, checkout idempotency concurrency, refund idempotency, admin roles/CSRF, and queue concurrency.
-6. Verify GitHub Actions for commit `30c0735` (late supplier-response guard). The refund crash-window recovery and its MySQL integration assertion passed in run `38203732917`; do not assume the newer guard is verified until its own workflow finishes.
+6. Verify GitHub Actions for commits `3cf9eaf` and `b039424`, which make supplier response persistence atomic with order-first lock ordering. The preceding late-response guard `30c0735` passed all three workflows (runs `38204088585`, `38204088548`, `38204088535`); the new transaction/lock-order change still needs its own CI result.
 7. Keep `README.md`, `docs/production-readiness-audit.md`, and this handoff updated after substantive changes.
 
 ## Required staging exit checklist
