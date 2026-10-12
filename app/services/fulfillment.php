@@ -163,7 +163,13 @@ function fulfillment_process(PDO $pdo, int $orderId): string
           WHERE o.id=:id LIMIT 1 FOR UPDATE");
         $q->execute(['id'=>$orderId]); $order=$q->fetch();
         if (!$order || $order['payment_status']!=='PAID') { $pdo->commit(); return 'IGNORED'; }
-        if ($order['order_status']==='SUCCESS') { $pdo->commit(); return 'DONE'; }
+        if ($order['order_status']==='SUCCESS') {
+            // Idempotently repair the reservation if a previous worker stopped after
+            // recording order success but before consuming the committed capacity.
+            provider_reservation_consume($pdo, $orderId);
+            $pdo->commit();
+            return 'DONE';
+        }
         $reference='PQI-'.$order['public_id'];
         $q=$pdo->prepare('SELECT * FROM supplier_transactions WHERE order_id=:id LIMIT 1 FOR UPDATE');
         $q->execute(['id'=>$orderId]); $supplier=$q->fetch() ?: null;
@@ -180,7 +186,11 @@ function fulfillment_process(PDO $pdo, int $orderId): string
             return 'REVIEW';
         } elseif ($supplier['status']==='SUCCESS') {
             $pdo->prepare("UPDATE orders SET order_status='SUCCESS',fulfilled_at=COALESCE(fulfilled_at,NOW()) WHERE id=:id")->execute(['id'=>$orderId]);
-            $pdo->commit(); return 'DONE';
+            // Recover the reservation lifecycle when supplier success was saved but
+            // the worker stopped before the reservation could be marked CONSUMED.
+            provider_reservation_consume($pdo, $orderId);
+            $pdo->commit();
+            return 'DONE';
         } elseif ($supplier['status']==='FAILED') { $pdo->commit(); return 'FAILED'; }
         $account=json_decode((string)$order['customer_game_data'],true,512,JSON_THROW_ON_ERROR);
         if (!is_array($account)) throw new DomainException('Saved account data is invalid.');
