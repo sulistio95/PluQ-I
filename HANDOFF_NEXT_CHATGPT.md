@@ -54,7 +54,7 @@ Read this file first, then read `README.md` and `docs/production-readiness-audit
 - Centralized the allowed mutation roles (`SUPER_ADMIN`, `ADMIN`) in `admin_can_manage_settings()` and applied it to both Drive folder settings and game-provider mapping changes.
 - Added role-policy regression tests for allowed roles, `OPERATOR`, missing/empty roles, and case sensitivity; wired the test into GitHub Actions.
 - Updated `docs/production-readiness-audit.md` and this handoff after the code changes.
-- Verification: GitHub API confirmed the files/commits exist. No successful workflow run or local PHP test execution has been confirmed yet; do not call these tests passed until the workflow result or a local run is observed.
+- Verification update: GitHub Actions runs `38201807339` (`PHP quality checks`) and `38201807369` (`PHP and JavaScript syntax checks`) completed successfully for code commit `c7b682f695a68999217cc7bb5700ad422ceb2041`. In `38201807243` (`Fulfillment safety tests`), the PHP unit-test job passed, but the MySQL integration job was still initializing containers at the last check; the newly added duplicate-queue integration test is therefore not yet confirmed executed. No local PHP run is claimed. Recheck the final integration workflow conclusion.
 
 ## Tests and what is actually verified
 
@@ -66,7 +66,7 @@ GitHub Actions workflow: `.github/workflows/php-quality.yml`
 - `tests/admin-authorization.php`
 - `tests/duplicate-queue-processing-integration.php` (MySQL integration workflow only; pending run result)
 
-Latest observed CI run `38201655600` completed PHP setup, lint, and all four test steps with `success`, but the overall run was still `in_progress` at the last observation because GitHub was running its final post-job step. Recheck the final conclusion before saying the entire workflow passed. A local clone previously failed because the execution environment could not resolve `github.com`. CI tests are not database-backed and do not certify live provider/payment behavior.
+Latest observed `php-quality.yml` and `php-lint.yml` runs for code commit `c7b682f695a68999217cc7bb5700ad422ceb2041` completed successfully. The PHP unit-test job in `fulfillment-tests.yml` also passed; its MySQL integration job was still initializing containers at the last observation, so the overall workflow and new duplicate-queue integration step are not yet confirmed. A local clone previously failed because the execution environment could not resolve `github.com`. CI does not certify live provider/payment behavior.
 
 ## Production safety — hard stop
 
