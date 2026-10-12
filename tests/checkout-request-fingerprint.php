@@ -54,4 +54,18 @@ foreach ([
     }
 }
 
+foreach ([
+    new PDOException('duplicate key', '23000'),
+    new PDOException('deadlock', '40001'),
+] as $exception) {
+    if (!checkout_is_idempotency_race($exception)) {
+        fwrite(STDERR, "Duplicate-key and deadlock SQL states should enter idempotency race recovery.\n");
+        exit(1);
+    }
+}
+if (checkout_is_idempotency_race(new PDOException('unrelated database failure', 'HY000'))) {
+    fwrite(STDERR, "Unrelated database failures must not be classified as idempotency races.\n");
+    exit(1);
+}
+
 echo "Checkout request fingerprint tests passed.\n";
