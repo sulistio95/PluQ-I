@@ -135,3 +135,9 @@ Integration-test fixture correction: commit `649d3e2` fixes shell variable expan
 - Integration fixture correction: commit `649d3e2cd1` fixes shell variable expansion in `tests/duitku_callback_integration.sh`. The MySQL integration job and PHP test job both passed in fulfillment run `38246227164`; the `mysql-callback-integration` job specifically completed successfully. Follow-up documentation workflows on commit `7e7723095e` also passed: PHP quality `38246259533`, PHP/JavaScript syntax `38246259565`, and fulfillment safety `38246259539`.
 - The integration test verifies the signed failed callback marks payment and pending order failed, does not enqueue fulfillment, and that duplicate successful callbacks enqueue only one job. No live gateway/supplier calls were made.
 - Next focused audit gap: build a controlled integration test for full `checkout_create_payment()` recovery after a real deadlock, not just classifier behavior. Keep checkout/payment, supplier order, and settlement backup flags disabled; do not deploy.
+
+
+## Duitku callback rejection tests added (2026-10-12)
+
+- Commit `fc7b8788890d6de2` extends `tests/duitku_callback_integration.sh` to verify that an invalid HMAC signature and a correctly signed callback with the wrong amount both receive HTTP 400 and leave payment/order pending with no fulfillment job. The existing valid duplicate-success and definitive-failure cases remain in the same MySQL integration script.
+- CI for this new test change must be checked before treating it as verified. This is a local test fixture only; no live gateway or supplier requests are made. Production flags remain disabled.
