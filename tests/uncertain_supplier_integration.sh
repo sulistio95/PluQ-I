@@ -12,6 +12,11 @@ WHERE g.slug='integration-game' AND p.provider_product_code='integration-sku';
 INSERT INTO supplier_transactions (order_id,provider_id,reference_id,status,attempts)
 SELECT o.id,o.provider_id,CONCAT('PQI-',o.public_id),'PROCESSING',1
 FROM orders o WHERE o.public_id='9876543210abcdef9876543210';
+-- Model a crashed/abandoned request, not an active request made seconds ago.
+UPDATE supplier_transactions st
+JOIN orders o ON o.id = st.order_id
+SET st.updated_at = DATE_SUB(NOW(), INTERVAL 11 MINUTE)
+WHERE o.public_id = '9876543210abcdef9876543210';
 INSERT INTO job_queue (job_type,payload,status,attempts,available_at)
 SELECT 'FULFILL_ORDER',JSON_OBJECT('order_id',o.id),'PENDING',0,NOW()
 FROM orders o WHERE o.public_id='9876543210abcdef9876543210';
