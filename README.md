@@ -30,7 +30,7 @@ Do not assume every shared-hosting plan supports cron, the needed PHP extensions
 - Server-side price quotes validate the game, product, account fields, provider reserve and excluded services; the server recalculates selling price and admin fee.
 - Admin transaction inspection is available at `/admin/` after an administrator account is provisioned. It filters by provider API, gateway, date/time range, payment status, order status, and the latest refund status (`PENDING`, `PROCESSING`, `SUCCESS`, `FAILED`). Refund filtering is based on the newest refund record per order; access is session-authenticated.
 - Monthly settlement backup creates a formatted four-tab Google Sheets workbook in Google Drive after migrations 006–007 and OAuth/folder configuration. It is disabled by default and has not been tested against a real Google account from the hosting environment.
-- Checkout has an idempotency key, persistent pending-order/payment records, and Duitku sandbox request support. Configure `DUITKU_PAYMENT_METHOD`, credentials, and HTTPS callback/return URLs in the private `.env`.
+- Checkout binds its idempotency key to a normalized request fingerprint (email, game, product, and account fields), with persistent pending-order/payment records and Duitku sandbox request support. Configure `DUITKU_PAYMENT_METHOD`, credentials, and HTTPS callback/return URLs in the private `.env`.
 - Duitku callback validates HMAC-SHA256, checks the order and amount, treats result code `01` as failed, according to the server-to-server callback documentation, and only queues fulfillment after the first valid transition to paid.
 - Supplier adapters, balance sync, and an admin page for mapping supplier game codes to local games are committed; mappings still need to be configured and verified against the actual provider catalogs.
 - GitHub Actions now lints PHP files and runs the isolated Duitku callback-state test. Database-backed integration tests and live provider behavior still require a configured test database and staging credentials; do not infer they passed from the lint workflow.
@@ -68,6 +68,7 @@ PHP extensions: `pdo_mysql`, `curl`, `openssl`, `json`, `mbstring`, and `fileinf
    - `database/migrations/007_admin_drive_folder_setting.sql` (when enabling the admin-managed Drive folder setting)
    - `database/migrations/008_admin_login_rate_limit.sql` (required for database-backed admin login throttling)
    - `database/migrations/009_refund_order_latest_index.sql` (recommended for efficient latest-refund lookups in admin/status queries)
+   - `database/migrations/010_checkout_payload_fingerprint.sql` (required to prevent an idempotency key from being reused with different checkout details)
 7. Configure Duitku sandbox credentials and set `DUITKU_PAYMENT_METHOD` to a method enabled for the sandbox merchant. Configure HTTPS callback URL `https://your-domain/duitku-callback.php` and return URL `https://your-domain/order-status.php`.
 8. Point the document root at `public/` if supported. Otherwise deny direct access to `app/`, `config/`, `database/`, `bin/`, `tests/`, `.env`, and logs.
 9. Run migrations and create the first admin from the server CLI; do not create an admin through a public one-off script.
