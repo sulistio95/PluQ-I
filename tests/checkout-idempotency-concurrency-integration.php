@@ -173,11 +173,11 @@ try {
     $calls = is_file($callLog) ? file($callLog, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) : [];
     checkout_integration_assert(count($calls) === 1, 'Mock Duitku must be called exactly once.');
 
+    $pdo = database();
     $deadlockStatus = $pdo->query("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->fetch();
     $deadlocksAfter = (int)($deadlockStatus['Value'] ?? $deadlockStatus[1] ?? 0);
     checkout_integration_assert($deadlocksAfter > $deadlocksBefore, 'Expected this checkout run to trigger a real InnoDB deadlock; before=' . $deadlocksBefore . ' after=' . $deadlocksAfter);
 
-    $pdo = database();
     $stmt = $pdo->prepare('SELECT id FROM orders WHERE checkout_key=:key');
     $stmt->execute(['key' => $checkoutHash]);
     $rows = $stmt->fetchAll();
