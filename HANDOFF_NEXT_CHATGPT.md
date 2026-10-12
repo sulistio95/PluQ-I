@@ -158,3 +158,8 @@ Workflow commit `bb8549257b9b35bf5214152c50905192e6ab05a4` changes the concurren
 
 
 CI note: initial 3-iteration MySQL stress run found the test incorrectly assumed child 1 always wins; two iterations passed and the third failed that assertion. Commit `d518075b5d8b3b8bfa5c4b8f284eb4d072a24813` makes the assertions scheduling-independent (exactly one creator and one reuser). Verify the new CI before considering it green. This was a test assertion flaw, not evidence of checkout code failure. Full-path deadlock recovery remains an open test gap.
+
+
+## Checkout full-path deadlock recovery test (2026-10-13)
+
+Commit `4e33bf5dcd08` passed quality (`38283808180`), syntax (`38283808125`), and fulfillment (`38283808131`); MySQL integration passed three checkout idempotency iterations and the separate deadlock classifier test. Commit `570d6daf401375feb4fd39f822d63d8e0d7a6284` adds a stronger assertion around the three-iteration checkout stress test: the MySQL `Innodb_deadlocks` counter must increase during that window. The integration already asserts both callers succeed, one order/payment, exactly one mock Duitku call, and URL reuse. Await CI for `570d6daf` before claiming this proves full-path recovery. A failed counter assertion means the run did not observe a real deadlock; it must not be described as a code failure or a pass. No live APIs; do not deploy or enable checkout/supplier flags.
