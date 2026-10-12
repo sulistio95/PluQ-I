@@ -56,12 +56,12 @@ echo "Duitku MySQL callback idempotency integration test passed.\\n";
 failed_order_id="fedcba9876543210fedcba9876"
 failed_signature="$(php -r 'echo hash_hmac("sha256", getenv("DUITKU_MERCHANT_CODE") . "2500" . "fedcba9876543210fedcba9876", getenv("DUITKU_API_KEY"));')"
 curl --fail --silent --show-error \
-  --data-urlencode "merchantCode=\${merchant}" \
-  --data-urlencode "amount=\${amount}" \
-  --data-urlencode "merchantOrderId=\${failed_order_id}" \
+  --data-urlencode "merchantCode=${merchant}" \
+  --data-urlencode "amount=${amount}" \
+  --data-urlencode "merchantOrderId=${failed_order_id}" \
   --data-urlencode "resultCode=01" \
   --data-urlencode "reference=INTEGRATION-FAILED-REF" \
-  --data-urlencode "signature=\${failed_signature}" \
+  --data-urlencode "signature=${failed_signature}" \
   http://127.0.0.1:8080/duitku-callback.php >/tmp/pluq-callback-failed.json
 
 php -r '
