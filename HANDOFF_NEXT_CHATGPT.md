@@ -1,6 +1,6 @@
 # PluQ-I — Handoff for the next ChatGPT session
 
-Last updated: 2026-10-12 (Asia/Jakarta) — late-response guard verified; response persistence serialized with stale-lock recovery, CI pending
+Last updated: 2026-10-12 (Asia/Jakarta) — supplier persistence CI verified; worker lease finalization guard added, CI pending
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
@@ -36,6 +36,7 @@ Read this file first, then read `README.md` and `docs/production-readiness-audit
 - Checkout idempotency binds the idempotency key to a normalized fingerprint of email, game, product and account fields; same key with a different payload fails closed.
 - Duitku callback verifies HMAC, checks order/amount, locks the payment row and enqueues fulfillment only on the first valid transition to paid. Callback code `00` means success and `01` means failure according to Duitku server-to-server callback docs.
 - MySQL-backed bounded queue with lock tokens and retry cap; stale worker locks are moved to manual review rather than automatically resubmitted.
+- Worker finalization hardening (commit `957d310591c159af2357c2553db72d4f0187ef65`): after fulfillment returns, the worker now locks its queue row and verifies `status='PROCESSING'` plus the same `lock_token` before changing queue/order/supplier state. Finalization is transactional and locks queue → order → supplier, matching stale-lock recovery. A worker whose lease was revoked records `LOCK_LOST` and does not finalize its stale result. CI for this latest change is pending; add a DB integration test for a revoked lease and verify queue/order/supplier rows remain unchanged.
 - Supplier response mapping tests cover account-field mapping and common status normalization.
 - `bin/preflight.php` checks required runtime/schema conditions and ensures payment, supplier order and settlement-backup flags remain disabled.
 - Google Drive settlement export scaffolding exists but is disabled by default and is not validated against a real Google account.
