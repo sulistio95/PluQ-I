@@ -140,4 +140,7 @@ Integration-test fixture correction: commit `649d3e2` fixes shell variable expan
 ## Duitku callback rejection tests added (2026-10-12)
 
 - Commit `fc7b8788890d6de2` extends `tests/duitku_callback_integration.sh` to verify that an invalid HMAC signature and a correctly signed callback with the wrong amount both receive HTTP 400 and leave payment/order pending with no fulfillment job. The existing valid duplicate-success and definitive-failure cases remain in the same MySQL integration script.
-- CI for this new test change must be checked before treating it as verified. This is a local test fixture only; no live gateway or supplier requests are made. Production flags remain disabled.
+- Verified: PHP quality (`38251844581`), PHP/JavaScript syntax (`38251844521`), and fulfillment safety (`38251844517`) all passed for commit `fc7b8788890d6de2c62f231b9016d67a39c30765`; the fulfillment run's `mysql-callback-integration` job completed successfully, including both new negative cases. Follow-up documentation workflows were triggered separately. This is a local test fixture only; no live gateway or supplier requests were made. Production flags remain disabled.
+
+
+Verification update: callback rejection coverage from commit `fc7b8788890d6de2c62f231b9016d67a39c30765` passed all three CI workflows (quality `38251844581`, syntax `38251844521`, fulfillment `38251844517`). The MySQL integration step confirms invalid HMAC and mismatched amount return HTTP 400 while leaving the payment/order pending and adding no fulfillment job; the duplicate-success and failed-payment callback assertions also pass. Full-path deadlock recovery in `checkout_create_payment()` remains an open production-readiness test gap.
