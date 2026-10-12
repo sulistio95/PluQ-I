@@ -42,7 +42,7 @@ try {
     $add('Database connection', true, 'connected');
     $requiredTables = [
         'schema_migrations', 'admin_users', 'games', 'providers', 'products',
-        'orders', 'payment_transactions', 'job_queue', 'supplier_transactions', 'admin_login_attempts',
+        'orders', 'payment_transactions', 'job_queue', 'supplier_transactions', 'provider_balance_reservations', 'admin_login_attempts',
     ];
     $tableQuery = $pdo->prepare(
         'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :name'

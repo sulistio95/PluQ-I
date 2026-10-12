@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/checkout_quote.php';
 require_once __DIR__ . '/duitku.php';
+require_once __DIR__ . '/provider_reservations.php';
 
 function checkout_create_payment(PDO $pdo, array $input): array
 {
@@ -57,6 +58,9 @@ function checkout_create_payment(PDO $pdo, array $input): array
           'base'=>$quote['price']['base_price'],'selling'=>$quote['price']['selling_price'],'fee'=>$quote['price']['admin_fee']
         ]);
         $orderDbId = (int)$pdo->lastInsertId();
+        // Reserve supplier cost inside the same transaction as order creation. The
+        // provider row lock serializes concurrent checkouts for this provider.
+        provider_reservation_hold($pdo, $orderDbId, (int)$refs['provider_id'], (float)$quote['price']['base_price']);
         $amount = (int)$quote['price']['total'];
         $stmt = $pdo->prepare("INSERT INTO payment_transactions (order_id,gateway,merchant_order_id,amount,status)
           VALUES (:order_id,'DUITKU',:merchant_order_id,:amount,'PENDING')");

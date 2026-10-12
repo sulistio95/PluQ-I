@@ -37,6 +37,11 @@ function catalog_products(PDO $pdo, string $slug): array
           OR pr.status NOT IN ('ACTIVE','LOW_BALANCE')
           OR pr.balance IS NULL
           OR p.base_price>(pr.balance*(pr.reserve_percentage/100))
+          OR p.base_price > ((pr.balance*(pr.reserve_percentage/100)) - COALESCE((
+            SELECT SUM(r.amount) FROM provider_balance_reservations r
+            WHERE r.provider_id=pr.id
+              AND (r.status IN ('COMMITTED','CONSUMED') OR (r.status='HOLD' AND r.expires_at>NOW()))
+          ),0))
           OR NOT EXISTS (
             SELECT 1 FROM pricing_rules rr
             WHERE rr.status='ACTIVE' AND rr.min_amount <= p.base_price

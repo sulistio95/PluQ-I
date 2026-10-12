@@ -24,6 +24,8 @@ Use this checklist in a disposable local/staging database. Do not use real custo
 - [ ] Send a valid successful sandbox callback with the correct order ID and amount; confirm payment becomes PAID and order becomes QUEUED.
 - [ ] Send the same valid callback again, including concurrent duplicates; confirm only one fulfillment job is created.
 - [ ] Send a callback with the wrong amount or unknown order; confirm it is rejected.
+- [ ] In a disposable staging database, record a valid failure callback and then a valid success callback for the same order; confirm payment is recorded as PAID, the order moves to MANUAL_REVIEW, and no fulfillment job is added automatically.
+- [ ] Send a failure callback after a successful callback; confirm the already-recorded PAID state is not downgraded.
 
 ## 4. Supplier fulfillment safety
 

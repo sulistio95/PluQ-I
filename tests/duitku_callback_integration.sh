@@ -48,5 +48,11 @@ $q->execute([$orderId]);
 if ($q->fetchColumn() !== "QUEUED") { fwrite(STDERR, "Expected order status QUEUED.\\n"); exit(1); }
 $q = $pdo->query("SELECT COUNT(*) FROM job_queue WHERE job_type = " . $pdo->quote("FULFILL_ORDER"));
 if ((int)$q->fetchColumn() !== 1) { fwrite(STDERR, "Expected exactly one fulfillment job after duplicate callbacks.\\n"); exit(1); }
-echo "Duitku MySQL callback idempotency integration test passed.\\n";
+$q = $pdo->prepare("SELECT status,amount FROM provider_balance_reservations WHERE order_id=(SELECT id FROM orders WHERE public_id=?)");
+$q->execute([$orderId]);
+$reservation = $q->fetch(PDO::FETCH_ASSOC);
+if (!$reservation || $reservation["status"] !== "COMMITTED" || (float)$reservation["amount"] !== 1000.0) {
+    fwrite(STDERR, "Expected one committed provider reservation for the paid order.\\n"); exit(1);
+}
+echo "Duitku callback idempotency and provider reservation integration test passed.\\n";
 '

@@ -28,6 +28,7 @@ Do not assume every shared-hosting plan supports cron, the needed PHP extensions
 - Foundation: PHP bootstrap, environment configuration, PDO connection, MySQL schema and operational tables.
 - Public catalog: game, banner, product and dynamic game-input endpoints plus a responsive dark storefront with search and a 3-second banner rotation.
 - Server-side price quotes validate the game, product, account fields, provider reserve and excluded services; the server recalculates selling price and admin fee.
+- Provider balance reservations serialize concurrent checkouts on the provider row, keep pending-payment capacity for 30 minutes, commit reservations on successful payment callbacks, release holds for failed payments or definitive supplier rejection, and keep successful supplier debits reserved until a later balance snapshot.
 - Admin transaction inspection is available at `/admin/` after an administrator account is provisioned. It filters by provider API, gateway, date/time range, payment status, and order status; access is session-authenticated.
 - Monthly settlement backup creates a formatted four-tab Google Sheets workbook in Google Drive after migrations 006–007 and OAuth/folder configuration. It is disabled by default and has not been tested against a real Google account from the hosting environment.
 - Checkout has an idempotency key, persistent pending-order/payment records, and Duitku sandbox request support. Configure `DUITKU_PAYMENT_METHOD`, credentials, and HTTPS callback/return URLs in the private `.env`.
@@ -66,12 +67,25 @@ PHP extensions: `pdo_mysql`, `curl`, `openssl`, `json`, `mbstring`, and `fileinf
    - `database/migrations/006_monthly_settlements.sql` (when enabling settlement records)
    - `database/migrations/007_admin_drive_folder_setting.sql` (when enabling the admin-managed Drive folder setting)
    - `database/migrations/008_admin_login_rate_limit.sql` (required for database-backed admin login throttling)
+   - `database/migrations/009_provider_balance_reservations.sql` (required for atomic supplier-capacity reservations)
 7. Configure Duitku sandbox credentials and set `DUITKU_PAYMENT_METHOD` to a method enabled for the sandbox merchant. Configure HTTPS callback URL `https://your-domain/duitku-callback.php` and return URL `https://your-domain/order-status.php`.
 8. Point the document root at `public/` if supported. Otherwise deny direct access to `app/`, `config/`, `database/`, `bin/`, `tests/`, `.env`, and logs.
 9. Run migrations and create the first admin from the server CLI; do not create an admin through a public one-off script.
 10. Keep `SUPPLIER_ORDERS_ENABLED=false` and `SETTLEMENT_BACKUP_ENABLED=false` until their respective staging tests and recovery checks are complete.
 11. Run `php bin/preflight.php` from the hosting CLI after configuring `.env` and applying migrations. Resolve every failed check; the script never prints secret values.
 12. Do not enable live payments until the sandbox lifecycle, security review, backup/restore procedure, and provider reconciliation checks have passed.
+
+## Provider capacity reservations
+
+The local reservation ledger protects only the configured share of the last known provider balance; it does not lock money at Digiflazz or VIPayment and cannot account for orders placed outside PluQ-I. All checkouts for a provider lock the same InnoDB provider row before checking and creating a hold, so concurrent checkouts cannot both spend the same local capacity.
+
+- A checkout creates a 30-minute `HOLD` in the same database transaction as the order.
+- A valid Duitku success callback converts the hold to `COMMITTED` before the order is enqueued. If the hold expired and capacity is no longer available, the payment remains recorded as paid and the order goes to manual review; no supplier call is queued.
+- A failed payment releases its unpaid hold. A definitive supplier rejection releases a committed reservation and creates the existing refund-review record.
+- A successful supplier order changes the reservation to `CONSUMED`. It remains counted against available capacity until a later successful balance-sync request started after the supplier completion reconciles it.
+- An uncertain supplier outcome retains the reservation for manual reconciliation. Do not release it or retry the supplier call automatically.
+
+The reservation is a conservative local safeguard based on the latest known balance, not a guarantee that a supplier will accept the order. Apply migration 009 before using checkout code that references the reservation table.
 
 ## Scheduled work
 
