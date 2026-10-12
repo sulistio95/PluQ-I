@@ -183,7 +183,13 @@ function fulfillment_process(PDO $pdo, int $orderId): string
         } elseif ($supplier['status']==='SUCCESS') {
             $pdo->prepare("UPDATE orders SET order_status='SUCCESS',fulfilled_at=COALESCE(fulfilled_at,NOW()) WHERE id=:id")->execute(['id'=>$orderId]);
             $pdo->commit(); return 'DONE';
-        } elseif ($supplier['status']==='FAILED') { $pdo->commit(); return 'FAILED'; }
+        } elseif ($supplier['status']==='FAILED') {
+            // Recover the crash window where the definitive supplier failure was saved,
+            // but the refund row was not yet created. The helper is idempotent and keeps payment=PAID.
+            $pdo->commit();
+            fulfillment_record_explicit_failure($pdo, $orderId, 'Supplier explicitly rejected the order');
+            return 'FAILED';
+        }
         $account=json_decode((string)$order['customer_game_data'],true,512,JSON_THROW_ON_ERROR);
         if (!is_array($account)) throw new DomainException('Saved account data is invalid.');
         $pdo->prepare("UPDATE orders SET order_status='PROCESSING',retry_count=retry_count+1 WHERE id=:id")->execute(['id'=>$orderId]);
