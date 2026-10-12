@@ -218,7 +218,7 @@ try {
     }
     checkout_integration_assert($mismatchRejected, 'Same key with a different account payload must be rejected.');
 
-    echo "Concurrent MySQL checkout idempotency tests passed (mock Duitku; one order, one payment, one gateway call, winner URL reused, changed payload rejected).\n";
+    echo "Concurrent MySQL checkout deadlock-recovery tests passed (one real 1213 victim classified and recovered; mock Duitku called once; one order/payment; URL reused; changed payload rejected).\n";
 } finally {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
     if (!isset($pdo) || !$pdo instanceof PDO) {
