@@ -1,6 +1,6 @@
 # PluQ-I — Handoff for the next ChatGPT session
 
-Last updated: 2026-10-12 (Asia/Jakarta) — queue concurrency CI passed; checkout idempotency validation tightened
+Last updated: 2026-10-12 (Asia/Jakarta) — queue concurrency CI passed; stale supplier freshness regression expanded; latest CI pending
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
@@ -88,7 +88,7 @@ Do not deploy or initiate live transactions, real supplier orders, or Google Dri
 3. Review the queue and fulfillment transaction boundaries: concurrent worker claims, lock-token conditional updates, pending supplier responses, retry limits, stale-lock recovery, duplicate queue jobs, and reconciliation path. A MySQL concurrency test was added in `tests/queue-worker-concurrency-integration.php` and wired into the fulfillment workflow before callback tests. First CI attempt failed because a live parent PDO connection was inherited across `pcntl_fork()`, causing `MySQL server has gone away` during parent verification/cleanup. Commit `94f806c` changes the fixture to use a direct fresh PDO connection, close the parent connection before forking, reconnect after child exit, and use a fresh cleanup connection. Its CI result is pending; do not count concurrency coverage as passing yet. Do not alter safe manual-review behavior without evidence.
 4. Review all migrations 001–010 and `bin/preflight.php` against a clean MySQL/MariaDB install and an upgrade path. Execute only when a real test DB/runtime is available.
 5. Expand tests for pricing/reserve boundaries, callback duplicate/conflicting transitions, checkout idempotency concurrency, refund idempotency, admin roles/CSRF, and queue concurrency.
-6. Continue with DB-backed concurrent-worker tests and full staging checks. The new test starts two independent PHP processes/PDO connections and asserts they claim distinct ready jobs with separate lease tokens. The first run exposed an inherited parent PDO socket; commit `94f806c` closed it before forking, and commit `5632ac5657` also releases the parent statement before the fork. The latest fulfillment workflow `38213945487` passed, including `Test concurrent queue claims against MySQL`; PHP quality `38213945851` and syntax `38213945489` also passed. Atomic supplier response persistence/lock ordering and worker lease revocation are already covered by passing CI runs listed above.
+6. Continue with DB-backed concurrent-worker tests and full staging checks. The new test starts two independent PHP processes/PDO connections and asserts they claim distinct ready jobs with separate lease tokens. The first run exposed an inherited parent PDO socket; commit `94f806c` closed it before forking, and commit `5632ac5657` also releases the parent statement before the fork. The latest fulfillment workflow `38213945487` passed, including `Test concurrent queue claims against MySQL`; PHP quality `38213945851` and syntax `38213945489` also passed. Checkout UUID validation tests passed in PHP quality run `38215219816` and syntax run `38215219946`; fulfillment run `38215219929` also completed successfully. Commit `5a168b8` extends the duplicate-processing integration test: a fresh `PROCESSING` supplier record remains active/ignored, while a record aged 11 minutes transitions to `MANUAL_REVIEW`/`REVIEW` without resubmission. CI for this latest test change is pending. Atomic supplier response persistence/lock ordering and worker lease revocation are covered by passing CI runs listed above.
 7. Keep `README.md`, `docs/production-readiness-audit.md`, and this handoff updated after substantive changes.
 
 ## Required staging exit checklist
@@ -96,7 +96,7 @@ Do not deploy or initiate live transactions, real supplier orders, or Google Dri
 - Clean install and upgrade migrations 001–010 on the target MySQL/MariaDB version.
 - Verify private `.env`, file permissions, HTTPS, PHP extensions, outbound HTTPS and cron capability on the selected shared-host plan.
 - Test valid/invalid Duitku HMAC, wrong amount/order, duplicate callback, pending-then-paid, and conflicting status transitions.
-- Run same idempotency key concurrently with same and different payloads; ensure only one order/payment exists and payload mismatch never reuses a payment URL.
+- Run same idempotency key concurrently with same and different payloads; ensure only one order/payment exists and payload mismatch never reuses a payment URL. Unit coverage validates UUID syntax and request fingerprint normalization; a DB-backed concurrent checkout test with a mocked Duitku API remains pending.
 - Run multiple queue workers; test success, pending, definitive failure, timeout, process crash, stale lock and recovery. Reconcile provider status before any manual retry.
 - Verify supplier API request signing, exact product codes, ID/zone mapping, status meanings and provider transaction references with sandbox credentials and known test accounts.
 - Reconcile refund amount/status and the actual Duitku refund capability/process; never treat a local refund row as proof money was returned.
