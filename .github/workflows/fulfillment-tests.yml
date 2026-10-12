@@ -77,6 +77,8 @@ jobs:
           done
       - name: Test concurrent checkout idempotency with mocked Duitku
         run: php tests/checkout-idempotency-concurrency-integration.php
+      - name: Test real MySQL deadlock classification for checkout recovery
+        run: php tests/checkout-deadlock-classification-integration.php
       - name: Create disposable paid-callback fixture
         run: |
           mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" <<'SQL'
