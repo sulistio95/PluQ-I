@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/config/database.php';
 require_once dirname(__DIR__) . '/app/services/order_checkout.php';
 
+putenv('APP_ENV=test');
 putenv('CHECKOUT_PAYMENTS_ENABLED=true');
 putenv('SUPPLIER_ORDERS_ENABLED=true');
 putenv('DUITKU_ENV=sandbox');
@@ -37,6 +38,10 @@ $callLog = sys_get_temp_dir() . '/pluq-duitku-mock-' . $token . '.log';
 $startGate = sys_get_temp_dir() . '/pluq-checkout-start-' . $token . '.gate';
 $firstResult = sys_get_temp_dir() . '/pluq-checkout-first-' . $token . '.json';
 $secondResult = sys_get_temp_dir() . '/pluq-checkout-second-' . $token . '.json';
+$firstLockReady = sys_get_temp_dir() . '/pluq-checkout-lock-a-' . $token . '.ready';
+$secondLockReady = sys_get_temp_dir() . '/pluq-checkout-lock-b-' . $token . '.ready';
+$deadlocksBeforeRow = $pdo->query("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->fetch();
+$deadlocksBefore = (int)($deadlocksBeforeRow['Value'] ?? $deadlocksBeforeRow[1] ?? 0);
 $gameId = 0;
 $productId = 0;
 $orderIds = [];
@@ -76,13 +81,26 @@ try {
                 usleep(2200000);
                 return ['payment_url' => 'https://sandbox.duitku.com/mock/' . $orderId, 'reference' => 'MOCK-' . $orderId];
             };
+            $hook = static function (PDO $connection) use ($firstLockReady, $secondLockReady): void {
+                $stmt = $connection->prepare('SELECT id FROM providers WHERE code=:code FOR UPDATE');
+                $stmt->execute(['code' => 'DIGI']);
+                if (!$stmt->fetch()) throw new RuntimeException('DIGI provider row missing for deadlock test.');
+                file_put_contents($firstLockReady, 'ready');
+                $deadline = microtime(true) + 10;
+                while (!is_file($secondLockReady)) {
+                    if (microtime(true) >= $deadline) throw new RuntimeException('Second checkout did not reach the lock barrier.');
+                    usleep(1000);
+                }
+                $stmt->execute(['code' => 'VIPAY']);
+                $stmt->fetch();
+            };
             $result = checkout_create_payment($childPdo, [
                 'email' => 'same@example.test',
                 'idempotency_key' => $key,
                 'game_slug' => $slug,
                 'product_id' => $productId,
                 'account' => ['user_id' => '123456'],
-            ], $creator);
+            ], $creator, $hook);
             file_put_contents($firstResult, json_encode($result, JSON_THROW_ON_ERROR));
             exit(0);
         } catch (Throwable $e) {
@@ -99,8 +117,27 @@ try {
             $childPdo = database();
             $creator = static function (array $config, string $orderId, int $amount, string $product, string $email) use ($callLog): array {
                 $fh = fopen($callLog, 'ab');
-                if ($fh !== false) { fwrite($fh, 'UNEXPECTED_SECOND_CALL' . PHP_EOL); fclose($fh); }
-                return ['payment_url' => 'https://sandbox.duitku.com/mock/duplicate', 'reference' => 'MOCK-DUPLICATE'];
+                if ($fh === false) throw new RuntimeException('Cannot write mock call log.');
+                flock($fh, LOCK_EX);
+                fwrite($fh, $orderId . PHP_EOL);
+                fflush($fh);
+                flock($fh, LOCK_UN);
+                fclose($fh);
+                usleep(2200000);
+                return ['payment_url' => 'https://sandbox.duitku.com/mock/' . $orderId, 'reference' => 'MOCK-' . $orderId];
+            };
+            $hook = static function (PDO $connection) use ($firstLockReady, $secondLockReady): void {
+                $stmt = $connection->prepare('SELECT id FROM providers WHERE code=:code FOR UPDATE');
+                $stmt->execute(['code' => 'VIPAY']);
+                if (!$stmt->fetch()) throw new RuntimeException('VIPAY provider row missing for deadlock test.');
+                file_put_contents($secondLockReady, 'ready');
+                $deadline = microtime(true) + 10;
+                while (!is_file($firstLockReady)) {
+                    if (microtime(true) >= $deadline) throw new RuntimeException('First checkout did not reach the lock barrier.');
+                    usleep(1000);
+                }
+                $stmt->execute(['code' => 'DIGI']);
+                $stmt->fetch();
             };
             $result = checkout_create_payment($childPdo, [
                 'email' => 'same@example.test',
@@ -108,7 +145,7 @@ try {
                 'game_slug' => $slug,
                 'product_id' => $productId,
                 'account' => ['user_id' => '123456'],
-            ], $creator);
+            ], $creator, $hook);
             file_put_contents($secondResult, json_encode($result, JSON_THROW_ON_ERROR));
             exit(0);
         } catch (Throwable $e) {
@@ -135,6 +172,10 @@ try {
     checkout_integration_assert(($first['payment_url'] ?? null) === ($second['payment_url'] ?? null), 'Both requests must return the same persisted payment URL.');
     $calls = is_file($callLog) ? file($callLog, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) : [];
     checkout_integration_assert(count($calls) === 1, 'Mock Duitku must be called exactly once.');
+
+    $deadlockStatus = $pdo->query("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->fetch();
+    $deadlocksAfter = (int)($deadlockStatus['Value'] ?? $deadlockStatus[1] ?? 0);
+    checkout_integration_assert($deadlocksAfter > $deadlocksBefore, 'Expected this checkout run to trigger a real InnoDB deadlock; before=' . $deadlocksBefore . ' after=' . $deadlocksAfter);
 
     $pdo = database();
     $stmt = $pdo->prepare('SELECT id FROM orders WHERE checkout_key=:key');
@@ -177,5 +218,5 @@ try {
             $pdo->prepare('DELETE FROM games WHERE id=:id')->execute(['id' => $gameId]);
         }
     }
-    foreach ([$callLog, $firstResult, $secondResult, $startGate] as $path) if (is_file($path)) unlink($path);
+    foreach ([$callLog, $firstResult, $secondResult, $startGate, $firstLockReady, $secondLockReady] as $path) if (is_file($path)) unlink($path);
 }
