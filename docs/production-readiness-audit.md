@@ -161,3 +161,8 @@ Commits `69b4cd0e3105d5fa061c34e16e42d08f36a0b01c` and `d9ad0feb8d0fa98a18a4f0f6
 ### Deadlock test harness fix (2026-10-13)
 
 The first MySQL CI attempt for `d9ad0feb8d0fa98a18a4f0f64bf967d038bbf524` failed at the test's post-run counter query because the parent PDO was intentionally unset before forking. The deadlock counter was never checked, so this run provides no evidence for or against full-path recovery. Commit `5b9452144202d8e97aa5c5d8259db5e36643ad04` reconnects before querying the counter; CI is pending. The deterministic deadlock and recovery assertions remain unverified until the corrected MySQL job passes.
+
+
+### Direct 1213 evidence for checkout deadlock recovery (2026-10-13)
+
+The MySQL attempt for commit `5b9452144202d8e97aa5c5d8259db5e36643ad04` reached the deadlock-counter assertion but showed `before=0 after=0`; this counter query did not provide usable proof of a real deadlock. Commit `80eeec3f6ef66798b684a4eb66424719e51cc4c1` changes the test to capture the actual exception at each worker's second opposing provider-row lock and require exactly one driver code 1213 classified for idempotency recovery. It also continues to require both callers to succeed, one order/payment, one mock Duitku call, shared URL and mismatched-payload rejection. Workflow commit `eb30fe8539b6a7cdb9d8f5417ddcfd3dde744c70` removes the global-counter inference and runs the integration three times. This is pending CI; full-path recovery remains unverified until the MySQL job passes.
