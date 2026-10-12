@@ -12,17 +12,26 @@ try {
     $config=duitku_config();
     if (!duitku_verify_callback($config,$_POST)) json_response(['error'=>'invalid_signature'],400);
     $orderId=(string)$_POST['merchantOrderId'];
-    $amount=(int)$_POST['amount'];
+    $amountRaw=(string)$_POST['amount'];
+    $amount=filter_var($amountRaw,FILTER_VALIDATE_INT);
     $resultCode=(string)($_POST['resultCode']??'');
-    if (!preg_match('/^[a-f0-9]{26}$/D',$orderId)||!in_array($resultCode,['00','01'],true)) json_response(['error'=>'invalid_callback'],400);
+    if (!preg_match('/^[a-f0-9]{26}$/D',$orderId)||$amount===false||$amount<1||!in_array($resultCode,['00','01'],true)) json_response(['error'=>'invalid_callback'],400);
     $pdo=database();
     $pdo->beginTransaction();
     $q=$pdo->prepare("SELECT pt.id,pt.order_id,pt.amount,pt.status FROM payment_transactions pt WHERE pt.merchant_order_id=:oid AND pt.gateway='DUITKU' LIMIT 1 FOR UPDATE");
     $q->execute(['oid'=>$orderId]); $tx=$q->fetch();
     if (!$tx || (int)$tx['amount']!==$amount) { $pdo->rollBack(); json_response(['error'=>'order_mismatch'],400); }
     if ($tx['status']!=='PENDING') { $pdo->commit(); json_response(['status'=>'ok']); }
-    $status=$resultCode==='00'?'PAID':'FAILED';
     $safe=json_encode(['merchantOrderId'=>$orderId,'amount'=>(string)$amount,'resultCode'=>$resultCode,'reference'=>(string)($_POST['reference']??'')],JSON_THROW_ON_ERROR);
+    // Duitku resultCode 01 means the payment is still pending, not failed.
+    // Record the callback for diagnostics but preserve PENDING so a later 00 callback can settle it.
+    if ($resultCode==='01') {
+        $q=$pdo->prepare("UPDATE payment_transactions SET callback_payload=:payload,callback_received_at=NOW() WHERE id=:id AND status='PENDING'");
+        $q->execute(['payload'=>$safe,'id'=>$tx['id']]);
+        $pdo->commit();
+        json_response(['status'=>'pending']);
+    }
+    $status='PAID';
     $q=$pdo->prepare("UPDATE payment_transactions SET status=:status,gateway_reference=COALESCE(NULLIF(:ref,''),gateway_reference),callback_payload=:payload,callback_received_at=NOW() WHERE id=:id AND status='PENDING'");
     $q->execute(['status'=>$status,'ref'=>(string)($_POST['reference']??''),'payload'=>$safe,'id'=>$tx['id']]);
     if ($status==='PAID') {
