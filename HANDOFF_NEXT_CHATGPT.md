@@ -150,3 +150,8 @@ Verification update: callback rejection coverage from commit `fc7b8788890d6de2c6
 
 - Commits `93a13db9ac` and `f7508904ed` remove the deliberate 300 ms stagger between the two forked checkout requests so they compete more directly for the same idempotency key. Commit `f7508904ed` adds a filesystem start barrier so both child processes begin the checkout path together. This increases coverage of the absent-key/gap-lock race while preserving the mock Duitku creator and assertions for one order, one payment, one gateway call, and winner URL reuse.
 - CI triggered by these changes is pending; inspect the MySQL integration job before calling the new race setup verified. This still does not prove the DB actually emitted error 1213 from inside `checkout_create_payment()`; the existing direct deadlock integration only proves classification. If CI is flaky or no deterministic deadlock is observed, document that limitation rather than claiming full-path deadlock recovery proven. No live requests; production flags remain disabled.
+
+
+## Latest MySQL integration work (2026-10-13)
+
+Workflow commit `bb8549257b9b35bf5214152c50905192e6ab05a4` changes the concurrent checkout idempotency test to run three independent iterations against MySQL with mocked Duitku. Existing checks still assert one order/payment, exactly one gateway mock call, identical payment URL reuse, and rejection of a changed account payload. Await CI for this workflow commit. This increases stress coverage but does not prove full-path deadlock recovery inside `checkout_create_payment()`; keep that gap open. Do not enable live checkout/supplier flags or deploy. No live APIs were called.
