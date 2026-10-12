@@ -54,14 +54,24 @@ foreach ([
     }
 }
 
-foreach ([
-    new PDOException('duplicate key', 23000),
-    new PDOException('deadlock', 40001),
-] as $exception) {
+$duplicateKey = new PDOException('duplicate key', 23000);
+$duplicateKey->errorInfo = ['23000', 1062, 'Duplicate entry'];
+$deadlockState = new PDOException('deadlock serialization failure', 40001);
+$deadlockDriver = new PDOException('deadlock', 0);
+$deadlockDriver->errorInfo = ['HY000', 1213, 'Deadlock found'];
+$lockTimeout = new PDOException('lock timeout', 0);
+$lockTimeout->errorInfo = ['HY000', 1205, 'Lock wait timeout'];
+foreach ([$duplicateKey, $deadlockState, $deadlockDriver, $lockTimeout] as $exception) {
     if (!checkout_is_idempotency_race($exception)) {
-        fwrite(STDERR, "Duplicate-key and deadlock SQL states should enter idempotency race recovery.\n");
+        fwrite(STDERR, "Duplicate-key, deadlock, and lock-timeout errors should enter idempotency winner recovery.\n");
         exit(1);
     }
+}
+$foreignKeyViolation = new PDOException('foreign key violation', 23000);
+$foreignKeyViolation->errorInfo = ['23000', 1452, 'Cannot add or update a child row'];
+if (checkout_is_idempotency_race($foreignKeyViolation)) {
+    fwrite(STDERR, "Foreign-key violations must not be classified as idempotency races.\n");
+    exit(1);
 }
 if (checkout_is_idempotency_race(new PDOException('unrelated database failure', 0))) {
     fwrite(STDERR, "Unrelated database failures must not be classified as idempotency races.\n");
