@@ -75,8 +75,13 @@ jobs:
           for sql in database/schema.mysql.sql database/migrations/002_catalog_and_operations.sql database/migrations/003_checkout_payment.sql database/migrations/004_supplier_manual_review_status.sql database/migrations/005_order_manual_review_status.sql database/migrations/006_monthly_settlements.sql database/migrations/007_admin_drive_folder_setting.sql database/migrations/008_admin_login_rate_limit.sql database/migrations/009_refund_order_latest_index.sql database/migrations/010_checkout_payload_fingerprint.sql; do
             mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" < "$sql"
           done
-      - name: Test concurrent checkout idempotency with mocked Duitku
-        run: php tests/checkout-idempotency-concurrency-integration.php
+      - name: Stress concurrent checkout idempotency with mocked Duitku
+        run: |
+          set -eu
+          for attempt in 1 2 3; do
+            echo "Concurrent checkout integration attempt ${attempt}/3"
+            php tests/checkout-idempotency-concurrency-integration.php
+          done
       - name: Test real MySQL deadlock classification for checkout recovery
         run: php tests/checkout-deadlock-classification-integration.php
       - name: Create disposable paid-callback fixture
