@@ -1,6 +1,6 @@
 # PluQ-I — Handoff for the next ChatGPT session
 
-Last updated: 2026-10-12 (Asia/Jakarta) — admin authorization and duplicate-queue audit continued
+Last updated: 2026-10-12 (Asia/Jakarta) — admin authorization and duplicate-queue integration test added
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
@@ -46,6 +46,7 @@ Read this file first, then read `README.md` and `docs/production-readiness-audit
 - Audit row updated in `docs/production-readiness-audit.md` (commit `6f19570577ed02383dfb4a571e8d018b1f9b6c6c`).
 - Queue race audit: found that a duplicate queue job could see a supplier transaction in fresh `PROCESSING` state while another worker was still making the supplier request, and incorrectly force manual review. `app/services/fulfillment.php` now treats `PROCESSING` rows updated within the last 10 minutes as active and returns `IGNORED` for the duplicate job; older ambiguous states still go to manual review (commit `43ba2b74f1dae5644cc0d0fdfe5574ad09a7d5c9`). This is source-level mitigation; DB-backed concurrency tests are still required.
 - Updated audit notes with the queue finding and observed CI step results (commit `ef878ab554a96271401df9c468fed3c7c40e5eab`).
+- Added `tests/duplicate-queue-processing-integration.php`, which creates a disposable paid order plus a fresh supplier `PROCESSING` row, invokes `fulfillment_process()`, and asserts the duplicate path returns `IGNORED` without changing order/supplier status or calling a supplier endpoint. Added the test step to `.github/workflows/fulfillment-tests.yml` (commits `a9d8a8a4fbf6f629038fb24fcd74efa7132ed0b6` and `25b03689aec41a4015ce8cc2cd74bcab085f7185`). Audit updated at `c7b682f695a68999217cc7bb5700ad422ceb2041`.
 
 ## Latest work log (2026-10-12)
 
@@ -63,6 +64,7 @@ GitHub Actions workflow: `.github/workflows/php-quality.yml`
 - `tests/checkout-request-fingerprint.php`
 - `tests/fulfillment-mapping.php`
 - `tests/admin-authorization.php`
+- `tests/duplicate-queue-processing-integration.php` (MySQL integration workflow only; pending run result)
 
 Latest observed CI run `38201655600` completed PHP setup, lint, and all four test steps with `success`, but the overall run was still `in_progress` at the last observation because GitHub was running its final post-job step. Recheck the final conclusion before saying the entire workflow passed. A local clone previously failed because the execution environment could not resolve `github.com`. CI tests are not database-backed and do not certify live provider/payment behavior.
 
