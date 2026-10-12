@@ -25,6 +25,15 @@ function checkout_request_fingerprint(string $email, string $gameSlug, int $prod
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 }
 
+function checkout_is_idempotency_race(PDOException $e): bool
+{
+    $sqlState = (string)$e->getCode();
+    $driverCode = (int)($e->errorInfo[1] ?? 0);
+    return $sqlState === '23000'
+        || $sqlState === '40001'
+        || in_array($driverCode, [1062, 1205, 1213], true);
+}
+
 function checkout_idempotency_key_is_valid(string $key): bool
 {
     return preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/D', strtolower(trim($key))) === 1;
@@ -100,11 +109,10 @@ function checkout_create_payment(PDO $pdo, array $input): array
         $pdo->commit();
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        $duplicateKey = (string)$e->getCode() === '23000'
-            || (int)($e->errorInfo[1] ?? 0) === 1062;
-        if ($duplicateKey) {
-            // A concurrent request may have won the unique checkout_key race after our initial lookup.
-            // Re-read the winner after rollback and reuse only if its normalized payload matches.
+        if (checkout_is_idempotency_race($e)) {
+            // A concurrent request may win the unique-key insert or make this transaction
+            // deadlock while locking the same absent key. Re-read after rollback; never
+            // repeat the external Duitku request from this recovery path.
             $existingStmt = $pdo->prepare("SELECT o.public_id,o.checkout_payload_hash,pt.gateway_payment_url
                 FROM orders o LEFT JOIN payment_transactions pt ON pt.order_id=o.id
                 WHERE o.checkout_key=:key LIMIT 1");
