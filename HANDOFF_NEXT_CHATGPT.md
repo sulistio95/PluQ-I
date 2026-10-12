@@ -1,6 +1,6 @@
 # PluQ-I — Handoff for the next ChatGPT session
 
-Last updated: 2026-10-12 (Asia/Jakarta)
+Last updated: 2026-10-12 (Asia/Jakarta) — admin authorization audit continued
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
@@ -40,7 +40,18 @@ Read this file first, then read `README.md` and `docs/production-readiness-audit
 - `bin/preflight.php` checks required runtime/schema conditions and ensures payment, supplier order and settlement-backup flags remain disabled.
 - Google Drive settlement export scaffolding exists but is disabled by default and is not validated against a real Google account.
 - Admin login uses password hashing, session ID regeneration, CSRF tokens, DB-backed login throttling and audit logs.
-- Recent admin security fix: commit `76fc5ad5685dad8cb63b89e1d2b1bb41614a967e` denies OPERATOR-role POST attempts to change the Google Drive folder setting. Audit update: `7106b77845b5c8e4ba4aeff74a86fcbf384a508a`.
+- Admin authorization fix: commit `76fc5ad5685dad8cb63b89e1d2b1bb41614a967e` denies OPERATOR-role POST attempts to change the Google Drive folder setting.
+- Admin role checks were centralized in `admin_can_manage_settings()` in `app/services/admin_auth.php` (commit `a9b8c4c7321fab6924f4175d1419ce0acaa74c65`). Both `public/admin/index.php` (Drive setting) and `public/admin/game-mappings.php` (supplier mapping mutations) now call that helper (commits `da72aa030fe641a4a3ed7b11191e303b790fc78f` and `b13b7ade7f24af5cb742e67c001da28ffb916d89`).
+- Added `tests/admin-authorization.php` for role allow/deny cases and wired it into `.github/workflows/php-quality.yml` (commits `6134f52527d8d0882b92e237847ba3ed3086b197` and `a6a15d6131b21d577611153075ff8b1106665ed6`).
+- Audit row updated in `docs/production-readiness-audit.md` (commit `6f19570577ed02383dfb4a571e8d018b1f9b6c6c`).
+
+## Latest work log (2026-10-12)
+
+- Reviewed `public/admin/index.php`, `public/admin/game-mappings.php`, and `app/services/admin_auth.php`.
+- Centralized the allowed mutation roles (`SUPER_ADMIN`, `ADMIN`) in `admin_can_manage_settings()` and applied it to both Drive folder settings and game-provider mapping changes.
+- Added role-policy regression tests for allowed roles, `OPERATOR`, missing/empty roles, and case sensitivity; wired the test into GitHub Actions.
+- Updated `docs/production-readiness-audit.md` and this handoff after the code changes.
+- Verification: GitHub API confirmed the files/commits exist. No successful workflow run or local PHP test execution has been confirmed yet; do not call these tests passed until the workflow result or a local run is observed.
 
 ## Tests and what is actually verified
 
@@ -63,7 +74,7 @@ Do not deploy or initiate live transactions, real supplier orders, or Google Dri
 
 ## Highest-priority next steps
 
-1. **Continue admin authorization audit**: inspect every `public/admin/*.php` route, including all POST mutations, for authentication, role checks, CSRF validation, session/cookie handling, output escaping, and audit logging. Compare with `public/admin/game-mappings.php`, which already gates mutations to `SUPER_ADMIN`/ `ADMIN`. Fix any bypass and add tests where practical.
+1. **Continue admin authorization audit**: inspect every `public/admin/*.php` route, including all POST mutations, for authentication, role checks, CSRF validation, session/cookie handling, output escaping, and audit logging. The two discovered admin pages currently centralize privileged mutation checks through `admin_can_manage_settings()`; continue checking for other role-sensitive features and verify the tests in CI.
 2. Inspect the rest of `public/admin/index.php` and each admin page for privilege-sensitive actions. Confirm the new Drive-folder role check works for OPERATOR and allowed roles.
 3. Review the queue and fulfillment transaction boundaries: concurrent worker claims, lock-token conditional updates, pending supplier responses, retry limits, stale-lock recovery, duplicate queue jobs, and reconciliation path. Add DB integration tests where feasible; do not alter safe manual-review behavior without evidence.
 4. Review all migrations 001–010 and `bin/preflight.php` against a clean MySQL/MariaDB install and an upgrade path. Execute only when a real test DB/runtime is available.
