@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         session_destroy();
         header('Location: /admin/');
         exit;
-    } elseif ($user && isset($_POST['save_drive_folder']) && !in_array($user['role'], ['SUPER_ADMIN', 'ADMIN'], true)) {
+    } elseif ($user && isset($_POST['save_drive_folder']) && !admin_can_manage_settings($user)) {
         http_response_code(403);
         $error = 'Peran akun Anda tidak diizinkan mengubah pengaturan folder Google Drive.';
     } elseif ($user && isset($_POST['save_drive_folder'])) {
