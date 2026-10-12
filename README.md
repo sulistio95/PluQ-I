@@ -31,11 +31,11 @@ Do not assume every shared-hosting plan supports cron, the needed PHP extensions
 - Admin transaction inspection is available at `/admin/` after an administrator account is provisioned. It filters by provider API, gateway, date/time range, payment status, order status, and the latest refund status (`PENDING`, `PROCESSING`, `SUCCESS`, `FAILED`). Refund filtering is based on the newest refund record per order; access is session-authenticated.
 - Monthly settlement backup creates a formatted four-tab Google Sheets workbook in Google Drive after migrations 006–007 and OAuth/folder configuration. It is disabled by default and has not been tested against a real Google account from the hosting environment.
 - Checkout has an idempotency key, persistent pending-order/payment records, and Duitku sandbox request support. Configure `DUITKU_PAYMENT_METHOD`, credentials, and HTTPS callback/return URLs in the private `.env`.
-- Duitku callback validates HMAC-SHA256, checks the order and exact amount, and only queues a fulfillment job once for a successful pending payment.
-- Supplier adapters and balance sync are committed but have not been verified against the user's real credentials.
-- CI runs syntax checks and automated pricing, callback-signature, mapping, and database integration tests. Review the latest GitHub Actions result for the exact commit being evaluated.
+- Duitku callback validates HMAC-SHA256, checks the order and amount, treats result code `01` as pending (not failed), and only queues fulfillment after the first valid transition to paid.
+- Supplier adapters, balance sync, and an admin page for mapping supplier game codes to local games are committed; mappings still need to be configured and verified against the actual provider catalogs.
+- GitHub Actions now lints PHP files and runs the isolated Duitku callback-state test. Database-backed integration tests and live provider behavior still require a configured test database and staging credentials; do not infer they passed from the lint workflow.
 
-**Not production-ready:** real payments and supplier execution must remain disabled until the payment flow and provider behavior are tested in a controlled staging environment. Supplier fulfillment, retries/refunds, username verification, live provider API behavior, game mapping setup, and admin-panel security still require implementation or verification. Do not enable production payments or supplier execution.
+**Not production-ready:** real payments and supplier execution must remain disabled until the payment flow and provider behavior are tested in a controlled staging environment. Supplier API credentials, account/zone mapping for each game, retry/refund recovery, username verification, live provider behavior, and deployment hardening still require staging verification. Do not enable production payments or supplier execution.
 
 ## Target architecture
 
