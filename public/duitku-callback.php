@@ -47,7 +47,12 @@ try {
             }
         }
     } else {
-        $q=$pdo->prepare("UPDATE orders SET payment_status='FAILED' WHERE id=:id AND payment_status='PENDING'");
+        // A definitive failed-payment callback closes a still-pending order too.
+        // Do not overwrite any later order state if data is already inconsistent.
+        $q=$pdo->prepare("UPDATE orders
+            SET payment_status='FAILED',
+                order_status=CASE WHEN order_status='PENDING' THEN 'FAILED' ELSE order_status END
+            WHERE id=:id AND payment_status='PENDING'");
         $q->execute(['id'=>$tx['order_id']]);
     }
     $pdo->commit();
