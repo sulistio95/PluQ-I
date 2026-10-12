@@ -17,7 +17,7 @@ Audit baseline: GitHub default branch at the time this file was added. This is a
 | Schema and migrations | Foundation schema and migrations 002–009 cover catalog/operations, checkout fields, manual-review states, settlements, admin Drive setting, login throttling, and latest-refund lookup. | Apply in order on a clean MySQL/MariaDB database; test upgrade from an existing database; verify SQL compatibility with the exact host version. |
 | Catalog and pricing | Catalog chooses an available cheapest offer by normalized product name; quote recalculates price, checks reserve balance and exclusions, and validates dynamic account fields. | Run pricing boundary tests and DB-backed catalog sync tests using real supplier catalogs; validate every game's account field names. |
 | Supplier game mapping | Admin page allows authorized admins to activate/deactivate mappings between local games and provider game codes; changes are audited. | Configure exact Digiflazz brand/game codes and VIPayment game names; compare synced product counts and samples before enabling any order. |
-| Duitku callback | HMAC-SHA256 verification, order/amount matching, row locking, and first-transition queue insertion are present. Result code `01` now remains pending rather than being treated as failed; amount parsing rejects invalid/overflowing integers. | Execute valid/invalid signature, wrong amount, duplicate callback, pending-then-paid, and conflicting-state cases against a test database. |
+| Duitku callback | HMAC-SHA256 verification, order/amount matching, row locking, and first-transition queue insertion are present. Result code `01` maps to failed, matching the server-to-server callback documentation; amount parsing rejects invalid/overflowing integers. | Execute valid/invalid signature, wrong amount, duplicate callback, pending-then-paid, and conflicting-state cases against a test database. |
 | Queue and worker | MySQL-backed bounded worker, lock tokens, retry cap, read-only health diagnostic, and conservative stale-lock manual review are present. | Run simultaneous-worker tests on the host's MySQL version; confirm cron does not overlap and measure backlog under load. Do not auto-resubmit stale supplier requests. |
 | Supplier fulfillment | Supplier adapters use HTTPS, timeouts, no redirects, and conservative manual review for ambiguous outcomes. Definitive rejection preserves payment=PAID and creates a single pending refund record under the order lock. | Verify provider API payload/signature/status semantics with sandbox credentials and known test accounts. Never treat an HTTP timeout as a definitive rejection. |
 | Refunds | Refund records and idempotent creation for supplier failure exist; admin can filter latest refund status. | **No automatic customer refund is certified by this audit.** Confirm gateway refund capability and implement/verify an authorized refund action or complete refunds manually through the approved gateway process. Reconcile the gateway reference and refund status before closing an order. |
@@ -29,8 +29,8 @@ Audit baseline: GitHub default branch at the time this file was added. This is a
 ## Callback result-state rule
 
 - `00`: payment reported successful; the callback may transition a pending payment and enqueue fulfillment once.
-- `01`: payment remains pending; store the callback for diagnostics and wait for a later terminal callback.
-- Any other code: reject the callback as unsupported.
+- `01`: payment failed; mark the payment/order failed only if the stored transaction is still pending.
+- Any other code: reject the callback as unsupported. The separate customer redirect result codes are not used to update database payment state.
 
 Duplicate callbacks for a transaction already in a non-pending state are acknowledged without repeating the payment/order transition.
 
