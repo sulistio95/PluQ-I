@@ -24,14 +24,7 @@ try {
     if ($tx['status']!=='PENDING') { $pdo->commit(); json_response(['status'=>'ok']); }
     $safe=json_encode(['merchantOrderId'=>$orderId,'amount'=>(string)$amount,'resultCode'=>$resultCode,'reference'=>(string)($_POST['reference']??'')],JSON_THROW_ON_ERROR);
     $status=duitku_callback_result_state($resultCode);
-    // Duitku resultCode 01 means the payment is still pending, not failed.
-    // Record the callback for diagnostics but preserve PENDING so a later 00 callback can settle it.
-    if ($status==='PENDING') {
-        $q=$pdo->prepare("UPDATE payment_transactions SET callback_payload=:payload,callback_received_at=NOW() WHERE id=:id AND status='PENDING'");
-        $q->execute(['payload'=>$safe,'id'=>$tx['id']]);
-        $pdo->commit();
-        json_response(['status'=>'pending']);
-    }
+    // Duitku's server-to-server callback uses 00 for success and 01 for failed payment.
     $q=$pdo->prepare("UPDATE payment_transactions SET status=:status,gateway_reference=COALESCE(NULLIF(:ref,''),gateway_reference),callback_payload=:payload,callback_received_at=NOW() WHERE id=:id AND status='PENDING'");
     $q->execute(['status'=>$status,'ref'=>(string)($_POST['reference']??''),'payload'=>$safe,'id'=>$tx['id']]);
     if ($status==='PAID') {
