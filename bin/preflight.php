@@ -44,9 +44,11 @@ try {
     $add('Database connection', true, 'connected');
     $requiredTables = [
         'schema_migrations', 'admin_users', 'games', 'providers', 'products',
-        'orders', 'payment_transactions', 'job_queue', 'supplier_transactions',
-        'refunds', 'pricing_rules', 'game_provider_mappings', 'game_fields',
-        'game_field_options', 'excluded_services', 'admin_login_attempts',
+        'orders', 'payment_transactions', 'job_queue', 'audit_logs',
+        'supplier_transactions', 'refunds', 'pricing_rules', 'game_provider_mappings',
+        'game_fields', 'game_field_options', 'provider_products', 'product_variants',
+        'settings', 'banners', 'excluded_services', 'webhook_events',
+        'account_validations', 'admin_login_attempts',
     ];
     $tableQuery = $pdo->prepare(
         'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :name'
@@ -61,6 +63,7 @@ try {
     if ($schemaPresent) {
         $applied = $pdo->query('SELECT migration_name FROM schema_migrations')->fetchAll(PDO::FETCH_COLUMN);
         foreach ([
+            '001_shared_hosting_foundation',
             '002_catalog_and_operations',
             '003_checkout_payment',
             '004_supplier_manual_review_status',
@@ -76,6 +79,11 @@ try {
             foreach (['006_monthly_settlements', '007_admin_drive_folder_setting'] as $migration) {
                 $ok = in_array($migration, $applied, true);
                 $add('Database migration: ' . $migration, $ok, $ok ? 'applied' : 'required when settlement backup is enabled');
+            }
+            foreach (['monthly_settlement_exports', 'app_settings'] as $table) {
+                $tableQuery->execute(['name' => $table]);
+                $exists = (int) $tableQuery->fetchColumn() === 1;
+                $add('Database table: ' . $table, $exists, $exists ? 'present' : 'required when settlement backup is enabled');
             }
         }
     }
