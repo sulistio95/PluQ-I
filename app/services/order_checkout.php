@@ -29,8 +29,10 @@ function checkout_is_idempotency_race(PDOException $e): bool
 {
     $sqlState = (string)$e->getCode();
     $driverCode = (int)($e->errorInfo[1] ?? 0);
-    return $sqlState === '23000'
-        || $sqlState === '40001'
+    // SQLSTATE 23000 includes foreign-key and other integrity violations. Only
+    // duplicate-key (1062), serialization/deadlock (40001/1213), and lock timeout
+    // (1205) should enter idempotency winner recovery.
+    return $sqlState === '40001'
         || in_array($driverCode, [1062, 1205, 1213], true);
 }
 
