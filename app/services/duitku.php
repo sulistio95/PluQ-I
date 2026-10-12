@@ -60,7 +60,7 @@ function duitku_create_payment(array $config, string $orderId, int $amount, stri
     return ['payment_url' => $url, 'reference' => isset($response['reference']) ? (string)$response['reference'] : null];
 }
 
-/** Map Duitku callback result codes without treating a pending payment as a failure. */
+/** Map documented Duitku server-to-server callback result codes. */
 function duitku_callback_result_state(string $resultCode): string
 {
     return match ($resultCode) {
