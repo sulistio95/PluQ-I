@@ -21,7 +21,14 @@ function checkout_integration_assert(bool $condition, string $message): void
     }
 }
 
-$pdo = database();
+// Use a non-static setup connection and close it before fork. config/database.php caches
+// its PDO in a function-static variable, which must not be inherited across pcntl_fork().
+$pdo = new PDO(
+    sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', getenv('DB_HOST') ?: '127.0.0.1', (int)(getenv('DB_PORT') ?: 3306), getenv('DB_DATABASE') ?: ''),
+    getenv('DB_USERNAME') ?: '',
+    getenv('DB_PASSWORD') ?: '',
+    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_EMULATE_PREPARES => false]
+);
 $token = bin2hex(random_bytes(5));
 $slug = 'checkout-race-' . $token;
 $key = sprintf('%08x-%04x-4%03x-a%03x-%012x', random_int(1, 0xffffffff), random_int(0, 0xffff), random_int(0, 0xfff), random_int(0, 0xfff), random_int(0, 0xffffffffffff));
