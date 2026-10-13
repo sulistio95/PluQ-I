@@ -297,3 +297,11 @@ This closes the previously documented check-then-call race by design, but a dedi
 - PHP quality workflow [38340379209](https://github.com/sulistio95/PluQ-I/actions/runs/38340379209) passed on commit `78e58e8f67ea133d39f36acfc6d245f8956adc2a`.
 - Confirmed the new `Test admin Duitku cooldown regression guard` step passed along with PHP lint and the existing callback, status-validation, checkout fingerprint, supplier mapping, and admin authorization tests.
 - Limitation remains: this is a source-structure regression guard, not a concurrent two-process MySQL/HTTP test. Keep that test as an explicit pre-production requirement.
+
+
+## Latest progress — concurrent Duitku cooldown integration test (2026-10-13)
+
+- Extracted the atomic MySQL admission transaction into `app/services/duitku_reconcile.php` and wired `public/admin/reconcile.php` to use it. The route sets its no-duplicate-audit guard only for the explicit cooldown exception.
+- Added `tests/reconcile-cooldown-concurrency-integration.php` that races two independent PHP processes against the same seeded MySQL payment. Expected: one admission, one cooldown rejection, one audit marker. It makes no gateway request. Added it to the MySQL 8.4 fulfillment CI and updated the structural guard to follow the helper.
+- Commits: `ad24834b92ff8fb6887e7e8450b43b026c709b64`, `1efda2505449740b070f7054ab9c472cd83184f8`, `746fb1496499abb7b0d5acfd1ef564351187fc2b`, `bcc94ea9d08e8bd98c74ca6322f35b562c54c030`, `fa8ab44e4390033513db60fc2747e09a8bcfe143`, `804aa234151e808611c59501b0baca63b97183ec`, `bb740f156bcabda93ac315d60939351eb4ae9f99`, `8c7d050ca2e68e33f0068b952e7affe1ee6872a9`.
+- **Next:** inspect GitHub Actions for the latest head; if the MySQL integration fails, fix the test/code and update both notes again. Until passing, label the test pending. This is concurrent helper/database admission coverage, not authenticated concurrent HTTP end-to-end coverage. No live APIs or deployment.
