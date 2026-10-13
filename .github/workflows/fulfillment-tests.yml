@@ -102,6 +102,13 @@ jobs:
           INSERT INTO payment_transactions (order_id, gateway, merchant_order_id, amount, status)
           SELECT id, 'DUITKU', public_id, 2500, 'PENDING' FROM orders WHERE public_id = 'fedcba9876543210fedcba9876';
           SQL
+      - name: Test concurrent Duitku reconciliation admission against MySQL
+        run: |
+          set -eu
+          for attempt in 1 2 3; do
+            echo "Concurrent reconciliation admission attempt ${attempt}/3"
+            php tests/reconcile-cooldown-concurrency-integration.php
+          done
       - name: Start local PHP callback server
         run: |
           php -S 127.0.0.1:8080 -t public >/tmp/pluq-php-server.log 2>&1 &
