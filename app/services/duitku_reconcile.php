@@ -8,6 +8,8 @@ declare(strict_types=1);
  * makes the cooldown visible before the gateway network request begins.
  * The transaction is always released before the caller performs network I/O.
  */
+final class DuitkuReconcileCooldownException extends DomainException {}
+
 function duitku_reconcile_admit_lookup(
     PDO $pdo,
     int $paymentId,
@@ -37,7 +39,7 @@ function duitku_reconcile_admit_lookup(
             ORDER BY id DESC LIMIT 1");
         $recent->execute(['entity_id' => (string)$paymentId]);
         if ($recent->fetchColumn()) {
-            throw new DomainException('Pemeriksaan untuk transaksi ini baru saja dilakukan. Tunggu minimal 60 detik sebelum meminta status lagi.');
+            throw new DuitkuReconcileCooldownException('Pemeriksaan untuk transaksi ini baru saja dilakukan. Tunggu minimal 60 detik sebelum meminta status lagi.');
         }
 
         $startAudit = $pdo->prepare("INSERT INTO audit_logs
