@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new DomainException('Nominal lokal bukan bilangan rupiah bulat; pemeriksaan otomatis dibatalkan dan perlu pemeriksaan manual.');
             }
 
-            $config = duitku_config();
+            $config = duitku_status_config();
             $raw = duitku_query_transaction_status($config, (string)$payment['merchant_order_id']);
             $result = duitku_validate_transaction_status_response($raw, (string)$payment['merchant_order_id'], (int)$amountText);
             $lookupPerformed = true;
