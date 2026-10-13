@@ -72,10 +72,21 @@ function vipayment_post(string $path, array $parameters = []): array
 function vipayment_profile(): array
 {
     $response = vipayment_post('/profile');
-    if (!isset($response['data']['balance']) || !is_numeric($response['data']['balance'])) {
+    return vipayment_map_profile_response($response);
+}
+
+/** Validate the raw profile balance before exposing it to synchronization callers. */
+function vipayment_map_profile_response(array $response): array
+{
+    $rawBalance = $response['data']['balance'] ?? null;
+    if (!is_numeric($rawBalance)) {
         throw new RuntimeException('VIPayment profile response has no numeric balance.');
     }
-    return ['balance' => (float) $response['data']['balance'], 'data' => $response['data']];
+    $balance = (float) $rawBalance;
+    if (!is_finite($balance) || $balance < 0) {
+        throw new RuntimeException('VIPayment profile response has an invalid balance.');
+    }
+    return ['balance' => $balance, 'data' => $response['data']];
 }
 
 function vipayment_game_services(?string $filterGame = null, ?string $filterStatus = 'available'): array
