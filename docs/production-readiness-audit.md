@@ -444,3 +444,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Inspected the GitHub Actions REST job records for the latest syntax, PHP quality, and fulfillment runs on commit `d690c7828117183ca43d1b6cff9c08052c4a0340`. The jobs were created and marked failed within roughly 1–7 seconds, with `steps: []`, `runner_id: 0`, and no `started_at`/`completed_at` step records. This narrows the observable failure to before normal runner-step execution; it does not identify the cause.
 - The repository Actions permissions endpoint was not accessible through the current GitHub connector, so account/repository Actions settings, billing/usage limits, policy restrictions, and GitHub service status remain unverified. Do not rewrite workflow definitions without evidence. Owner should inspect repository **Settings → Actions → General**, account billing/Actions usage, and GitHub Status; then rerun workflows and verify step logs.
 - No source change or runtime test is claimed from this diagnostic pass. Keep payment/supplier processing disabled and deployment paused until actual test steps execute and pass.
+
+
+## Duitku status amount integer-overflow hardening — 2026-10-14
+
+- Source review found that transaction-status amount validation cast an arbitrary digit string to PHP `int` before comparing. Oversized decimal strings can saturate at `PHP_INT_MAX`; if the expected amount were also `PHP_INT_MAX`, a larger amount could be mistaken for an exact match.
+- Updated `duitku_validate_transaction_status_response()` to compare normalized decimal strings instead of casting untrusted amount text: [source commit b6bba9d](https://github.com/sulistio95/PluQ-I/commit/b6bba9d5e3c5e2f9c708ef5904b52d06cb0b9662).
+- Extended `tests/duitku-transaction-status.php` with oversized amounts, leading-zero mismatch, and a direct regression where an amount larger than `PHP_INT_MAX` must not match `PHP_INT_MAX`: [test commit 12042e3](https://github.com/sulistio95/PluQ-I/commit/12042e37603638481ce23cddeed87c4b8ac3601a).
+- This is a source/test change only; the regression test has **not** been executed in this session. GitHub Actions still needs inspectable step logs before CI can be considered verified. No live Duitku/provider call or deployment; keep live processing disabled.
