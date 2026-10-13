@@ -63,7 +63,7 @@ $transportCalls = 0;
 $transportResult = duitku_query_transaction_status([
     'merchant_code' => 'DTEST',
     'api_key' => 'test-only-secret',
-    'endpoint' => 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry',
+    'endpoint' => 'https://sandbox.duitku.com/webapi/api/merchant/transactionStatus',
 ], $orderId, static function (string $url, array $payload) use (&$transportCalls, $orderId): array {
     $transportCalls++;
     status_test_assert($url === 'https://sandbox.duitku.com/webapi/api/merchant/transactionStatus', 'Status lookup must use the fixed sandbox status endpoint.');
@@ -77,7 +77,7 @@ try {
     duitku_query_transaction_status([
         'merchant_code' => 'DTEST',
         'api_key' => 'test-only-secret',
-        'endpoint' => 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry',
+        'endpoint' => 'https://sandbox.duitku.com/webapi/api/merchant/transactionStatus',
     ], $orderId, static fn(): array => []);
     status_test_assert(false, 'Injected transport must be rejected outside test environment.');
 } catch (RuntimeException $expected) {
