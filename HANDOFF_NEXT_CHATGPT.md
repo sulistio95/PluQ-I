@@ -483,3 +483,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 
 - Runs [38482250710](https://github.com/sulistio95/PluQ-I/actions/runs/38482250710), [38482250685](https://github.com/sulistio95/PluQ-I/actions/runs/38482250685), and [38482250681](https://github.com/sulistio95/PluQ-I/actions/runs/38482250681) failed with no step/log metadata (`steps: null`, `logs_url: null`). This still does not identify the root cause or prove a specific application test failed.
 - Continue with source-level review and regression additions only where a concrete defect is found; do not keep modifying workflows blindly. Arrange inspectable CI or controlled PHP/MySQL test execution before enabling any live payment or supplier flow.
+
+
+## VIPayment balance response validation — 2026-10-14
+
+- Source commit [2893932](https://github.com/sulistio95/PluQ-I/commit/2893932819fa8cafa3a1bf5905103df2bddd9675) adds `vipayment_map_profile_response()`, validating the profile balance as numeric, finite, and non-negative before returning it. The sync caller already had a second validation check; this hardening makes the adapter's own contract safe for other callers too.
+- Added regression test [tests/vipayment-balance-validation-test.php](https://github.com/sulistio95/PluQ-I/blob/main/tests/vipayment-balance-validation-test.php) (commit [955fd57](https://github.com/sulistio95/PluQ-I/commit/955fd57aeb228e4f0d1b6213049e61cebdd0cdfa)) and wired it into the fulfillment workflow (commit [40e8bf3](https://github.com/sulistio95/PluQ-I/commit/40e8bf341e12d19a4307ec340826328ec7416c23)).
+- Regression test remains unverified until CI steps/logs are visible or the suite is run in controlled PHP 8.2+ environment. GitHub Actions failures still expose no steps/logs; root cause unknown. Do not enable live Duitku/supplier processing or deploy. No live API call made.
+- Audit details: [docs/production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md), commit [004e5ce](https://github.com/sulistio95/PluQ-I/commit/004e5ceea2655bddfeaf2c318b4416aac60737a3).
