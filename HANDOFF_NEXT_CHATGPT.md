@@ -382,3 +382,12 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 - Because this happened again on a note-only commit, do not blame the HTTP test or change application/workflow files speculatively. No additional retry was requested.
 - Next action requires owner-side checks in repository Settings → Actions → General, account Billing & licensing / Budgets and alerts, and GitHub Status. If all are normal, contact GitHub Support with these run URLs and job IDs.
 - The HTTP boundary integration test remains runtime-unverified. Keep live Duitku/provider requests and deployment disabled. The production-readiness audit was updated in commit `cb9ec0f6dcc9c2baff50c47aca9a34d4324ad1ad`.
+
+
+## Continuation review — 2026-10-14
+
+- Latest Actions run set on commit `15d163d8e27202c7946318bf237a3824720c1fb1`: PHP quality [38401404982](https://github.com/sulistio95/PluQ-I/actions/runs/38401404982), fulfillment [38401405037](https://github.com/sulistio95/PluQ-I/actions/runs/38401405037), and syntax [38401405068](https://github.com/sulistio95/PluQ-I/actions/runs/38401405068) all failed within seconds with no visible steps or logs.
+- Re-reviewed the admin reconciliation route, admission helper, admin session/auth functions, HTTP integration test, and MySQL workflow. The test's session cookie name matches the application; the test exercises anonymous access, OPERATOR denial, CSRF rejection, unknown action rejection, and authorized form rendering. It does not submit the actual lookup action or contact Duitku.
+- The admission helper commits the cooldown marker before network I/O and does not hold the DB transaction open during the request. No definite code defect was identified in this review, so no speculative source edit was made.
+- Runtime execution of the HTTP integration test remains unverified. The blocker is still the opaque Actions pre-step failure; owner-side Actions settings/billing/status checks or GitHub Support are required. Do not enable live payments, supplier execution, or deployment until tests can run and staging checks pass.
+- The production-readiness audit was updated in commit `5faf902970f9aaff42b75d22ea7448ea6c638e15`.
