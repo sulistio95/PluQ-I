@@ -332,3 +332,8 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 - Initial workflows `38394970823` (fulfillment), `38394970881` (syntax), and `38394970906` (PHP quality) failed within seconds with no job step summaries/log URL. Job-log endpoint returned 404, so root cause is not known and must not be labeled a test-code failure without evidence.
 - Requested reruns for all three failed workflows; check their latest attempt/results next. A PHP 8.4 local syntax check of the script's function/HTTP client portion passed, but full PHP 8.2 CI and runtime integration remain unverified.
 - Do not claim new HTTP test green until reruns finish. Keep production and external Duitku calls untouched.
+### Follow-up CI attempts still fail before exposing job steps (2026-10-13)
+
+- Reruns of the previous failed workflow attempts failed immediately too. Fresh runs triggered by commit `24d6bce9215add73efbfa6a13703c2f661011bd8` failed immediately: fulfillment [38395199538](https://github.com/sulistio95/PluQ-I/actions/runs/38395199538), PHP quality [38395199540](https://github.com/sulistio95/PluQ-I/actions/runs/38395199540), syntax [38395199525](https://github.com/sulistio95/PluQ-I/actions/runs/38395199525).
+- Job payloads have `steps: null`, no log URL, and log endpoint returns 404. This is currently an opaque pre-step failure, not evidence that a particular PHP test failed. The new HTTP integration test remains unverified; do not claim CI is green.
+- Next: investigate Actions runner/repository execution availability or rerun when logs are accessible. Keep production/payment/supplier API interactions disabled. Both this file and `docs/production-readiness-audit.md` were updated to capture this status.
