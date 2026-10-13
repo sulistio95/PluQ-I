@@ -303,3 +303,10 @@ The HTTP boundary test source was reviewed against `admin_auth.php` and the sche
 
 
 Follow-up after recording this note: the note-only commits also triggered all three workflows, and all failed immediately without visible steps: commit `309c6b8b060ad4c10a20af77b0609162cbc06f6a` (runs `38395658550`, `38395658689`, `38395658589`) and commit `26aa6b64ee5f71acd1c34de9bbe9adc007e311e6` (runs `38395668065`, `38395668156`, `38395668061`). This further supports investigating Actions execution/billing/runner provisioning rather than attributing the failure to a particular test step; root cause is still not established.
+
+
+### External comparison: failures match the known pre-runner symptom pattern (2026-10-13)
+
+A current GitHub Community discussion dated 2026-09-28 describes the same broad symptom pattern in another repository: Actions jobs fail before the first step, no runner is assigned, and no job logs exist. This supports treating the PluQ-I failures as likely occurring in runner provisioning/orchestration rather than assuming a PHP/YAML test failure; it does **not** prove the same root cause here. Reference: https://github.com/orgs/community/discussions/209001. GitHub's billing documentation also confirms Actions usage/budget can be relevant for private repositories: https://docs.github.com/en/billing/concepts/product-billing/github-actions.
+
+Next checks that require repository-owner UI access: (1) repository Settings → Actions → General, ensure Actions and required actions are allowed; (2) account Settings → Billing & licensing / Budgets and alerts, check payment status, included minutes and spending limit; (3) check https://www.githubstatus.com/ for an active incident; (4) if settings and billing are normal, contact GitHub Support with the failed run URLs and job IDs. No workflow source changes were made in this investigation because the jobs have not reached a visible step. Do not mark any new test as passed.
