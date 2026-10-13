@@ -218,6 +218,60 @@ try {
     }
     checkout_integration_assert($mismatchRejected, 'Same key with a different account payload must be rejected.');
 
+    // Gateway timeout/failure after the DB commit must not trigger a second gateway request.
+    $failureKey = sprintf('%08x-%04x-4%03x-a%03x-%012x', random_int(1, 0xffffffff), random_int(0, 0xffff), random_int(0, 0xfff), random_int(0, 0xfff), random_int(0, 0xffffffffffff));
+    $failureCheckoutHash = hash('sha256', $failureKey);
+    $failureCalls = 0;
+    $gatewayFailureObserved = false;
+    try {
+        checkout_create_payment($pdo, [
+            'email' => 'timeout@example.test',
+            'idempotency_key' => $failureKey,
+            'game_slug' => $slug,
+            'product_id' => $productId,
+            'account' => ['user_id' => '654321'],
+        ], static function () use (&$failureCalls): array {
+            $failureCalls++;
+            throw new RuntimeException('Mock gateway timeout after request dispatch.');
+        });
+    } catch (RuntimeException $e) {
+        $gatewayFailureObserved = str_contains($e->getMessage(), 'tautan pembayaran belum tersedia');
+    }
+    checkout_integration_assert($gatewayFailureObserved, 'A gateway timeout must report that the order needs review.');
+    checkout_integration_assert($failureCalls === 1, 'The first checkout must call the mock gateway exactly once.');
+
+    $retryStarted = microtime(true);
+    $retryRejectedForReview = false;
+    try {
+        checkout_create_payment($pdo, [
+            'email' => 'timeout@example.test',
+            'idempotency_key' => $failureKey,
+            'game_slug' => $slug,
+            'product_id' => $productId,
+            'account' => ['user_id' => '654321'],
+        ], static function () use (&$failureCalls): array {
+            $failureCalls++;
+            return ['payment_url' => 'https://sandbox.duitku.com/mock/should-not-be-called', 'reference' => 'SHOULD-NOT-BE-CALLED'];
+        });
+    } catch (DomainException $e) {
+        $retryRejectedForReview = str_contains($e->getMessage(), 'pemeriksaan admin');
+    }
+    $retryDuration = microtime(true) - $retryStarted;
+    checkout_integration_assert($retryRejectedForReview, 'A retry after recorded gateway failure must request manual review.');
+    checkout_integration_assert($retryDuration < 2.0, 'A known failed gateway attempt must not incur the 22-second URL wait.');
+    checkout_integration_assert($failureCalls === 1, 'Retry after ambiguous gateway failure must not make another gateway request.');
+
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM orders WHERE checkout_key=:key');
+    $stmt->execute(['key' => $failureCheckoutHash]);
+    checkout_integration_assert((int)$stmt->fetchColumn() === 1, 'Gateway failure must leave exactly one checkout order.');
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM payment_transactions pt JOIN orders o ON o.id=pt.order_id WHERE o.checkout_key=:key AND pt.gateway_payment_url IS NULL");
+    $stmt->execute(['key' => $failureCheckoutHash]);
+    checkout_integration_assert((int)$stmt->fetchColumn() === 1, 'Ambiguous gateway failure must not fabricate a payment URL.');
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE checkout_key=:key AND last_error IS NOT NULL AND last_error<>''");
+    $stmt->execute(['key' => $failureCheckoutHash]);
+    checkout_integration_assert((int)$stmt->fetchColumn() === 1, 'Gateway failure must be recorded for manual review.');
+
+    echo "Checkout gateway-failure idempotency passed (retry returns immediately for review; exactly one mock gateway call; no duplicate order/payment).\n";
     echo "Concurrent MySQL checkout deadlock-recovery tests passed (one real 1213 victim classified and recovered; mock Duitku called once; one order/payment; URL reused; changed payload rejected).\n";
 } finally {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
@@ -225,8 +279,8 @@ try {
         try { $pdo = database(); } catch (Throwable $ignored) { $pdo = null; }
     }
     if ($pdo instanceof PDO) {
-        $pdo->prepare('DELETE pt FROM payment_transactions pt JOIN orders o ON o.id=pt.order_id WHERE o.checkout_key=:key')->execute(['key' => $checkoutHash]);
-        $pdo->prepare('DELETE FROM orders WHERE checkout_key=:key')->execute(['key' => $checkoutHash]);
+        $pdo->prepare('DELETE pt FROM payment_transactions pt JOIN orders o ON o.id=pt.order_id WHERE o.checkout_key=:key OR o.checkout_key=:failure_key')->execute(['key' => $checkoutHash, 'failure_key' => isset($failureCheckoutHash) ? $failureCheckoutHash : '']);
+        $pdo->prepare('DELETE FROM orders WHERE checkout_key=:key OR checkout_key=:failure_key')->execute(['key' => $checkoutHash, 'failure_key' => isset($failureCheckoutHash) ? $failureCheckoutHash : '']);
         if ($gameId > 0) {
             $pdo->prepare('DELETE FROM game_fields WHERE game_id=:id')->execute(['id' => $gameId]);
             $pdo->prepare('DELETE FROM products WHERE game_id=:id')->execute(['id' => $gameId]);
