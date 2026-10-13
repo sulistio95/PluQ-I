@@ -385,3 +385,11 @@ Requested one rerun of syntax workflow [38399998833](https://github.com/sulistio
 ## Admin login throttle review — 2026-10-14
 
 Reviewed admin login and database-backed rate limiting. A successful login currently clears failed-attempt rows more broadly than the single IP-and-username pair involved, which can erase rate-limit history for unrelated attempts. Proposed a narrow correction and attempted to update the source, but the repository write was blocked; no code change has been committed. This finding remains open. No runtime tests were run, and CI still needs visible job steps/logs before test results can be trusted.
+
+
+## Admin login throttle cleanup correction — 2026-10-14
+
+- Corrected `admin_login_clear_failures()` in commit `6d0e2f24b4397d0f48148ee4e7bf3e1e0e9a8a77`: successful login now deletes failed attempts only when both the IP address and normalized username hash match. It no longer clears unrelated rows merely because either field matches.
+- Added `tests/admin-login-throttle-clear.php` in commit `8e624e68e1c97572aec71268a15ac7e548d9d3d9`, checking the conjunction and bound values; wired it into `.github/workflows/php-quality.yml` in commit `664e9883ce7241c519dc0affb91949503f0054f2`.
+- The quality workflow triggered for the test-wiring commit failed before exposing any steps/logs (run [38474440334](https://github.com/sulistio95/PluQ-I/actions/runs/38474440334)); this does not establish whether the new regression test passes. Local execution of the repository test has not yet been performed. Treat this as a source fix with runtime/CI verification pending.
+- No live gateway/provider calls or deployment were performed. Keep live processing disabled until CI is observable and staging verification passes.
