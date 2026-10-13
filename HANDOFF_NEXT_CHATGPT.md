@@ -367,3 +367,9 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 - Latest job API results still return `steps: null` and `logs_url: null`; fetching job logs returns 404. Reviewed `.github/workflows/fulfillment-tests.yml`, `.github/workflows/php-quality.yml`, and `.github/workflows/php-lint.yml`; inspected runner declarations and steps look conventional, with no obvious malformed `runs-on` setup. This cannot explain or prove the external failure.
 - Reviewed the HTTP boundary test source: it uses a local PHP server, cURL, and disposable MySQL admin fixtures; no valid Duitku status lookup is submitted. The test remains runtime-unverified.
 - No speculative application/workflow edits were made. Next step is owner-side repository Settings → Actions → General, account Billing & licensing / Budgets and alerts, GitHub Status, then Support if those look normal. Keep production deployment and live gateway/provider calls disabled. Update both notes after any subsequent material change/result.
+
+
+## Controlled Actions retry result (2026-10-13)
+
+- Requested a targeted rerun of syntax workflow [38399998833](https://github.com/sulistio95/PluQ-I/actions/runs/38399998833). Attempt 2 also failed (updated at 12:52:43 UTC). The same commit's PHP quality [38399998813](https://github.com/sulistio95/PluQ-I/actions/runs/38399998813) and fulfillment [38399998667](https://github.com/sulistio95/PluQ-I/actions/runs/38399998667) failed on their first attempts within seconds.
+- The retry did not resolve the CI issue. No source/workflow edits were made; root cause remains unconfirmed and no new tests are certified green. Continue with owner-side Actions settings/billing/status checks or GitHub Support; do not deploy or enable live payment/provider calls. Audit updated in commit `0efb7848c15a3a70f20268ddea7130ccde40a4c6`.
