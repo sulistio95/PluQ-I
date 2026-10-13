@@ -464,3 +464,9 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Fixed in [9930da7](https://github.com/sulistio95/PluQ-I/commit/9930da74ac4d1d8f49e86add191811f4745064dd): ambiguous `PROCESSING` requests and VIPayment `RETRYING` records without a transaction reference now require manual review; VIPayment status polling is retained when a reference exists; Digiflazz retry remains fail-closed.
 - Added `tests/fulfillment-retry-safety-test.php` in [99cfd7e](https://github.com/sulistio95/PluQ-I/commit/99cfd7ebaa150051ef6676cd2ed2b2a42ee0542e) and included it in `.github/workflows/fulfillment-tests.yml` in [4af58c0](https://github.com/sulistio95/PluQ-I/commit/4af58c07616cf8b64989ce5d6f9b01872a46e72f).
 - CI/runtime result is not yet verified because Actions has been failing before steps/logs are exposed. No live API calls or deployment. Keep live processing disabled. Audit details: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
+
+
+### CI follow-up after retry-safety fix — 2026-10-14
+
+- Latest syntax [38480851988](https://github.com/sulistio95/PluQ-I/actions/runs/38480851988), PHP quality [38480851789](https://github.com/sulistio95/PluQ-I/actions/runs/38480851789), and fulfillment [38480851797](https://github.com/sulistio95/PluQ-I/actions/runs/38480851797) runs failed without visible step/log metadata (`steps: null`, `logs_url: null`). This does not tell us whether the newly added regression test or application checks themselves failed.
+- Next: restore inspectable GitHub Actions execution, then run the new `tests/fulfillment-retry-safety-test.php` and the existing PHP/MySQL integration suite. Keep live supplier/payment processing and deployment disabled. Audit details: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
