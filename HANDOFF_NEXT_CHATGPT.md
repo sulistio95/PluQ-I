@@ -348,3 +348,11 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 
 
 - Additional confirmation: documentation-only commits `309c6b8b060ad4c10a20af77b0609162cbc06f6a` and `26aa6b64ee5f71acd1c34de9bbe9adc007e311e6` also triggered all three workflows and all failed immediately (runs `38395658550`, `38395658689`, `38395658589`, `38395668065`, `38395668156`, `38395668061`). Continue treating the cause as unknown and investigate Actions settings/billing/runner provisioning first.
+
+
+## Follow-up — Actions runner provisioning investigation (2026-10-13)
+
+- Compared the repeated PluQ-I symptom (all three workflows fail within seconds; jobs have `steps: null` and `logs_url: null`) with a GitHub Community discussion dated 2026-09-28 describing similar failures before runner assignment: https://github.com/orgs/community/discussions/209001. This makes runner provisioning/orchestration a plausible area to investigate, but it does not establish the cause for this repository.
+- Billing reference: https://docs.github.com/en/billing/concepts/product-billing/github-actions. Owner-side checks needed in GitHub UI: repository Settings → Actions → General; account Settings → Billing & licensing / Budgets and alerts; check current GitHub Status at https://www.githubstatus.com/.
+- If settings and billing are clean, contact GitHub Support with the failed run URLs and job IDs. Repeated retries already showed the same pre-step symptom, so avoid adding more application/workflow changes until a job exposes logs or steps.
+- No tests are certified green by this investigation. The HTTP test's runtime execution remains pending; payment/provider APIs and deployment remain disabled.
