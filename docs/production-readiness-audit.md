@@ -209,3 +209,12 @@ Proposed safe operator flow for an ambiguous checkout timeout:
 7. `02=Failed/Expired` can only inform a controlled resolution after matching response evidence and rechecking current DB state inside a transaction; never override a later PAID/QUEUED/PROCESSING/SUCCESS state. Replacement attempts must be separately audited and only allowed after proving no payable transaction remains active.
 
 Implementation has not yet started. Next code change should add a small status-query service with strict response validation and unit tests, then a CSRF-protected admin action with role enforcement, rate-conscious manual invocation, audit logging, and no direct status mutation. Add mock-only integration tests for duplicate callbacks/races. No live Duitku calls or deployment occurred; checkout and supplier flags remain disabled.
+
+
+### Duitku transaction-status validation helpers — verified (2026-10-13)
+
+The code now contains three pure helpers in `app/services/duitku.php`: `duitku_transaction_status_signature()` (current HMAC-SHA256 formula), `duitku_transaction_status_state()` (separate status-query mapping), and `duitku_validate_transaction_status_response()` (exact order ID/amount matching, allowed-code validation, and response-shape checks). They do not perform network requests or mutate payment/order state. Unit tests in `tests/duitku-transaction-status.php` cover valid signature/mappings and reject unknown codes, order/amount mismatches, non-integer amounts, invalid references, and missing API keys.
+
+CI passed on commit `8e6e46497107`: PHP quality `38331891216`, PHP/JS syntax `38331891186`, and fulfillment safety `38331891209`; both fulfillment jobs passed, including MySQL integration. No live gateway calls were made.
+
+**Next:** before adding a transport method, reconcile the current Duitku docs' content-type inconsistency: the “Cek Transaksi” section labels the request x-www-form-urlencoded while its examples show a JSON body. Then implement a single-request, server-side status lookup, sandbox-only verification, CSRF-protected privileged admin action, and durable audit record. Do not implement automatic polling. A validated response alone does not authorize direct state mutation; paid status must use the existing idempotent callback transition path. Production flags remain disabled.
