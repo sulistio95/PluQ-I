@@ -57,3 +57,28 @@ try {
 }
 
 echo "Duitku transaction-status signature, status mapping, and response validation tests passed.\n";
+
+putenv('APP_ENV=test');
+$transportCalls = 0;
+$transportResult = duitku_query_transaction_status([
+    'merchant_code' => 'DTEST',
+    'api_key' => 'test-only-secret',
+    'endpoint' => 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry',
+], $orderId, static function (string $url, array $payload) use (&$transportCalls, $orderId): array {
+    $transportCalls++;
+    status_test_assert($url === 'https://sandbox.duitku.com/webapi/api/merchant/transactionStatus', 'Status lookup must use the fixed sandbox status endpoint.');
+    status_test_assert($payload['merchantCode'] === 'DTEST' && $payload['merchantOrderId'] === $orderId, 'Status request must include expected merchant and order IDs.');
+    status_test_assert(hash_equals(hash_hmac('sha256', 'DTEST' . $orderId, 'test-only-secret'), $payload['signature']), 'Status request must use HMAC-SHA256.');
+    return ['merchantOrderId' => $orderId, 'amount' => '2500', 'statusCode' => '01', 'statusMessage' => 'PROCESS'];
+});
+status_test_assert($transportCalls === 1 && ($transportResult['statusCode'] ?? '') === '01', 'Injected transport should be called once and return its response.');
+putenv('APP_ENV=production');
+try {
+    duitku_query_transaction_status([
+        'merchant_code' => 'DTEST',
+        'api_key' => 'test-only-secret',
+        'endpoint' => 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry',
+    ], $orderId, static fn(): array => []);
+    status_test_assert(false, 'Injected transport must be rejected outside test environment.');
+} catch (RuntimeException $expected) {
+}
