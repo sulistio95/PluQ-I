@@ -491,3 +491,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Added regression test [tests/vipayment-balance-validation-test.php](https://github.com/sulistio95/PluQ-I/blob/main/tests/vipayment-balance-validation-test.php) (commit [955fd57](https://github.com/sulistio95/PluQ-I/commit/955fd57aeb228e4f0d1b6213049e61cebdd0cdfa)) and wired it into the fulfillment workflow (commit [40e8bf3](https://github.com/sulistio95/PluQ-I/commit/40e8bf341e12d19a4307ec340826328ec7416c23)).
 - Regression test remains unverified until CI steps/logs are visible or the suite is run in controlled PHP 8.2+ environment. GitHub Actions failures still expose no steps/logs; root cause unknown. Do not enable live Duitku/supplier processing or deploy. No live API call made.
 - Audit details: [docs/production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md), commit [004e5ce](https://github.com/sulistio95/PluQ-I/commit/004e5ceea2655bddfeaf2c318b4416aac60737a3).
+
+
+### GitHub Actions runner allocation follow-up — 2026-10-14
+
+- Checked job records for syntax, PHP quality, and fulfillment runs on `d690c7828117183ca43d1b6cff9c08052c4a0340`. Each job failed before normal steps were recorded (`steps: []`, `runner_id: 0`, no usable logs), which confirms the visible problem is pre-step execution but does not establish the cause.
+- Actions permissions could not be inspected with the current connector. Next diagnostic is owner-side review of **Settings → Actions → General**, account billing/usage limits, repository policy, and GitHub Status; then rerun and inspect step logs. Do not blindly alter workflows or mark tests as passed.
+- No source edits, test execution, supplier/payment calls, or deployment occurred in this diagnostic pass. Production processing stays disabled. Audit details: [docs/production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
