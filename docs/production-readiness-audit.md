@@ -429,3 +429,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 
 - Runs on the latest note commit `421e31d0fbfcf79f193b12d24d2bc80f3af0ef94`: fulfillment [38482250710](https://github.com/sulistio95/PluQ-I/actions/runs/38482250710), PHP quality [38482250685](https://github.com/sulistio95/PluQ-I/actions/runs/38482250685), and syntax [38482250681](https://github.com/sulistio95/PluQ-I/actions/runs/38482250681) all reported job failures with `steps: null` and `logs_url: null`. No actionable test failure or root cause is exposed.
 - Treat both newly added regression tests as unverified until Actions provides step-level results or the suite is run in a controlled local/staging environment.
+
+
+## VIPayment balance response validation — 2026-10-14
+
+- Follow-up review found `vipayment_profile()` accepted any `is_numeric()` value and returned its float conversion without checking finiteness or non-negativity. The balance-sync caller also rejects invalid floats, so this was defense-in-depth at the adapter boundary rather than evidence of an incorrect persisted balance.
+- Added `vipayment_map_profile_response()` to reject missing, malformed, negative, and non-finite balances before returning profile data. Source commit: [2893932](https://github.com/sulistio95/PluQ-I/commit/2893932819fa8cafa3a1bf5905103df2bddd9675).
+- Added `tests/vipayment-balance-validation-test.php` for numeric-string acceptance and missing/malformed/negative/overflow/non-finite rejection (commit [955fd57](https://github.com/sulistio95/PluQ-I/commit/955fd57aeb228e4f0d1b6213049e61cebdd0cdfa)); wired it into `.github/workflows/fulfillment-tests.yml` (commit [40e8bf3](https://github.com/sulistio95/PluQ-I/commit/40e8bf341e12d19a4307ec340826328ec7416c23)).
+- Tests are committed but not yet verified by execution. Recent GitHub Actions runs still return failed jobs without step summaries/log URLs; root cause remains unknown. No live supplier/payment request or deployment was performed. Keep production payment and supplier-order flags disabled until tests are observable and staging checks pass.
