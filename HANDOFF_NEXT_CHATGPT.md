@@ -326,3 +326,9 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 - Added `tests/reconcile-admin-http-integration.php` and workflow step after local PHP server startup. Commits: test `77a1e0ed67460c84cc14eeea6252937fe5d9f4a8`, cleanup fix `b9e59514989c200e7f73b22c3e2d9fc365518655`, workflow wiring `136f11118aa181a44a533fae93017dcb746e6ddf`.
 - Exercises real HTTP/session boundaries with disposable MySQL users: anonymous redirect (302), OPERATOR forbidden (403), invalid CSRF (403), missing explicit action (400), ADMIN form render (200). No valid status-lookup submission, no Duitku network call. Fixtures are deleted in `finally`.
 - CI is pending; inspect job logs and fix failures before marking verified. Coverage still does not include duplicate valid HTTP lookup requests or real external transport. Continue updating this handoff and `docs/production-readiness-audit.md` for every substantive change/result.
+### CI runner anomaly after adding HTTP boundary test (2026-10-13)
+
+- New HTTP integration test and workflow wiring are in commits `77a1e0ed67460c84cc14eeea6252937fe5d9f4a8`, `b9e59514989c200e7f73b22c3e2d9fc365518655`, and `136f11118aa181a44a533fae93017dcb746e6ddf`; notes committed at `4927d490bbaf89542026332c1a5239d4cb47bd0f` and `ab23e93e316be34e7dd6bc7db7b14f6b9094f356`.
+- Initial workflows `38394970823` (fulfillment), `38394970881` (syntax), and `38394970906` (PHP quality) failed within seconds with no job step summaries/log URL. Job-log endpoint returned 404, so root cause is not known and must not be labeled a test-code failure without evidence.
+- Requested reruns for all three failed workflows; check their latest attempt/results next. A PHP 8.4 local syntax check of the script's function/HTTP client portion passed, but full PHP 8.2 CI and runtime integration remain unverified.
+- Do not claim new HTTP test green until reruns finish. Keep production and external Duitku calls untouched.
