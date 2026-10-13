@@ -50,7 +50,7 @@ function checkout_reuse_winning_request(PDO $pdo, string $checkoutKey, string $f
 {
     $deadline = microtime(true) + max(0, $waitMilliseconds) / 1000;
     do {
-        $stmt = $pdo->prepare("SELECT o.public_id,o.checkout_payload_hash,pt.gateway_payment_url
+        $stmt = $pdo->prepare("SELECT o.public_id,o.checkout_payload_hash,o.last_error,pt.gateway_payment_url
             FROM orders o LEFT JOIN payment_transactions pt ON pt.order_id=o.id
             WHERE o.checkout_key=:key LIMIT 1");
         $stmt->execute(['key' => $checkoutKey]);
@@ -62,6 +62,12 @@ function checkout_reuse_winning_request(PDO $pdo, string $checkoutKey, string $f
             }
             if (!empty($existing['gateway_payment_url'])) {
                 return ['order_id' => $existing['public_id'], 'payment_url' => $existing['gateway_payment_url'], 'reused' => true];
+            }
+            // A previous gateway attempt already failed or timed out. Do not wait for
+            // an in-flight creator or repeat the external request: an ambiguous timeout
+            // may mean Duitku created the payment but its response was lost.
+            if (!empty($existing['last_error'])) {
+                throw new DomainException('Pesanan tercatat, tetapi hasil permintaan pembayaran belum dapat dipastikan. Perlu pemeriksaan admin sebelum mencoba lagi.');
             }
         }
         if (microtime(true) >= $deadline) break;
