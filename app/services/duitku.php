@@ -125,7 +125,14 @@ function duitku_validate_transaction_status_response(array $response, string $ex
         throw new UnexpectedValueException('Duitku transaction-status order ID does not match.');
     }
     if ((!is_string($amount) && !is_int($amount)) || !ctype_digit((string)$amount)
-        || $expectedAmount < 1 || (int)$amount !== $expectedAmount) {
+        || $expectedAmount < 1) {
+        throw new UnexpectedValueException('Duitku transaction-status amount does not match.');
+    }
+    // Compare decimal strings after removing leading zeroes; casting an arbitrarily
+    // large digit string to int can saturate at PHP_INT_MAX and mis-validate it.
+    $normalizedAmount = ltrim((string)$amount, '0');
+    if ($normalizedAmount === '') $normalizedAmount = '0';
+    if ($normalizedAmount !== (string)$expectedAmount) {
         throw new UnexpectedValueException('Duitku transaction-status amount does not match.');
     }
     if (!is_string($statusCode)) {
