@@ -313,3 +313,8 @@ Next checks that require repository-owner UI access: (1) repository Settings →
 
 
 After this investigation note was committed, the three workflows again failed immediately on commit `851fddb169713d605360c2e49b71cdb87571e16b`: fulfillment `38397679614`, PHP quality `38397679661`, and syntax `38397679602` (2026-10-13 12:29 UTC). This repeats the same pre-step symptom; no root cause is confirmed and no test is marked green.
+
+
+### Latest continuation check — workflow source and run metadata (2026-10-13)
+
+The current head commit `2d559672eb132c4211eff93d529b749097fc54c8` triggered another set of immediate failures: fulfillment [38397710451](https://github.com/sulistio95/PluQ-I/actions/runs/38397710451), PHP quality [38397710416](https://github.com/sulistio95/PluQ-I/actions/runs/38397710416), and PHP/JavaScript syntax [38397710358](https://github.com/sulistio95/PluQ-I/actions/runs/38397710358). The newest fulfillment job records still have `steps: null` and `logs_url: null`; retrieving logs is unavailable (404). Reviewed the three checked-in workflow YAML files: each uses the ordinary `runs-on: ubuntu-latest` job pattern and normal setup/test steps; no obvious malformed runner declaration was found in the inspected content. The HTTP test source also remains a conventional PHP/cURL/MySQL integration test, but cannot be certified without runtime execution. This reinforces that diagnosis is blocked before visible steps, without proving a GitHub platform cause. No application changes were made; next action still requires owner-side Actions/billing/status checks or GitHub Support. Keep the new HTTP test unverified and do not enable live payment/supplier processing.
