@@ -16,14 +16,16 @@ function reconcile_cooldown_assert(bool $condition, string $message): void
     }
 }
 
-$source = file_get_contents(dirname(__DIR__) . '/public/admin/reconcile.php');
-reconcile_cooldown_assert(is_string($source) && $source !== '', 'Could not read admin reconciliation route.');
+$source = file_get_contents(dirname(__DIR__) . '/app/services/duitku_reconcile.php');
+reconcile_cooldown_assert(is_string($source) && $source !== '', 'Could not read admin reconciliation helper.');
+$route = file_get_contents(dirname(__DIR__) . '/public/admin/reconcile.php');
+reconcile_cooldown_assert(is_string($route) && str_contains($route, 'duitku_reconcile_admit_lookup('), 'Admin route must use the tested admission helper.');
 
 $lock = strpos($source, "SELECT id FROM payment_transactions WHERE id=:id FOR UPDATE");
 $recent = strpos($source, "SELECT id FROM audit_logs");
 $started = strpos($source, "'outcome' => 'STARTED'");
 $commit = strpos($source, '$pdo->commit();');
-$network = strpos($source, 'duitku_query_transaction_status(');
+$network = strpos($route, 'duitku_query_transaction_status(');
 reconcile_cooldown_assert(
     $lock !== false && $recent !== false && $started !== false && $commit !== false && $network !== false,
     'Expected row lock, cooldown query, STARTED marker, commit, and gateway request are required.'
@@ -33,9 +35,9 @@ reconcile_cooldown_assert(
     'Admission must lock, check cooldown, persist STARTED and commit before network I/O.'
 );
 
-$guard = strpos($source, 'if ($payment && !$cooldownRejected)');
+$guard = strpos($route, 'if ($payment && !$cooldownRejected)');
 reconcile_cooldown_assert($guard !== false, 'Cooldown-denied attempts must not write another lookup audit event.');
-$rejectFlag = strpos($source, '$cooldownRejected = true;');
+$rejectFlag = strpos($route, '$cooldownRejected = true;');
 reconcile_cooldown_assert($rejectFlag !== false && $rejectFlag < $guard, 'Cooldown rejection must set the guard before generic error auditing.');
 reconcile_cooldown_assert(
     strpos($source, "INTERVAL 60 SECOND") !== false,
