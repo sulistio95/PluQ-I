@@ -477,3 +477,9 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Added strict validation for the Digiflazz `deposit` balance: it must be numeric, finite, and non-negative. Previously a malformed string could silently cast to zero. Commit: [9040192](https://github.com/sulistio95/PluQ-I/commit/9040192a403aa3afffb43eb6c448fc1774806c04).
 - Added `tests/digiflazz-balance-validation-test.php` in [5dcad4e](https://github.com/sulistio95/PluQ-I/commit/5dcad4ed2e83dbb631b6f0facd0841c54d6cc1b7) and wired it into fulfillment CI in [c7b34f7](https://github.com/sulistio95/PluQ-I/commit/c7b34f7832be06c44be38fa425c9b8b809e1d1ce).
 - CI execution is still not verified because recent Actions runs failed without visible step/log metadata. No live provider requests/deployment. Keep payment and supplier processing disabled until verification passes. Full audit: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
+
+
+### CI status after latest balance-validation change — 2026-10-14
+
+- Runs [38482250710](https://github.com/sulistio95/PluQ-I/actions/runs/38482250710), [38482250685](https://github.com/sulistio95/PluQ-I/actions/runs/38482250685), and [38482250681](https://github.com/sulistio95/PluQ-I/actions/runs/38482250681) failed with no step/log metadata (`steps: null`, `logs_url: null`). This still does not identify the root cause or prove a specific application test failed.
+- Continue with source-level review and regression additions only where a concrete defect is found; do not keep modifying workflows blindly. Arrange inspectable CI or controlled PHP/MySQL test execution before enabling any live payment or supplier flow.
