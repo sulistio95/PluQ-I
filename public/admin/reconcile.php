@@ -29,6 +29,7 @@ $error = '';
 $result = null;
 $orderId = trim((string)($_POST['merchant_order_id'] ?? ''));
 $lookupPerformed = false;
+$cooldownRejected = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!admin_csrf_valid($_POST['csrf'] ?? null)) {
@@ -74,6 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ORDER BY id DESC LIMIT 1");
                 $recent->execute(['entity_id' => (string)$paymentId]);
                 if ($recent->fetchColumn()) {
+                    // A rejected click is not a new gateway lookup. Do not write another
+                    // DUITKU_STATUS_LOOKUP event in the outer catch, or repeated clicks
+                    // could keep extending the cooldown indefinitely.
+                    $cooldownRejected = true;
                     throw new DomainException('Pemeriksaan untuk transaksi ini baru saja dilakukan. Tunggu minimal 60 detik sebelum meminta status lagi.');
                 }
                 $startAudit = $pdo->prepare("INSERT INTO audit_logs
@@ -126,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = $e instanceof DomainException || $e instanceof InvalidArgumentException
                 ? $e->getMessage()
                 : 'Status Duitku tidak dapat diverifikasi. Jangan membuat pembayaran pengganti atau mengubah status; periksa log server dan dashboard Duitku.';
-            if ($payment) {
+            if ($payment && !$cooldownRejected) {
                 try {
                     $audit = $pdo->prepare("INSERT INTO audit_logs
                         (actor_type,actor_id,action,entity_type,entity_id,details,ip_address)
