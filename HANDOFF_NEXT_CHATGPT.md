@@ -439,3 +439,12 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 ## Admin login review — 2026-10-14
 
 Login page and rate-limit helper review found that a successful login clears failed-attempt history too broadly, rather than only the matching IP and username pair. A source correction was attempted but repository writes to the source were blocked; no code fix is committed. This finding remains open, with no new runtime tests. The audit entry is recorded in commit `6c67f8367480baca7932cc70ee9e5ae5a254bf28`.
+
+
+## Admin login throttle cleanup correction — 2026-10-14
+
+- Fixed `admin_login_clear_failures()` in commit `6d0e2f24b4397d0f48148ee4e7bf3e1e0e9a8a77`: cleanup now matches both the current IP and normalized username hash, so a successful login does not erase unrelated throttle history.
+- Added `tests/admin-login-throttle-clear.php` (commit `8e624e68e1c97572aec71268a15ac7e548d9d3d9`) and wired it into the PHP quality workflow (commit `664e9883ce7241c519dc0affb91949503f0054f2`).
+- CI run [38474440334](https://github.com/sulistio95/PluQ-I/actions/runs/38474440334) failed before job steps/logs were available. The new test is therefore **not yet verified by CI**; do not mark it passed. Next, restore observable Actions execution and run the regression test locally/against PHP 8.2 if possible.
+- No live provider/payment call or deployment. Keep production flags disabled.
+- Audit detail: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md), commit `d2e7f0e954956c0f0ebc6bcffbf40500122bb901`.
