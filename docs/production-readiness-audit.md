@@ -236,3 +236,10 @@ CI passed on test commit `05d9f1ee497b`: PHP quality `38334462332`, syntax `3833
 ### Open issue: status lookup cooldown is not atomic
 
 The current 60-second throttle in `public/admin/reconcile.php` checks recent audit history before the HTTP request, but does not atomically reserve the lookup. Two simultaneous admin POST requests could both observe no recent row and each call the sandbox endpoint. This is a known limitation, not a concurrency-safe rate limiter. Before production or live Duitku use, serialize admission with a short DB transaction that locks the `payment_transactions` row and commits a `STARTED` audit/lease record before network I/O, or create a dedicated unique lease row. Do not hold the transaction during the network request. Add a concurrent-request integration test asserting one outbound call. Current implementation is sandbox-only and no live calls have been made.
+
+
+### Atomic status-lookup admission — implementation added (2026-10-13)
+
+The reconciliation route now serializes admission attempts by locking the matching `payment_transactions` row with `SELECT ... FOR UPDATE`, checking the last 60 seconds of lookup audit records while holding that lock, and committing a `STARTED` audit event before network I/O. The transaction is released before calling Duitku. A concurrent request for the same payment should therefore observe the committed marker and be rejected without making a second status-query request. No payment/order state is changed.
+
+This closes the race in the prior check-then-call implementation at the code level. However, no dedicated concurrent HTTP/MySQL integration test for this route exists yet; current passing workflows do not independently prove simultaneous status lookup admission. Add a focused two-process test before treating the throttle as production-certified. Sandbox only, no live requests/deployment.
