@@ -452,3 +452,9 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Updated `duitku_validate_transaction_status_response()` to compare normalized decimal strings instead of casting untrusted amount text: [source commit b6bba9d](https://github.com/sulistio95/PluQ-I/commit/b6bba9d5e3c5e2f9c708ef5904b52d06cb0b9662).
 - Extended `tests/duitku-transaction-status.php` with oversized amounts, leading-zero mismatch, and a direct regression where an amount larger than `PHP_INT_MAX` must not match `PHP_INT_MAX`: [test commit 12042e3](https://github.com/sulistio95/PluQ-I/commit/12042e37603638481ce23cddeed87c4b8ac3601a).
 - This is a source/test change only; the regression test has **not** been executed in this session. GitHub Actions still needs inspectable step logs before CI can be considered verified. No live Duitku/provider call or deployment; keep live processing disabled.
+
+
+### CI result after Duitku overflow regression — 2026-10-14
+
+- The note commit triggered syntax run [38485787043](https://github.com/sulistio95/PluQ-I/actions/runs/38485787043) and fulfillment run [38485787071](https://github.com/sulistio95/PluQ-I/actions/runs/38485787071); both failed immediately. Job records show `steps: null` and `logs_url: null` (jobs `115598975273`, `115598975592`, and `115598975726`). This still does not establish whether lint/tests ran or failed; root cause remains unknown.
+- The integer-overflow fix and regression case are committed, but **not runtime-verified**. Restore inspectable Actions execution or run the suite in a controlled PHP 8.2+/MySQL environment before treating checks as green. Keep production payment/supplier execution disabled and do not deploy.
