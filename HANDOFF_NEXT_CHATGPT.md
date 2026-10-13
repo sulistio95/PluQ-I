@@ -1,6 +1,6 @@
 # PluQ-I — Handoff for the next ChatGPT session
 
-Last updated: 2026-10-13 (Asia/Jakarta) — deterministic deadlock attempt did not trigger a real deadlock; reverted to passing stress-test design, CI pending
+Last updated: 2026-10-13 (Asia/Jakarta) — admin checkout hints and timeout CI verified; manual reconciliation is next
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
@@ -229,3 +229,14 @@ The corrected test run for commit `5b9452144202d8e97aa5c5d8259db5e36643ad04` rea
 - Documentation follow-ups for the ambiguous gateway timeout protection passed all checks: handoff commit `813ec60ad4d8c93086b9e915b226a95f709599eb`, run `38329275031` (PHP and MySQL jobs success); audit commit `c2e38d90a58cb6748bec23b7ddd02463f22b3950`, run `38329284829` (PHP and MySQL jobs success).
 - The admin hints improve operator visibility only. They do not query Duitku, prove whether a payment was created, or authorize a retry/refund. Next work should define a safe, auditable manual reconciliation procedure and review official Duitku status-query capabilities before implementing any live gateway integration. Do not make live API calls during this audit.
 - Production checkout and supplier-order flags remain disabled. No deployment, live payment, or supplier order was performed.
+
+
+## Duitku timeout reconciliation research (2026-10-13)
+
+Official Duitku API reference: https://docs.duitku.com/api/id/ (section “Cek Transaksi”).
+- Status lookup uses POST to `https://sandbox.duitku.com/webapi/api/merchant/transactionStatus` for development and `https://passport.duitku.com/webapi/api/merchant/transactionStatus` for production.
+- Request fields: `merchantCode`, `merchantOrderId`, `signature`; current documentation specifies `HMAC_SHA256(merchantCode + merchantOrderId, apiKey)`. Older documentation pages show MD5, so do not copy legacy snippets.
+- Status lookup response codes are **not the same semantics as callback result codes**: the current status-query documentation lists `00=Success`, `01=Process`, `02=Failed/Expired`. The existing callback mapper's `01=FAILED` applies to callback payloads only; do not reuse it for status-query responses.
+- Duitku explicitly warns against repeated automatic status-query requests because rate limiting may block calls for about an hour. This supports an operator-initiated, audited lookup for ambiguous checkout cases—not a polling cron.
+- Safe manual process: search by exact `merchantOrderId`; compare response order ID and amount to local `payment_transactions.amount`; store gateway reference and response evidence in an audit record; if status is `01` (Process), leave it pending and do not create a replacement; only consider replacement after an authoritative failed/expired response is matched and local payment/order state is checked under a transaction. A `00` success must follow the normal verified callback/state-transition path, not an ad-hoc admin status edit. Network errors, malformed response, unknown codes, amount/order mismatch, or uncertainty stay in manual review.
+- No status-query API call was made and no live credentials were used. Before coding this integration, add unit tests for signature/response validation and status-code mapping, then mock-only integration tests for mismatch, process, success, failed/expired, rate/error handling, and concurrent callback interactions. Do not add a repeated cron poller.
