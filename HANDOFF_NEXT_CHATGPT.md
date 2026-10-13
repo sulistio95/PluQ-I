@@ -281,3 +281,12 @@ This closes the previously documented check-then-call race by design, but a dedi
 - Found that a rejected repeat click entered the generic error-audit path and wrote another `DUITKU_STATUS_LOOKUP` row. Because cooldown admission checks this same action, repeated rejected clicks could keep refreshing the 60-second window indefinitely.
 - Commit `b8d7fa77e1d2363a561775ce7bbe0b7675e2db9c` adds a `$cooldownRejected` guard: cooldown-denied requests do not create a new lookup audit event. Real admitted attempts still record success/error outcomes. The row lock and committed STARTED marker remain unchanged; the transaction is still released before HTTP I/O.
 - CI has not yet been rechecked for this new code commit at the time of this note. A dedicated concurrent MySQL/web-route regression test remains open. No local PHP run, live Duitku call, production payment, supplier order, deployment, or Google Drive write is claimed.
+
+
+## Follow-up — cooldown regression check wired into CI (2026-10-13)
+
+- Added `tests/reconcile-cooldown-regression.php` to structurally assert the admin route's row-lock/cooldown/STARTED/commit/network ordering and the cooldown-rejection audit guard.
+- Added the test to the PHP quality GitHub Actions workflow.
+- Test commit: `cce70d749ba6f809a3a2e582f7deeb99dde184e1`.
+- Workflow commit: `61ad26239ba960b59e5c379c2de254a226c56b83`.
+- This is a structural regression guard only. It does not simulate concurrent authenticated HTTP requests or prove MySQL row-lock behavior; that integration test remains open. No live gateway call, deployment, supplier order, or production payment was performed.
