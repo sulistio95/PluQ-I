@@ -506,3 +506,9 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Source commit: [b6bba9d](https://github.com/sulistio95/PluQ-I/commit/b6bba9d5e3c5e2f9c708ef5904b52d06cb0b9662). Regression test commit: [12042e3](https://github.com/sulistio95/PluQ-I/commit/12042e37603638481ce23cddeed87c4b8ac3601a).
 - Added coverage for oversized values and the exact `PHP_INT_MAX` saturation case. Test execution is still unverified because GitHub Actions failures have not exposed normal steps/logs; do not report this test as passing.
 - No live gateway/provider calls or deployment. Keep live payment and supplier-order flags disabled. Next: verify CI execution and run the PHP/MySQL integration suite before considering staging.
+
+
+### CI status for latest regression (2026-10-14)
+
+- Syntax workflow [38485787043](https://github.com/sulistio95/PluQ-I/actions/runs/38485787043) and fulfillment workflow [38485787071](https://github.com/sulistio95/PluQ-I/actions/runs/38485787071) failed immediately on handoff commit `2a465e53a1ccf66bba3ce03dd558df50b55f0705`. Jobs `115598975273`, `115598975592`, and `115598975726` expose no step summaries or logs. Do not interpret this as a test assertion failure; cause remains undetermined.
+- The Duitku status amount overflow regression remains unverified. Next priority: resolve Actions pre-step execution or run tests in a controlled PHP 8.2+/MySQL environment. Live payment/provider calls and deployment remain disabled.
