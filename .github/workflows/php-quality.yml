@@ -32,6 +32,8 @@ jobs:
         run: php tests/duitku-callback-result-state.php
       - name: Test Duitku transaction status response validation
         run: php tests/duitku-transaction-status.php
+      - name: Test admin Duitku cooldown regression guard
+        run: php tests/reconcile-cooldown-regression.php
       - name: Test checkout request fingerprint
         run: php tests/checkout-request-fingerprint.php
       - name: Test supplier account and response mapping
