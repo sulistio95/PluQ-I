@@ -409,3 +409,9 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Added `fulfillment_supplier_state_requires_review()` and routed ambiguous supplier states through manual review. VIPayment `RETRYING` is allowed to continue only when a non-empty provider reference exists for status lookup; Digiflazz `RETRYING` remains blocked from automatic resubmission. Source commit: [9930da7](https://github.com/sulistio95/PluQ-I/commit/9930da74ac4d1d8f49e86add191811f4745064dd).
 - Added regression cases in `tests/fulfillment-retry-safety-test.php` (commit [99cfd7e](https://github.com/sulistio95/PluQ-I/commit/99cfd7ebaa150051ef6676cd2ed2b2a42ee0542e)) and wired the test into the fulfillment workflow (commit [4af58c0](https://github.com/sulistio95/PluQ-I/commit/4af58c07616cf8b64989ce5d6f9b01872a46e72f)).
 - Runtime/CI verification is pending: GitHub Actions has recently failed before exposing steps/logs, so the new test is committed but not yet verified by CI. No live supplier request or deployment was performed. Keep live supplier/payment flags disabled until workflow output and staging checks are available.
+
+
+### CI status after supplier retry guard — 2026-10-14
+
+- Latest runs on handoff commit `942ca0ef7e83662cc57f72bcf4cee90e72f2cdc6`: syntax [38480851988](https://github.com/sulistio95/PluQ-I/actions/runs/38480851988) and PHP quality [38480851789](https://github.com/sulistio95/PluQ-I/actions/runs/38480851789) failed without exposed step/log metadata; fulfillment [38480851797](https://github.com/sulistio95/PluQ-I/actions/runs/38480851797) also ended with both jobs failed and `steps: null`, `logs_url: null`. These results still do not identify an application test failure or establish why Actions exits early.
+- The newly added retry-safety test is therefore committed but not CI-verified. Investigate repository/account Actions availability before making speculative workflow changes. No live requests or deployment.
