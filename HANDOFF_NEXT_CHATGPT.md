@@ -345,3 +345,6 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 - Root cause is still unknown. Next: check repository Actions settings, account billing/minute limits, and runner provisioning; avoid speculative source changes and do not label CI successful.
 - Reviewed `tests/reconcile-admin-http-integration.php` against `app/services/admin_auth.php` and `database/schema.mysql.sql`. The test covers anonymous redirect, OPERATOR denial, invalid CSRF denial, unknown POST action rejection, and authorized admin form rendering. It never submits the real status-lookup action, so it must not call Duitku. Fixture cleanup uses `finally`. Full runtime/CI verification remains pending.
 - Keep payment/provider live execution and deployment disabled. Update this handoff and `docs/production-readiness-audit.md` after every material code or test change.
+
+
+- Additional confirmation: documentation-only commits `309c6b8b060ad4c10a20af77b0609162cbc06f6a` and `26aa6b64ee5f71acd1c34de9bbe9adc007e311e6` also triggered all three workflows and all failed immediately (runs `38395658550`, `38395658689`, `38395658589`, `38395668065`, `38395668156`, `38395668061`). Continue treating the cause as unknown and investigate Actions settings/billing/runner provisioning first.
