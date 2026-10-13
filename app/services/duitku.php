@@ -82,3 +82,69 @@ function duitku_verify_callback(array $config, array $data): bool
     }
     return hash_equals(hash_hmac('sha256', $merchant . $amount . $orderId, $config['api_key']), $signature);
 }
+
+
+/**
+ * Build the current Duitku merchant transaction-status signature.
+ * This is intentionally separate from callback signature verification.
+ */
+function duitku_transaction_status_signature(array $config, string $merchantOrderId): string
+{
+    $merchantCode = trim((string)($config['merchant_code'] ?? ''));
+    $apiKey = (string)($config['api_key'] ?? '');
+    if ($merchantCode === '' || $apiKey === '' || $merchantOrderId === '' || strlen($merchantOrderId) > 50) {
+        throw new InvalidArgumentException('Duitku transaction-status request data is invalid.');
+    }
+    return hash_hmac('sha256', $merchantCode . $merchantOrderId, $apiKey);
+}
+
+/**
+ * Status-query response codes differ from callback result codes:
+ * 00=success, 01=still processing, 02=failed/expired.
+ */
+function duitku_transaction_status_state(string $statusCode): string
+{
+    return match ($statusCode) {
+        '00' => 'SUCCESS',
+        '01' => 'PROCESS',
+        '02' => 'FAILED_OR_EXPIRED',
+        default => throw new InvalidArgumentException('Unsupported Duitku transaction-status code.'),
+    };
+}
+
+/**
+ * Validate a status-query response against the expected merchant order and amount.
+ * No database state is changed by this validation helper.
+ */
+function duitku_validate_transaction_status_response(array $response, string $expectedOrderId, int $expectedAmount): array
+{
+    $orderId = $response['merchantOrderId'] ?? null;
+    $amount = $response['amount'] ?? null;
+    $statusCode = $response['statusCode'] ?? null;
+    if (!is_string($orderId) || $orderId === '' || !hash_equals($expectedOrderId, $orderId)) {
+        throw new UnexpectedValueException('Duitku transaction-status order ID does not match.');
+    }
+    if ((!is_string($amount) && !is_int($amount)) || !ctype_digit((string)$amount)
+        || $expectedAmount < 1 || (int)$amount !== $expectedAmount) {
+        throw new UnexpectedValueException('Duitku transaction-status amount does not match.');
+    }
+    if (!is_string($statusCode)) {
+        throw new UnexpectedValueException('Duitku transaction-status response is incomplete.');
+    }
+    $state = duitku_transaction_status_state($statusCode);
+    $reference = $response['reference'] ?? null;
+    if ($reference !== null && !is_string($reference)) {
+        throw new UnexpectedValueException('Duitku transaction-status reference is invalid.');
+    }
+    $message = $response['statusMessage'] ?? '';
+    if (!is_string($message)) {
+        throw new UnexpectedValueException('Duitku transaction-status message is invalid.');
+    }
+    return [
+        'merchant_order_id' => $orderId,
+        'amount' => (int)$amount,
+        'state' => $state,
+        'reference' => $reference,
+        'status_message' => $message,
+    ];
+}
