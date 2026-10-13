@@ -45,4 +45,21 @@ reconcile_cooldown_assert(
     'The configured 60-second cooldown check must remain present.'
 );
 
+// Keep the HTTP route's security boundary and read-only nature explicit.
+// These source guards complement (but do not replace) authenticated HTTP tests.
+reconcile_cooldown_assert(
+    strpos($route, 'admin_csrf_valid($_POST[\'csrf\'] ?? null)') !== false,
+    'Admin reconciliation POST must validate its CSRF token.'
+);
+reconcile_cooldown_assert(
+    strpos($route, 'if (!admin_can_manage_settings($user))') !== false,
+    'Privileged admin authorization must remain enforced before reconciliation.'
+);
+foreach (['UPDATE payment_transactions', 'UPDATE orders', 'fulfillment_process(', 'checkout_create_payment('] as $forbiddenMutation) {
+    reconcile_cooldown_assert(
+        stripos($route, $forbiddenMutation) === false,
+        'Read-only reconciliation route must not mutate payment/order state or start fulfillment/checkout.'
+    );
+}
+
 echo "Admin Duitku cooldown structural regression checks passed.\n";
