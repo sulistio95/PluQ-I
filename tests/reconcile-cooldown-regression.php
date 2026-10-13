@@ -25,14 +25,15 @@ $lock = strpos($source, "SELECT id FROM payment_transactions WHERE id=:id FOR UP
 $recent = strpos($source, "SELECT id FROM audit_logs");
 $started = strpos($source, "'outcome' => 'STARTED'");
 $commit = strpos($source, '$pdo->commit();');
+$admitCall = strpos($route, 'duitku_reconcile_admit_lookup(');
 $network = strpos($route, 'duitku_query_transaction_status(');
 reconcile_cooldown_assert(
-    $lock !== false && $recent !== false && $started !== false && $commit !== false && $network !== false,
+    $lock !== false && $recent !== false && $started !== false && $commit !== false && $admitCall !== false && $network !== false,
     'Expected row lock, cooldown query, STARTED marker, commit, and gateway request are required.'
 );
 reconcile_cooldown_assert(
-    $lock < $recent && $recent < $started && $started < $commit && $commit < $network,
-    'Admission must lock, check cooldown, persist STARTED and commit before network I/O.'
+    $lock < $recent && $recent < $started && $started < $commit && $admitCall < $network,
+    'Admission helper must lock, check cooldown, persist STARTED and commit; route must admit before network I/O.'
 );
 
 $guard = strpos($route, 'if ($payment && !$cooldownRejected)');
