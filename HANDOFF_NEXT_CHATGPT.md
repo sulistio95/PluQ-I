@@ -512,3 +512,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 
 - Syntax workflow [38485787043](https://github.com/sulistio95/PluQ-I/actions/runs/38485787043) and fulfillment workflow [38485787071](https://github.com/sulistio95/PluQ-I/actions/runs/38485787071) failed immediately on handoff commit `2a465e53a1ccf66bba3ce03dd558df50b55f0705`. Jobs `115598975273`, `115598975592`, and `115598975726` expose no step summaries or logs. Do not interpret this as a test assertion failure; cause remains undetermined.
 - The Duitku status amount overflow regression remains unverified. Next priority: resolve Actions pre-step execution or run tests in a controlled PHP 8.2+/MySQL environment. Live payment/provider calls and deployment remain disabled.
+
+
+### Additional CI/log diagnosis — 2026-10-14
+
+- Retried step-summary retrieval for jobs `115598975273`, `115598975592`, and `115598975726`; all return empty step arrays. Log retrieval returns `BlobNotFound`, so the runner/test failure cause remains unknown and no tests can be claimed to have run.
+- Read-only review covered Duitku callback terminal-state handling, checkout idempotency, order-status display, and supplier recovery. No extra code change was made: contradictory terminal callbacks need DB integration coverage and a defined manual-reconciliation policy; do not auto-flip a terminal failed payment to paid without reconciliation.
+- Next: restore CI logs or run PHP/MySQL integration tests in controlled staging. Keep live payments and supplier orders disabled; do not deploy.
