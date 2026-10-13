@@ -356,3 +356,6 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 - Billing reference: https://docs.github.com/en/billing/concepts/product-billing/github-actions. Owner-side checks needed in GitHub UI: repository Settings → Actions → General; account Settings → Billing & licensing / Budgets and alerts; check current GitHub Status at https://www.githubstatus.com/.
 - If settings and billing are clean, contact GitHub Support with the failed run URLs and job IDs. Repeated retries already showed the same pre-step symptom, so avoid adding more application/workflow changes until a job exposes logs or steps.
 - No tests are certified green by this investigation. The HTTP test's runtime execution remains pending; payment/provider APIs and deployment remain disabled.
+
+
+- Latest confirmation after the investigation note commit: all three workflows again failed immediately on `851fddb169713d605360c2e49b71cdb87571e16b`: fulfillment `38397679614`, PHP quality `38397679661`, syntax `38397679602`. This remains a pre-step failure; no test is green and no root cause is established.
