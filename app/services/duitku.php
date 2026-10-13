@@ -148,3 +148,36 @@ function duitku_validate_transaction_status_response(array $response, string $ex
         'status_message' => $message,
     ];
 }
+
+
+/**
+ * Query one Duitku transaction on an explicit server-side request.
+ * This build intentionally permits sandbox only; no polling or state mutation.
+ * The optional transport seam is available only in APP_ENV=test.
+ */
+function duitku_query_transaction_status(array $config, string $merchantOrderId, ?callable $testTransport = null): array
+{
+    $endpoint = 'https://sandbox.duitku.com/webapi/api/merchant/transactionStatus';
+    if (($config['endpoint'] ?? null) !== 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry') {
+        throw new RuntimeException('Only the configured Duitku sandbox may be used.');
+    }
+    if ($merchantOrderId === '' || strlen($merchantOrderId) > 50) {
+        throw new InvalidArgumentException('Duitku merchant order ID is invalid.');
+    }
+    $payload = [
+        'merchantCode' => (string)$config['merchant_code'],
+        'merchantOrderId' => $merchantOrderId,
+        'signature' => duitku_transaction_status_signature($config, $merchantOrderId),
+    ];
+    if ($testTransport !== null) {
+        if (strtolower((string)(getenv('APP_ENV') ?: 'production')) !== 'test') {
+            throw new RuntimeException('Injected Duitku transport is available only in tests.');
+        }
+        $response = $testTransport($endpoint, $payload);
+        if (!is_array($response)) {
+            throw new RuntimeException('Duitku returned an invalid test response.');
+        }
+        return $response;
+    }
+    return provider_http_json($endpoint, $payload, [], 15);
+}
