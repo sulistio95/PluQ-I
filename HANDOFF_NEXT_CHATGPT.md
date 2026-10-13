@@ -434,3 +434,8 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 
 - The documentation-only handoff update triggered PHP/JavaScript syntax workflow run [38472583538](https://github.com/sulistio95/PluQ-I/actions/runs/38472583538), which failed in seconds. GitHub's job metadata reports `steps: null` and `logs_url: null`; no test/lint step output is available, so this does not establish that application checks failed.
 - Root cause remains undetermined. Do not change application code or workflow definitions speculatively based on this result. Repository owner should check Actions availability/settings, billing/budgets, GitHub Status, and contact GitHub Support if those are normal.
+
+
+## Admin login review — 2026-10-14
+
+Login page and rate-limit helper review found that a successful login clears failed-attempt history too broadly, rather than only the matching IP and username pair. A source correction was attempted but repository writes to the source were blocked; no code fix is committed. This finding remains open, with no new runtime tests. The audit entry is recorded in commit `6c67f8367480baca7932cc70ee9e5ae5a254bf28`.
