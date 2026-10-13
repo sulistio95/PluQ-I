@@ -337,3 +337,11 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 - Reruns of the previous failed workflow attempts failed immediately too. Fresh runs triggered by commit `24d6bce9215add73efbfa6a13703c2f661011bd8` failed immediately: fulfillment [38395199538](https://github.com/sulistio95/PluQ-I/actions/runs/38395199538), PHP quality [38395199540](https://github.com/sulistio95/PluQ-I/actions/runs/38395199540), syntax [38395199525](https://github.com/sulistio95/PluQ-I/actions/runs/38395199525).
 - Job payloads have `steps: null`, no log URL, and log endpoint returns 404. This is currently an opaque pre-step failure, not evidence that a particular PHP test failed. The new HTTP integration test remains unverified; do not claim CI is green.
 - Next: investigate Actions runner/repository execution availability or rerun when logs are accessible. Keep production/payment/supplier API interactions disabled. Both this file and `docs/production-readiness-audit.md` were updated to capture this status.
+
+
+## Latest continuation note — CI runner diagnosis (2026-10-13)
+
+- Rechecked current Actions runs: fulfillment `38395277059` and PHP quality `38395277049` on `fd167feb7018cecd25365275654acdb973f6066b` fail within seconds; the job payloads expose `steps: null` and `logs_url: null`. Syntax run `38395199525` shows the same pattern. This affects unrelated workflows before their first visible step, so it does not establish a failure in the HTTP integration test.
+- Root cause is still unknown. Next: check repository Actions settings, account billing/minute limits, and runner provisioning; avoid speculative source changes and do not label CI successful.
+- Reviewed `tests/reconcile-admin-http-integration.php` against `app/services/admin_auth.php` and `database/schema.mysql.sql`. The test covers anonymous redirect, OPERATOR denial, invalid CSRF denial, unknown POST action rejection, and authorized admin form rendering. It never submits the real status-lookup action, so it must not call Duitku. Fixture cleanup uses `finally`. Full runtime/CI verification remains pending.
+- Keep payment/provider live execution and deployment disabled. Update this handoff and `docs/production-readiness-audit.md` after every material code or test change.
