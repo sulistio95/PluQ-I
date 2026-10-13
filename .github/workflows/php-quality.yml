@@ -30,6 +30,8 @@ jobs:
           done < <(find app bin config public tests -type f -name '*.php' -print0)
       - name: Test Duitku callback state mapping
         run: php tests/duitku-callback-result-state.php
+      - name: Test Duitku transaction status response validation
+        run: php tests/duitku-transaction-status.php
       - name: Test checkout request fingerprint
         run: php tests/checkout-request-fingerprint.php
       - name: Test supplier account and response mapping
