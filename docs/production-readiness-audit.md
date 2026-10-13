@@ -356,3 +356,12 @@ Requested one rerun of syntax workflow [38399998833](https://github.com/sulistio
 - No definite source-level defect was established in this review. The existing MySQL integration test covers same-key concurrent requests, one mocked gateway call, URL reuse, changed-payload rejection, real deadlock classification, and ambiguous gateway timeout. These checks are **not newly runtime-verified in this session** because GitHub Actions still fails before exposing steps/logs.
 - Latest Actions runs for commit `213cccdd7e5db035ee0d3985884d0a64d12330f8`: PHP quality [38468745359](https://github.com/sulistio95/PluQ-I/actions/runs/38468745359) and fulfillment [38468745412](https://github.com/sulistio95/PluQ-I/actions/runs/38468745412) failed within seconds; job steps/logs remain unavailable. Root cause is still unknown.
 - No source edits, live Duitku/provider calls, or deployment were performed. Keep production payment/provider flags disabled until CI is restored and the integration tests run successfully.
+
+
+### Callback and queue lease source review — 2026-10-14
+
+- Re-read `public/duitku-callback.php`, `app/services/duitku.php`, `app/services/queue_worker.php`, `app/services/fulfillment.php`, and callback signature tests.
+- Callback source verifies the Duitku signature, validates the 26-character order identifier and integer amount, locks the matching Duitku payment row, and treats non-`PENDING` callbacks as idempotent acknowledgements. Fulfillment is queued only when the callback successfully transitions the order from pending to paid.
+- Queue finalization verifies `PROCESSING` plus the same lock token while holding the queue row lock; a stale worker returns `LOCK_LOST` without finalizing. Supplier ambiguity routes to manual review instead of blind resubmission.
+- No definite source-level defect was established in this targeted review. Callback/queue integration behavior is not newly runtime-verified because current GitHub Actions runs expose no steps/logs.
+- The checkout review was recorded in audit commit `f620f2f49f44f9ce6e3726dc2f87d0dfb59fef56`; current CI blocker remains unresolved. Keep live payment/supplier processing and deployment disabled until workflows can execute and staging verification passes.
