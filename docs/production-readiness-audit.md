@@ -415,3 +415,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 
 - Latest runs on handoff commit `942ca0ef7e83662cc57f72bcf4cee90e72f2cdc6`: syntax [38480851988](https://github.com/sulistio95/PluQ-I/actions/runs/38480851988) and PHP quality [38480851789](https://github.com/sulistio95/PluQ-I/actions/runs/38480851789) failed without exposed step/log metadata; fulfillment [38480851797](https://github.com/sulistio95/PluQ-I/actions/runs/38480851797) also ended with both jobs failed and `steps: null`, `logs_url: null`. These results still do not identify an application test failure or establish why Actions exits early.
 - The newly added retry-safety test is therefore committed but not CI-verified. Investigate repository/account Actions availability before making speculative workflow changes. No live requests or deployment.
+
+
+## Digiflazz balance response validation — 2026-10-14
+
+- Found that `digiflazz_balance()` only checked whether `data.deposit` existed, then cast it to float. Malformed strings such as `not-a-number` can cast to zero and be recorded as a real low balance, obscuring a provider response problem.
+- Added `digiflazz_map_balance_response()` to require a numeric, finite, non-negative balance before returning it. Source commit: [9040192](https://github.com/sulistio95/PluQ-I/commit/9040192a403aa3afffb43eb6c448fc1774806c04).
+- Added regression coverage for numeric strings, missing/malformed values, negative values, and non-finite strings in [5dcad4e](https://github.com/sulistio95/PluQ-I/commit/5dcad4ed2e83dbb631b6f0facd0841c54d6cc1b7); wired it into the fulfillment workflow in [c7b34f7](https://github.com/sulistio95/PluQ-I/commit/c7b34f7832be06c44be38fa425c9b8b809e1d1ce).
+- Verification remains pending until GitHub Actions exposes runnable steps/logs. No live supplier API call or deployment performed.
