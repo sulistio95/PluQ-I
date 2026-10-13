@@ -40,3 +40,5 @@ jobs:
         run: php tests/fulfillment-mapping.php
       - name: Test admin authorization roles
         run: php tests/admin-authorization.php
+      - name: Test admin login throttle cleanup scope
+        run: php tests/admin-login-throttle-clear.php
