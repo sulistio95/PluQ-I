@@ -419,3 +419,12 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 - No definite defect established; this is source review, not a newly executed runtime test. CI remains blocked by failures with no visible steps/logs.
 - Audit updated in commit `ad1fd8f812a9f2416f7846b43c047b07d129450f`: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
 - Continue reviewing code/tests without speculative changes; do not enable live payment/provider processing or deploy while CI execution and staging checks are unresolved.
+
+
+## Provider transport and admin reconciliation review — 2026-10-14
+
+- Reviewed `app/services/provider_http.php`: HTTPS-only, TLS verification, redirects disabled, bounded timeouts, non-2xx and invalid JSON rejected, no request-body/credential logging. No live API call was made.
+- Reviewed `app/services/duitku.php`, `app/services/duitku_reconcile.php`, and `public/admin/reconcile.php`: status query is sandbox-only, uses a dedicated signature, validates returned order ID and amount, does not mutate local payment/order state, and applies a row-lock plus 60-second audit-backed cooldown before network I/O.
+- Reviewed admin mapping and transaction pages plus `app/services/admin_auth.php`: privileged-role checks, CSRF validation, transactionally coupled mapping/audit writes, and HTML escaping are present. No definite source-level defect was established in this pass.
+- Review only; no PHP/MySQL tests were executed in this pass. No code change, live provider/payment call, or deployment. Keep production flags disabled until CI can run visibly and staging checks pass.
+- Audit record: commit `967870a6926912cdcdc59cf8839453b5970ffb73` in [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
