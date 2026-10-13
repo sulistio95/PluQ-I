@@ -380,3 +380,8 @@ Requested one rerun of syntax workflow [38399998833](https://github.com/sulistio
 
 - The documentation-only handoff update triggered PHP/JavaScript syntax workflow run [38472583538](https://github.com/sulistio95/PluQ-I/actions/runs/38472583538), which failed in seconds. GitHub's job metadata reports `steps: null` and `logs_url: null`; no test/lint step output is available, so this does not establish that application checks failed.
 - Root cause remains undetermined. Do not change application code or workflow definitions speculatively based on this result. Repository owner should check Actions availability/settings, billing/budgets, GitHub Status, and contact GitHub Support if those are normal.
+
+
+## Admin login throttle review — 2026-10-14
+
+Reviewed admin login and database-backed rate limiting. A successful login currently clears failed-attempt rows more broadly than the single IP-and-username pair involved, which can erase rate-limit history for unrelated attempts. Proposed a narrow correction and attempted to update the source, but the repository write was blocked; no code change has been committed. This finding remains open. No runtime tests were run, and CI still needs visible job steps/logs before test results can be trusted.
