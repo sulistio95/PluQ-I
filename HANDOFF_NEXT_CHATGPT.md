@@ -305,3 +305,10 @@ This closes the previously documented check-then-call race by design, but a dedi
 - Added `tests/reconcile-cooldown-concurrency-integration.php` that races two independent PHP processes against the same seeded MySQL payment. Expected: one admission, one cooldown rejection, one audit marker. It makes no gateway request. Added it to the MySQL 8.4 fulfillment CI and updated the structural guard to follow the helper.
 - Commits: `ad24834b92ff8fb6887e7e8450b43b026c709b64`, `1efda2505449740b070f7054ab9c472cd83184f8`, `746fb1496499abb7b0d5acfd1ef564351187fc2b`, `bcc94ea9d08e8bd98c74ca6322f35b562c54c030`, `fa8ab44e4390033513db60fc2747e09a8bcfe143`, `804aa234151e808611c59501b0baca63b97183ec`, `bb740f156bcabda93ac315d60939351eb4ae9f99`, `8c7d050ca2e68e33f0068b952e7affe1ee6872a9`.
 - **Next:** inspect GitHub Actions for the latest head; if the MySQL integration fails, fix the test/code and update both notes again. Until passing, label the test pending. This is concurrent helper/database admission coverage, not authenticated concurrent HTTP end-to-end coverage. No live APIs or deployment.
+
+
+### CI follow-up — concurrent reconciliation test harness (2026-10-13)
+
+- Inspected failed run [38343145833](https://github.com/sulistio95/PluQ-I/actions/runs/38343145833): the PHP test job passed; MySQL integration failed in the new test's final count query with `MySQL server has gone away`. Root cause: parent PDO socket remained open across `pcntl_fork()` and was reused afterward.
+- Fixed the test to close the parent connection before forking and reconnect after both workers finish. Commit: `8844027fd6cf3290163a3a6cffa21672e4389d62`.
+- Await the new CI run before claiming success. If it fails again, inspect the exact failing step/log and update both notes. No live payment/supplier requests.
