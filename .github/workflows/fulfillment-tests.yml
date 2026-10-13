@@ -119,6 +119,8 @@ jobs:
           done
           cat /tmp/pluq-php-server.log
           exit 1
+      - name: Test admin reconciliation HTTP security boundary
+        run: php tests/reconcile-admin-http-integration.php
       - name: Test duplicate queue job during active supplier request
         run: php tests/duplicate-queue-processing-integration.php
       - name: Test concurrent queue claims against MySQL
