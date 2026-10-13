@@ -218,3 +218,16 @@ The code now contains three pure helpers in `app/services/duitku.php`: `duitku_t
 CI passed on commit `8e6e46497107`: PHP quality `38331891216`, PHP/JS syntax `38331891186`, and fulfillment safety `38331891209`; both fulfillment jobs passed, including MySQL integration. No live gateway calls were made.
 
 **Next:** before adding a transport method, reconcile the current Duitku docs' content-type inconsistency: the “Cek Transaksi” section labels the request x-www-form-urlencoded while its examples show a JSON body. Then implement a single-request, server-side status lookup, sandbox-only verification, CSRF-protected privileged admin action, and durable audit record. Do not implement automatic polling. A validated response alone does not authorize direct state mutation; paid status must use the existing idempotent callback transition path. Production flags remain disabled.
+
+
+## Admin-triggered Duitku status reconciliation — verified (2026-10-13)
+
+Added `public/admin/reconcile.php` and a privileged-admin link from `public/admin/index.php`. The action requires a valid admin session, a CSRF token, and the existing `ADMIN`/`SUPER_ADMIN` role gate. It performs one operator-triggered lookup for a locally stored Duitku merchant order ID, refuses non-integer rupiah amounts, and throttles repeated lookup attempts for the same payment transaction to at least 60 seconds using audit-log history.
+
+The status lookup is sandbox-only. `duitku_status_config()` requires merchant code/API key and a sandbox `DUITKU_ENV`; `duitku_query_transaction_status()` is pinned to the exact sandbox transaction-status URL. A test-only transport seam is permitted only when `APP_ENV=test`. The route validates exact response order ID and amount, records a `DUITKU_STATUS_LOOKUP` audit event with normalized status/reference or a sanitized error, and **never changes payment/order status, enqueues fulfillment, or creates a replacement payment**.
+
+CI passed on test commit `05d9f1ee497b`: PHP quality `38334462332`, syntax `38334462340`, and fulfillment `38334462306`; the fulfillment run passed both PHP and MySQL jobs. The preceding endpoint refactor's fulfillment run `38334449650` also passed.
+
+**Duitku documentation caveat:** the current [API reference](https://docs.duitku.com/api/id/) labels “Cek Transaksi” as x-www-form-urlencoded but its included PHP and cURL examples serialize JSON and set `Content-Type: application/json`. This implementation follows the concrete examples, not the conflicting label. It has not been tested against Duitku sandbox yet; perform that verification only after sandbox credentials are configured and before considering production. The current documented signature is HMAC-SHA256 over `merchantCode + merchantOrderId`; MD5 is obsolete. Status-query codes remain separate from callback codes: `00=SUCCESS`, `01=PROCESS`, `02=FAILED_OR_EXPIRED`.
+
+**Open production gap:** a validated `SUCCESS` result is displayed and audited but does not automatically reconcile the payment through the existing callback's idempotent state-transition path. This page is read-only evidence gathering. Do not manually edit statuses, trigger supplier fulfillment, or refund based only on its result. No live API calls or deployment; production checkout and supplier-order flags remain disabled.
