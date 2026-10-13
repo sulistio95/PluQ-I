@@ -266,3 +266,10 @@ Official Duitku API reference: https://docs.duitku.com/api/id/ (section “Cek T
 ### Follow-up security note — concurrent admin clicks (2026-10-13)
 
 The 60-second cooldown currently checks recent audit rows before calling Duitku, but the check-and-call sequence is not atomic. Two simultaneous POST requests can both pass the check before either records its result. This is a known limitation; do not describe the current cooldown as concurrency-safe. Before production or any real Duitku use, serialize lookup admission using a short DB transaction that locks the payment row and commits a `STARTED` audit/lease record before network I/O, or use a dedicated unique lease row. Do not hold a DB transaction open during the HTTP request. Verify that parallel requests result in at most one outbound call. Current page remains sandbox-only; no live API calls/deployment.
+
+
+### Atomic admin status-lookup cooldown added (2026-10-13)
+
+Commit `public/admin/reconcile.php` now acquires a `SELECT ... FOR UPDATE` lock on the local `payment_transactions` row, checks recent lookup audit entries while holding the lock, and commits a `STARTED` audit entry before any HTTP request. A concurrent POST for the same payment waits for the lock and then sees the committed `STARTED` record, so it should be rejected by the 60-second cooldown rather than sending a second request. The database transaction is not held open during network I/O. No payment/order state is mutated.
+
+This closes the previously documented check-then-call race by design, but a dedicated two-process MySQL integration test for simultaneous admin status POSTs has not yet been added. Existing CI checks lint/unit/fulfillment flows, not the full authenticated web route's concurrent admission path. Verify the route against the MySQL test environment and add a focused concurrency test before relying on this for production. Sandbox only; no live API call or deployment.
