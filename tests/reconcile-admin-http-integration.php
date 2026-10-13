@@ -7,8 +7,7 @@ require_once dirname(__DIR__) . '/config/database.php';
 function http_reconcile_assert(bool $condition, string $message): void
 {
     if (!$condition) {
-        fwrite(STDERR, $message . PHP_EOL);
-        exit(1);
+        throw new RuntimeException($message);
     }
 }
 
