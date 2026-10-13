@@ -258,3 +258,12 @@ Added `tests/reconcile-cooldown-regression.php` and wired it into `.github/workf
 ### CI result — cooldown regression guard (2026-10-13)
 
 PHP quality workflow run [38340379209](https://github.com/sulistio95/PluQ-I/actions/runs/38340379209) completed successfully on commit `78e58e8f67ea133d39f36acfc6d245f8956adc2a`. It passed PHP lint, Duitku callback-state mapping, transaction-status validation, the new admin cooldown structural regression guard, checkout request fingerprint, supplier response mapping, and admin authorization tests. This confirms the new structural test is wired correctly and passes in CI; it does not replace the outstanding concurrent MySQL/web-route integration test.
+
+
+### Shared atomic reconciliation admission and concurrent MySQL test added (2026-10-13)
+
+- Extracted the row-lock + 60-second cooldown + committed `STARTED` audit-marker transaction into `app/services/duitku_reconcile.php`. `public/admin/reconcile.php` calls this helper before any gateway request; a dedicated `DuitkuReconcileCooldownException` marks rejected clicks so they do not create a second lookup audit row.
+- Added `tests/reconcile-cooldown-concurrency-integration.php`: two independent PHP processes race for the same disposable MySQL payment fixture. The intended assertion is exactly one admitted attempt, one cooldown rejection, and one recent audit marker. It does not call Duitku or any external API.
+- Wired the integration test to run three times in the MySQL 8.4 fulfillment workflow and adjusted the structural regression test to assert the route uses the shared helper.
+- Relevant commits: helper `ad24834b92ff8fb6887e7e8450b43b026c709b64`; route integration `1efda2505449740b070f7054ab9c472cd83184f8`, explicit exception `746fb1496499abb7b0d5acfd1ef564351187fc2b`, route exception handling `bcc94ea9d08e8bd98c74ca6322f35b562c54c030`; concurrency test `fa8ab44e4390033513db60fc2747e09a8bcfe143`; structural test `804aa234151e808611c59501b0baca63b97183ec` and ordering correction `8c7d050ca2e68e33f0068b952e7affe1ee6872a9`; workflow `bb740f156bcabda93ac315d60939351eb4ae9f99`.
+- **Verification pending:** this test has been committed to CI but its runtime result has not yet been inspected. Do not mark concurrency behavior verified until the MySQL workflow passes all three attempts. It tests the shared admission helper, not two authenticated HTTP requests end-to-end. No live Duitku request, supplier order, production payment, or deployment was performed.
