@@ -359,3 +359,11 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 
 
 - Latest confirmation after the investigation note commit: all three workflows again failed immediately on `851fddb169713d605360c2e49b71cdb87571e16b`: fulfillment `38397679614`, PHP quality `38397679661`, syntax `38397679602`. This remains a pre-step failure; no test is green and no root cause is established.
+
+
+## Latest continuation — workflow source and run metadata (2026-10-13)
+
+- Checked the latest head `2d559672eb132c4211eff93d529b749097fc54c8`: fulfillment [38397710451](https://github.com/sulistio95/PluQ-I/actions/runs/38397710451), PHP quality [38397710416](https://github.com/sulistio95/PluQ-I/actions/runs/38397710416), and syntax [38397710358](https://github.com/sulistio95/PluQ-I/actions/runs/38397710358) all failed immediately.
+- Latest job API results still return `steps: null` and `logs_url: null`; fetching job logs returns 404. Reviewed `.github/workflows/fulfillment-tests.yml`, `.github/workflows/php-quality.yml`, and `.github/workflows/php-lint.yml`; inspected runner declarations and steps look conventional, with no obvious malformed `runs-on` setup. This cannot explain or prove the external failure.
+- Reviewed the HTTP boundary test source: it uses a local PHP server, cURL, and disposable MySQL admin fixtures; no valid Duitku status lookup is submitted. The test remains runtime-unverified.
+- No speculative application/workflow edits were made. Next step is owner-side repository Settings → Actions → General, account Billing & licensing / Budgets and alerts, GitHub Status, then Support if those look normal. Keep production deployment and live gateway/provider calls disabled. Update both notes after any subsequent material change/result.
