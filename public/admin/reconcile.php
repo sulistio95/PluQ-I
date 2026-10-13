@@ -5,6 +5,7 @@ require dirname(__DIR__, 2) . '/app/bootstrap.php';
 require_once PLUQI_ROOT . '/config/database.php';
 require_once PLUQI_ROOT . '/app/services/admin_auth.php';
 require_once PLUQI_ROOT . '/app/services/duitku.php';
+require_once PLUQI_ROOT . '/app/services/duitku_reconcile.php';
 
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
@@ -59,47 +60,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new DomainException('Nominal lokal bukan bilangan rupiah bulat; pemeriksaan otomatis dibatalkan dan perlu pemeriksaan manual.');
             }
 
-            // Serialize concurrent admin clicks by locking the local payment row.
-            // Commit a STARTED audit event before network I/O so parallel requests
-            // see the cooldown while the first status lookup is still running.
-            $pdo->beginTransaction();
+            // Atomically admit one lookup and commit its STARTED audit marker
+            // before any gateway network I/O. Rejected clicks are not re-audited.
             try {
-                $lock = $pdo->prepare('SELECT id FROM payment_transactions WHERE id=:id FOR UPDATE');
-                $lock->execute(['id' => $paymentId]);
-                if (!$lock->fetchColumn()) {
-                    throw new DomainException('Transaksi pembayaran tidak lagi tersedia.');
-                }
-                $recent = $pdo->prepare("SELECT id FROM audit_logs
-                    WHERE action='DUITKU_STATUS_LOOKUP' AND entity_type='PAYMENT_TRANSACTION'
-                      AND entity_id=:entity_id AND created_at >= DATE_SUB(NOW(), INTERVAL 60 SECOND)
-                    ORDER BY id DESC LIMIT 1");
-                $recent->execute(['entity_id' => (string)$paymentId]);
-                if ($recent->fetchColumn()) {
-                    // A rejected click is not a new gateway lookup. Do not write another
-                    // DUITKU_STATUS_LOOKUP event in the outer catch, or repeated clicks
-                    // could keep extending the cooldown indefinitely.
+                duitku_reconcile_admit_lookup(
+                    $pdo,
+                    $paymentId,
+                    isset($user['id']) ? (int)$user['id'] : null,
+                    (string)$payment['merchant_order_id'],
+                    (int)$amountText,
+                    (string)$payment['payment_status'],
+                    (string)$payment['order_payment_status'],
+                    (string)$payment['order_status'],
+                    (string)($_SERVER['REMOTE_ADDR'] ?? '')
+                );
+            } catch (DomainException $e) {
+                if (str_contains($e->getMessage(), 'baru saja dilakukan')) {
                     $cooldownRejected = true;
-                    throw new DomainException('Pemeriksaan untuk transaksi ini baru saja dilakukan. Tunggu minimal 60 detik sebelum meminta status lagi.');
                 }
-                $startAudit = $pdo->prepare("INSERT INTO audit_logs
-                    (actor_type,actor_id,action,entity_type,entity_id,details,ip_address)
-                    VALUES ('ADMIN',:actor,'DUITKU_STATUS_LOOKUP','PAYMENT_TRANSACTION',:entity,:details,:ip)");
-                $startAudit->execute([
-                    'actor' => $user['id'],
-                    'entity' => (string)$paymentId,
-                    'details' => json_encode([
-                        'outcome' => 'STARTED',
-                        'merchant_order_id' => $payment['merchant_order_id'],
-                        'amount' => (int)$amountText,
-                        'payment_status_before' => $payment['payment_status'],
-                        'order_payment_status_before' => $payment['order_payment_status'],
-                        'order_status_before' => $payment['order_status'],
-                    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-                    'ip' => substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
-                ]);
-                $pdo->commit();
-            } catch (Throwable $e) {
-                if ($pdo->inTransaction()) $pdo->rollBack();
                 throw $e;
             }
 
