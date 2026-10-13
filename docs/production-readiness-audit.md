@@ -182,3 +182,12 @@ Commit `808f17e33d0baa2d3c19a60b9deea8586b9ba2d4` makes same-key checkout retrie
 Commit `a94f8449b333466a33aea585f558a145fd49eb4b` adds an integration scenario using a mock gateway that throws after the database transaction commits. Assertions cover a single mock call, immediate retry rejection, one order/payment, no fabricated URL, and a persisted error marker. All workflows passed: PHP quality `38326198802`, PHP/JavaScript syntax `38326198808`, and fulfillment safety `38326198783`; the fulfillment workflow's MySQL integration and PHP test jobs both completed successfully.
 
 **Remaining operational gap:** the error marker intentionally routes an ambiguous payment attempt to manual review. Before production, admin procedures/tooling must reconcile the merchant order ID with Duitku and determine whether a payment exists before any replacement attempt. Do not blindly retry, mark the payment failed, refund, or create a second payment based only on a client timeout. No live API calls or deployment were performed; production checkout and supplier flags remain disabled.
+
+
+## Admin checkout reconciliation hints — verified (2026-10-13)
+
+Commit `2e6efab01a524af252bc27c78bed61ab59fe6cd5` adds a read-only “Catatan checkout” column to the admin transaction list. It displays whether a Duitku payment URL is saved, the recorded expiry timestamp, and the escaped `orders.last_error` text marked as needing review. The actual payment URL is not exposed and no state-changing reconciliation controls were added.
+
+CI for the code commit passed: PHP quality `38329325146`, PHP/JS syntax `38329325150`, and fulfillment safety `38329325168`; both jobs in the fulfillment workflow (`php-tests` and `mysql-callback-integration`) completed successfully. The documentation follow-ups also passed both fulfillment jobs: handoff run `38329275031` and audit run `38329284829`.
+
+**Remaining gap:** this UI is evidence display, not reconciliation. A missing URL and a timeout marker do not establish whether Duitku created a payment. Before production, document a controlled procedure to query/confirm gateway status using the merchant order ID, record the operator and evidence, and only then decide whether a new payment attempt is safe. Do not automatically retry, mark failed, or refund an ambiguous payment. Verify current official Duitku API documentation before implementing status queries; no live API calls or deployment were performed. Production checkout and supplier flags remain disabled.
