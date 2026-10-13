@@ -401,3 +401,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - No database-backed runtime tests were run here; this is source review only.
 - GitHub Actions continues to fail immediately without visible steps/logs across all three workflows for the current documentation commits: syntax [38474672764](https://github.com/sulistio95/PluQ-I/actions/runs/38474672764), PHP quality [38474672798](https://github.com/sulistio95/PluQ-I/actions/runs/38474672798), and fulfillment [38474672805](https://github.com/sulistio95/PluQ-I/actions/runs/38474672805). This still does not show application test failures; root cause remains external/undetermined.
 - Do not enable live supplier orders, live payments, or deployment until CI produces inspectable logs and staging checks pass.
+
+
+## Supplier retry duplicate-order guard — 2026-10-14
+
+- Found a fail-closed gap in `fulfillment_process()`: a VIPayment supplier transaction marked `RETRYING` without a saved provider `trxid` could fall through to the order-creation API path. If the earlier request had reached VIPayment but its reference was not persisted, this could create a duplicate top-up.
+- Added `fulfillment_supplier_state_requires_review()` and routed ambiguous supplier states through manual review. VIPayment `RETRYING` is allowed to continue only when a non-empty provider reference exists for status lookup; Digiflazz `RETRYING` remains blocked from automatic resubmission. Source commit: [9930da7](https://github.com/sulistio95/PluQ-I/commit/9930da74ac4d1d8f49e86add191811f4745064dd).
+- Added regression cases in `tests/fulfillment-retry-safety-test.php` (commit [99cfd7e](https://github.com/sulistio95/PluQ-I/commit/99cfd7ebaa150051ef6676cd2ed2b2a42ee0542e)) and wired the test into the fulfillment workflow (commit [4af58c0](https://github.com/sulistio95/PluQ-I/commit/4af58c07616cf8b64989ce5d6f9b01872a46e72f)).
+- Runtime/CI verification is pending: GitHub Actions has recently failed before exposing steps/logs, so the new test is committed but not yet verified by CI. No live supplier request or deployment was performed. Keep live supplier/payment flags disabled until workflow output and staging checks are available.
