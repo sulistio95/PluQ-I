@@ -253,3 +253,8 @@ Commit `b8d7fa77e1d2363a561775ce7bbe0b7675e2db9c` fixes a throttle edge case in 
 ### Cooldown regression guard added to CI (2026-10-13)
 
 Added `tests/reconcile-cooldown-regression.php` and wired it into `.github/workflows/php-quality.yml`. The structural regression test checks that the route retains the payment-row lock, cooldown audit query, committed `STARTED` marker before network I/O, and the guard that suppresses duplicate audit rows for cooldown-denied clicks. This protects the discovered bug against accidental reintroduction. It is explicitly a structural check, not proof of simultaneous-request behavior; the dedicated two-process MySQL/web-route integration test remains required. Commits: test `cce70d749ba6f809a3a2e582f7deeb99dde184e1`; CI workflow `61ad26239ba960b59e5c379c2de254a226c56b83`. No live Duitku call or deployment.
+
+
+### CI result — cooldown regression guard (2026-10-13)
+
+PHP quality workflow run [38340379209](https://github.com/sulistio95/PluQ-I/actions/runs/38340379209) completed successfully on commit `78e58e8f67ea133d39f36acfc6d245f8956adc2a`. It passed PHP lint, Duitku callback-state mapping, transaction-status validation, the new admin cooldown structural regression guard, checkout request fingerprint, supplier response mapping, and admin authorization tests. This confirms the new structural test is wired correctly and passes in CI; it does not replace the outstanding concurrent MySQL/web-route integration test.
