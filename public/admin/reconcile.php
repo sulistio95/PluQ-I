@@ -74,10 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     (string)$payment['order_status'],
                     (string)($_SERVER['REMOTE_ADDR'] ?? '')
                 );
-            } catch (DomainException $e) {
-                if (str_contains($e->getMessage(), 'baru saja dilakukan')) {
-                    $cooldownRejected = true;
-                }
+            } catch (DuitkuReconcileCooldownException $e) {
+                $cooldownRejected = true;
                 throw $e;
             }
 
