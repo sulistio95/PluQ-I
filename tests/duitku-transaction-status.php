@@ -52,6 +52,19 @@ foreach ([
     }
 }
 
+// Regression: integer casts can saturate an oversized decimal string at PHP_INT_MAX.
+if (PHP_INT_SIZE >= 8) {
+    try {
+        duitku_validate_transaction_status_response(
+            array_merge($response, ['amount' => '999999999999999999999999999999999999']),
+            $orderId,
+            PHP_INT_MAX
+        );
+        status_test_assert(false, 'An amount larger than PHP_INT_MAX must not match PHP_INT_MAX.');
+    } catch (UnexpectedValueException $expected) {
+    }
+}
+
 try {
     duitku_transaction_status_signature(['merchant_code' => 'DTEST', 'api_key' => ''], $orderId);
     status_test_assert(false, 'Missing API key must be rejected.');
