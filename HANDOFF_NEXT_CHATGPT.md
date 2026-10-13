@@ -290,3 +290,10 @@ This closes the previously documented check-then-call race by design, but a dedi
 - Test commit: `cce70d749ba6f809a3a2e582f7deeb99dde184e1`.
 - Workflow commit: `61ad26239ba960b59e5c379c2de254a226c56b83`.
 - This is a structural regression guard only. It does not simulate concurrent authenticated HTTP requests or prove MySQL row-lock behavior; that integration test remains open. No live gateway call, deployment, supplier order, or production payment was performed.
+
+
+## CI verification update — cooldown regression guard (2026-10-13)
+
+- PHP quality workflow [38340379209](https://github.com/sulistio95/PluQ-I/actions/runs/38340379209) passed on commit `78e58e8f67ea133d39f36acfc6d245f8956adc2a`.
+- Confirmed the new `Test admin Duitku cooldown regression guard` step passed along with PHP lint and the existing callback, status-validation, checkout fingerprint, supplier mapping, and admin authorization tests.
+- Limitation remains: this is a source-structure regression guard, not a concurrent two-process MySQL/HTTP test. Keep that test as an explicit pre-production requirement.
