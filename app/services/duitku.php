@@ -166,7 +166,7 @@ function duitku_status_config(): array
     return [
         'merchant_code' => $merchant,
         'api_key' => $key,
-        'endpoint' => 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry',
+        'endpoint' => 'https://sandbox.duitku.com/webapi/api/merchant/transactionStatus',
     ];
 }
 
@@ -178,7 +178,7 @@ function duitku_status_config(): array
 function duitku_query_transaction_status(array $config, string $merchantOrderId, ?callable $testTransport = null): array
 {
     $endpoint = 'https://sandbox.duitku.com/webapi/api/merchant/transactionStatus';
-    if (($config['endpoint'] ?? null) !== 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry') {
+    if (($config['endpoint'] ?? null) !== $endpoint) {
         throw new RuntimeException('Only the configured Duitku sandbox may be used.');
     }
     if ($merchantOrderId === '' || strlen($merchantOrderId) > 50) {
