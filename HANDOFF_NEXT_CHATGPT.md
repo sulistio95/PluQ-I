@@ -470,3 +470,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 
 - Latest syntax [38480851988](https://github.com/sulistio95/PluQ-I/actions/runs/38480851988), PHP quality [38480851789](https://github.com/sulistio95/PluQ-I/actions/runs/38480851789), and fulfillment [38480851797](https://github.com/sulistio95/PluQ-I/actions/runs/38480851797) runs failed without visible step/log metadata (`steps: null`, `logs_url: null`). This does not tell us whether the newly added regression test or application checks themselves failed.
 - Next: restore inspectable GitHub Actions execution, then run the new `tests/fulfillment-retry-safety-test.php` and the existing PHP/MySQL integration suite. Keep live supplier/payment processing and deployment disabled. Audit details: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
+
+
+## Digiflazz balance validation — 2026-10-14
+
+- Added strict validation for the Digiflazz `deposit` balance: it must be numeric, finite, and non-negative. Previously a malformed string could silently cast to zero. Commit: [9040192](https://github.com/sulistio95/PluQ-I/commit/9040192a403aa3afffb43eb6c448fc1774806c04).
+- Added `tests/digiflazz-balance-validation-test.php` in [5dcad4e](https://github.com/sulistio95/PluQ-I/commit/5dcad4ed2e83dbb631b6f0facd0841c54d6cc1b7) and wired it into fulfillment CI in [c7b34f7](https://github.com/sulistio95/PluQ-I/commit/c7b34f7832be06c44be38fa425c9b8b809e1d1ce).
+- CI execution is still not verified because recent Actions runs failed without visible step/log metadata. No live provider requests/deployment. Keep payment and supplier processing disabled until verification passes. Full audit: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
