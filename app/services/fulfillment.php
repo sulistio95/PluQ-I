@@ -9,6 +9,29 @@ function fulfillment_enabled(): bool
     return filter_var(getenv('SUPPLIER_ORDERS_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
 }
 
+/** Block any resubmission when a prior request may have reached the supplier but cannot be queried safely. */
+function fulfillment_supplier_state_requires_review(array $supplier, string $providerCode): bool
+{
+    $status = strtoupper(trim((string) ($supplier['status'] ?? '')));
+    $providerCode = strtoupper(trim($providerCode));
+
+    if ($status === 'PROCESSING') {
+        return true;
+    }
+    if ($status !== 'RETRYING') {
+        return false;
+    }
+    if ($providerCode === 'DIGI') {
+        // Digiflazz status polling/retry semantics are not verified here.
+        return true;
+    }
+    if ($providerCode === 'VIPAY' && trim((string) ($supplier['provider_reference'] ?? '')) === '') {
+        // Without VIPayment's trxid we cannot query the original order; a new order could double-charge.
+        return true;
+    }
+    return false;
+}
+
 function fulfillment_account(array $data): array
 {
     // Supplier account payloads must be mapped by semantic field names, never by array order.
@@ -172,8 +195,7 @@ function fulfillment_process(PDO $pdo, int $orderId): string
             // Treat a fresh PROCESSING record as an active lease, not as proof of a crash; the duplicate job can finish safely.
             $pdo->commit();
             return 'IGNORED';
-        } elseif ($supplier['status']==='PROCESSING' ||
-            ($supplier['status']==='RETRYING' && strtoupper((string)$order['provider_code'])==='DIGI')) {
+        } elseif (fulfillment_supplier_state_requires_review($supplier, (string) $order['provider_code'])) {
             // A prior request may have been accepted before a crash or timeout. Digiflazz retry semantics
             // are not verified here, so neither ambiguous state is safe for automatic resubmission.
             $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Supplier request outcome is ambiguous; manual reconciliation required' WHERE id=:id AND payment_status='PAID'")->execute(['id'=>$orderId]);
