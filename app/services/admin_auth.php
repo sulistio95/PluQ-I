@@ -107,7 +107,7 @@ function admin_login_record_failure(PDO $pdo, string $ipAddress, string $usernam
 
 function admin_login_clear_failures(PDO $pdo, string $ipAddress, string $username): void
 {
-    $stmt = $pdo->prepare('DELETE FROM admin_login_attempts WHERE ip_address = :ip OR username_hash = :username_hash');
+    $stmt = $pdo->prepare('DELETE FROM admin_login_attempts WHERE ip_address = :ip AND username_hash = :username_hash');
     $stmt->execute([
         'ip' => substr($ipAddress, 0, 45),
         'username_hash' => hash('sha256', mb_strtolower(trim($username), 'UTF-8')),
