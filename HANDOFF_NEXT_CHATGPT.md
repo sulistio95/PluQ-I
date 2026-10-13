@@ -273,3 +273,11 @@ The 60-second cooldown currently checks recent audit rows before calling Duitku,
 Commit `public/admin/reconcile.php` now acquires a `SELECT ... FOR UPDATE` lock on the local `payment_transactions` row, checks recent lookup audit entries while holding the lock, and commits a `STARTED` audit entry before any HTTP request. A concurrent POST for the same payment waits for the lock and then sees the committed `STARTED` record, so it should be rejected by the 60-second cooldown rather than sending a second request. The database transaction is not held open during network I/O. No payment/order state is mutated.
 
 This closes the previously documented check-then-call race by design, but a dedicated two-process MySQL integration test for simultaneous admin status POSTs has not yet been added. Existing CI checks lint/unit/fulfillment flows, not the full authenticated web route's concurrent admission path. Verify the route against the MySQL test environment and add a focused concurrency test before relying on this for production. Sandbox only; no live API call or deployment.
+
+
+## Latest work — admin status lookup cooldown edge case (2026-10-13)
+
+- Reviewed the current `public/admin/reconcile.php` against the latest atomic cooldown notes.
+- Found that a rejected repeat click entered the generic error-audit path and wrote another `DUITKU_STATUS_LOOKUP` row. Because cooldown admission checks this same action, repeated rejected clicks could keep refreshing the 60-second window indefinitely.
+- Commit `b8d7fa77e1d2363a561775ce7bbe0b7675e2db9c` adds a `$cooldownRejected` guard: cooldown-denied requests do not create a new lookup audit event. Real admitted attempts still record success/error outcomes. The row lock and committed STARTED marker remain unchanged; the transaction is still released before HTTP I/O.
+- CI has not yet been rechecked for this new code commit at the time of this note. A dedicated concurrent MySQL/web-route regression test remains open. No local PHP run, live Duitku call, production payment, supplier order, deployment, or Google Drive write is claimed.
