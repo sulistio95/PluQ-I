@@ -458,3 +458,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 
 - The note commit triggered syntax run [38485787043](https://github.com/sulistio95/PluQ-I/actions/runs/38485787043) and fulfillment run [38485787071](https://github.com/sulistio95/PluQ-I/actions/runs/38485787071); both failed immediately. Job records show `steps: null` and `logs_url: null` (jobs `115598975273`, `115598975592`, and `115598975726`). This still does not establish whether lint/tests ran or failed; root cause remains unknown.
 - The integer-overflow fix and regression case are committed, but **not runtime-verified**. Restore inspectable Actions execution or run the suite in a controlled PHP 8.2+/MySQL environment before treating checks as green. Keep production payment/supplier execution disabled and do not deploy.
+
+
+### Further CI log retrieval attempt — 2026-10-14
+
+- Queried step summaries for failed jobs `115598975273`, `115598975592`, and `115598975726`; GitHub returned empty step arrays for all three. Attempted to retrieve their logs, but the log artifacts returned `BlobNotFound`. Thus there is still no evidence that lint or tests executed, and no actionable assertion/runner error is exposed by the available job records.
+- Continued read-only review of Duitku callback, checkout idempotency, order status, and supplier recovery paths; no additional source change was made because the observed terminal-callback/order-state edge cases require a database-backed integration test and explicit reconciliation policy before safely changing payment states. Do not silently change a terminal payment to PAID based only on a conflicting callback.
+- Next safe step is to restore actionable CI logs or execute the existing PHP/MySQL integration tests in a controlled environment. No live API calls or deployment.
