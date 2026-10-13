@@ -448,3 +448,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - CI run [38474440334](https://github.com/sulistio95/PluQ-I/actions/runs/38474440334) failed before job steps/logs were available, so the new test is **not verified by CI**. A local PHP 8.4 harness using the committed SQL predicate and assertions passed; a small `mb_strtolower` compatibility shim was needed because local PHP lacks mbstring, and the repository test file itself was not run from a full checkout. Next, restore observable Actions execution and run the committed regression test on PHP 8.2 with mbstring.
 - No live provider/payment call or deployment. Keep production flags disabled.
 - Audit detail: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md), commit `d2e7f0e954956c0f0ebc6bcffbf40500122bb901`.
+
+
+## Queue worker and fulfillment follow-up — 2026-10-14
+
+- Reviewed `bin/worker-queue.php`, `app/services/queue_worker.php`, `app/services/fulfillment.php`, and related integration tests. Source review found transactional job claiming with random lease tokens, fail-closed stale-lock recovery, queue → order → supplier lock ordering, lease-token verification at finalization, manual review for ambiguous supplier outcomes, and idempotent pending-refund creation for definitive supplier failure. No additional definite defect was established. No DB-backed runtime tests were run in this pass.
+- All three workflows still fail immediately without exposed steps/logs on current notes commits: syntax [38474672764](https://github.com/sulistio95/PluQ-I/actions/runs/38474672764), PHP quality [38474672798](https://github.com/sulistio95/PluQ-I/actions/runs/38474672798), fulfillment [38474672805](https://github.com/sulistio95/PluQ-I/actions/runs/38474672805). Root cause remains unknown; do not infer that application tests themselves failed.
+- Keep live supplier/payment processing and deployment paused until Actions execution is inspectable and staging verification passes.
+- Audit detail: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md), commit `0a21f099fa60dab90d58a02502c33a4fd9683d80`.
