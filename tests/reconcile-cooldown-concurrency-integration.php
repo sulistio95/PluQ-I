@@ -50,6 +50,10 @@ $resultPaths = [
 ];
 $pids = [];
 
+// Do not leave a live MySQL socket open across fork: children must establish
+// their own PDO connections, and the parent reconnects after all children exit.
+$pdo = null;
+
 try {
     foreach ($resultPaths as $resultPath) {
         $pid = pcntl_fork();
@@ -109,6 +113,7 @@ try {
     sort($outcomes);
     reconcile_concurrency_assert($outcomes === ['ADMITTED', 'COOLDOWN'], 'Expected exactly one concurrent admission and one cooldown rejection; got: ' . implode(',', $outcomes));
 
+    $pdo = $connect();
     $count = $pdo->prepare("SELECT COUNT(*) FROM audit_logs WHERE action='DUITKU_STATUS_LOOKUP' AND entity_type='PAYMENT_TRANSACTION' AND entity_id=:entity AND created_at >= DATE_SUB(NOW(), INTERVAL 60 SECOND)");
     $count->execute(['entity' => $entityId]);
     reconcile_concurrency_assert((int)$count->fetchColumn() === 1, 'Expected exactly one STARTED audit row for concurrent attempts.');
