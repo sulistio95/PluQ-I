@@ -331,3 +331,11 @@ Requested one rerun of syntax workflow [38399998833](https://github.com/sulistio
 - Job metadata remains opaque: quality job `115307218283`, fulfillment jobs `115307218758` and `115307219224` report `steps: null` and `logs_url: null`. This still does not show any application test executing and does not identify a root cause.
 - This result repeats on a note-only commit, so do not attribute it to the new HTTP integration test without evidence. No further rerun or speculative workflow edit was made.
 - Required owner-side checks remain: repository Settings → Actions → General; account Billing & licensing / Budgets and alerts; GitHub Status; then GitHub Support if all are normal. Runtime verification of the HTTP integration test remains pending. No live gateway/provider calls or deployment.
+
+
+### Continuation review — latest Actions runs and admin route (2026-10-14)
+
+- Rechecked the newest workflows after the prior handoff update. PHP quality [38401404982](https://github.com/sulistio95/PluQ-I/actions/runs/38401404982), fulfillment [38401405037](https://github.com/sulistio95/PluQ-I/actions/runs/38401405037), and syntax [38401405068](https://github.com/sulistio95/PluQ-I/actions/runs/38401405068) all failed immediately. Job steps/logs remain unavailable, so the test code is not shown to have executed.
+- Re-read `tests/reconcile-admin-http-integration.php`, `public/admin/reconcile.php`, `app/services/duitku_reconcile.php`, `app/services/admin_auth.php`, and the fulfillment workflow. The HTTP test's session cookie name/path matches the admin session setup; it tests role/CSRF/request-boundary behavior and deliberately does not submit a real lookup. The admission helper commits its STARTED audit marker before any outbound request and releases the transaction before network I/O.
+- No clear source-level defect was established in this review; no speculative code change was made. The HTTP test still requires runtime execution in CI/staging before it can be marked passed.
+- Next blocker remains owner-side GitHub Actions settings/billing/status investigation or GitHub Support. No live gateway/provider calls, supplier fulfillment, or deployment.
