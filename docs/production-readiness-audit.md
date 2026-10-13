@@ -248,3 +248,8 @@ This closes the race in the prior check-then-call implementation at the code lev
 ### Cooldown rejection audit fix (2026-10-13)
 
 Commit `b8d7fa77e1d2363a561775ce7bbe0b7675e2db9c` fixes a throttle edge case in `public/admin/reconcile.php`: a request rejected because a lookup already occurred within 60 seconds no longer writes another `DUITKU_STATUS_LOOKUP` error event. Previously, repeated rejected clicks could refresh the audit timestamp and extend the cooldown indefinitely. Genuine lookup attempts that fail after admission still record an error. The atomic row-lock/STARTED-marker approach remains in place, and no payment/order state is changed. This change has been committed to GitHub; wait for CI and add a dedicated concurrent MySQL/web-route regression test before calling the throttle production-verified. No live Duitku request or deployment was performed.
+
+
+### Cooldown regression guard added to CI (2026-10-13)
+
+Added `tests/reconcile-cooldown-regression.php` and wired it into `.github/workflows/php-quality.yml`. The structural regression test checks that the route retains the payment-row lock, cooldown audit query, committed `STARTED` marker before network I/O, and the guard that suppresses duplicate audit rows for cooldown-denied clicks. This protects the discovered bug against accidental reintroduction. It is explicitly a structural check, not proof of simultaneous-request behavior; the dedicated two-process MySQL/web-route integration test remains required. Commits: test `cce70d749ba6f809a3a2e582f7deeb99dde184e1`; CI workflow `61ad26239ba960b59e5c379c2de254a226c56b83`. No live Duitku call or deployment.
