@@ -321,3 +321,8 @@ This closes the previously documented check-then-call race by design, but a dedi
 ### Reconciliation route security regression guard expanded (2026-10-13)
 
 Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-cooldown-regression.php` to check that the admin reconciliation route retains CSRF validation, privileged-role enforcement, and no direct payment/order mutation or checkout/fulfillment calls. This is a source-structure test, not a full authenticated HTTP test. CI is pending and must be inspected before claiming success. No live Duitku requests or deployment.
+### Admin reconciliation HTTP boundary integration test added (2026-10-13)
+
+- Added `tests/reconcile-admin-http-integration.php` and workflow step after local PHP server startup. Commits: test `77a1e0ed67460c84cc14eeea6252937fe5d9f4a8`, cleanup fix `b9e59514989c200e7f73b22c3e2d9fc365518655`, workflow wiring `136f11118aa181a44a533fae93017dcb746e6ddf`.
+- Exercises real HTTP/session boundaries with disposable MySQL users: anonymous redirect (302), OPERATOR forbidden (403), invalid CSRF (403), missing explicit action (400), ADMIN form render (200). No valid status-lookup submission, no Duitku network call. Fixtures are deleted in `finally`.
+- CI is pending; inspect job logs and fix failures before marking verified. Coverage still does not include duplicate valid HTTP lookup requests or real external transport. Continue updating this handoff and `docs/production-readiness-audit.md` for every substantive change/result.
