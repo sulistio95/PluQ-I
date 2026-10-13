@@ -150,6 +150,26 @@ function duitku_validate_transaction_status_response(array $response, string $ex
 }
 
 
+
+
+/** Minimal sandbox credentials for status lookup; payment-creation fields are not required. */
+function duitku_status_config(): array
+{
+    if (strtolower((string)(getenv('DUITKU_ENV') ?: 'sandbox')) !== 'sandbox') {
+        throw new RuntimeException('Only sandbox transaction-status lookups are enabled in this build.');
+    }
+    $merchant = trim((string)getenv('DUITKU_MERCHANT_CODE'));
+    $key = trim((string)getenv('DUITKU_API_KEY'));
+    if ($merchant === '' || $key === '') {
+        throw new RuntimeException('Duitku sandbox merchant code and API key are required for status lookup.');
+    }
+    return [
+        'merchant_code' => $merchant,
+        'api_key' => $key,
+        'endpoint' => 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry',
+    ];
+}
+
 /**
  * Query one Duitku transaction on an explicit server-side request.
  * This build intentionally permits sandbox only; no polling or state mutation.
