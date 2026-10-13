@@ -365,3 +365,12 @@ Requested one rerun of syntax workflow [38399998833](https://github.com/sulistio
 - Queue finalization verifies `PROCESSING` plus the same lock token while holding the queue row lock; a stale worker returns `LOCK_LOST` without finalizing. Supplier ambiguity routes to manual review instead of blind resubmission.
 - No definite source-level defect was established in this targeted review. Callback/queue integration behavior is not newly runtime-verified because current GitHub Actions runs expose no steps/logs.
 - The checkout review was recorded in audit commit `f620f2f49f44f9ce6e3726dc2f87d0dfb59fef56`; current CI blocker remains unresolved. Keep live payment/supplier processing and deployment disabled until workflows can execute and staging verification passes.
+
+
+## Provider HTTP transport and admin reconciliation review — 2026-10-14
+
+- Reviewed `app/services/provider_http.php`: outbound JSON requests require HTTPS, verify TLS peer/host, disable redirects, bound connect/overall timeouts, reject non-2xx responses and malformed/non-object JSON, and avoid logging request bodies or credential-bearing headers. No live network request was made.
+- Reviewed `app/services/duitku.php` and `app/services/duitku_reconcile.php`: status lookup is sandbox-only, uses a separate status-query signature, validates the returned merchant order ID and amount, and does not mutate payment/order state. The admission helper locks the local payment row and commits a STARTED audit marker before network I/O; repeated lookups are limited by a 60-second audit-backed cooldown.
+- Reviewed `public/admin/reconcile.php`, `public/admin/game-mappings.php`, `public/admin/index.php`, and `app/services/admin_auth.php`: reconciliation and mapping mutations require an authenticated privileged role, POST requests require CSRF validation, mapping writes and audit records share a transaction, and user-controlled display values are escaped. No definite source-level vulnerability was established in this pass.
+- These are source-review findings only; no PHP/MySQL test was executed during this pass. Current CI execution status must be checked separately; existing failures without visible steps/logs cannot be treated as application-test failures or as passing verification.
+- No code was changed, no live Duitku/provider call was made, and no deployment occurred. Keep checkout, supplier-order execution, and settlement backup disabled until CI and controlled staging checks are available.
