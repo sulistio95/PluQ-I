@@ -39,6 +39,8 @@ status_test_assert($validated['reference'] === 'D-TEST-REFERENCE', 'Gateway refe
 foreach ([
     [['merchantOrderId' => str_repeat('b', 26)] + array_diff_key($response, ['merchantOrderId' => true]), 'order mismatch'],
     [array_merge($response, ['amount' => '2501']), 'amount mismatch'],
+    [array_merge($response, ['amount' => '999999999999999999999999999999999999']), 'overflowing amount'],
+    [array_merge($response, ['amount' => '0002501']), 'normalized amount mismatch'],
     [array_merge($response, ['statusCode' => '99']), 'unknown status'],
     [array_merge($response, ['amount' => '2500.00']), 'non-integer amount'],
     [array_merge($response, ['reference' => []]), 'invalid reference'],
