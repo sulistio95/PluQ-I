@@ -409,3 +409,13 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 - Latest runs on commit `213cccdd7e5db035ee0d3985884d0a64d12330f8`: PHP quality [38468745359](https://github.com/sulistio95/PluQ-I/actions/runs/38468745359) and fulfillment [38468745412](https://github.com/sulistio95/PluQ-I/actions/runs/38468745412) failed within seconds with job logs/steps unavailable; root cause remains unknown.
 - Audit update: commit `f620f2f49f44f9ce6e3726dc2f87d0dfb59fef56` in [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
 - Next: continue source review on a separate subsystem without enabling live gateway/supplier calls; owner-side GitHub Actions settings, billing/budget, GitHub Status, or GitHub Support remain necessary to restore test execution. Do not deploy or enable production payment flags before successful CI and staging verification.
+
+
+## Duitku callback and queue lease review — 2026-10-14
+
+- Reviewed `public/duitku-callback.php`, `app/services/duitku.php`, `app/services/queue_worker.php`, `app/services/fulfillment.php`, and callback signature tests.
+- Callback signature, order ID shape, and amount are validated before payment-row locking. Repeated callbacks are acknowledged without repeating transitions. A fulfillment job is inserted only when the order transitions to PAID for the first time.
+- Worker finalization requires the current PROCESSING status and matching lease token. Supplier ambiguity is routed to manual review instead of blind resubmission.
+- No definite defect established; this is source review, not a newly executed runtime test. CI remains blocked by failures with no visible steps/logs.
+- Audit updated in commit `ad1fd8f812a9f2416f7846b43c047b07d129450f`: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
+- Continue reviewing code/tests without speculative changes; do not enable live payment/provider processing or deploy while CI execution and staging checks are unresolved.
