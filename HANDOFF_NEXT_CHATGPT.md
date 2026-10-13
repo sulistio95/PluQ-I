@@ -498,3 +498,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Checked job records for syntax, PHP quality, and fulfillment runs on `d690c7828117183ca43d1b6cff9c08052c4a0340`. Each job failed before normal steps were recorded (`steps: []`, `runner_id: 0`, no usable logs), which confirms the visible problem is pre-step execution but does not establish the cause.
 - Actions permissions could not be inspected with the current connector. Next diagnostic is owner-side review of **Settings → Actions → General**, account billing/usage limits, repository policy, and GitHub Status; then rerun and inspect step logs. Do not blindly alter workflows or mark tests as passed.
 - No source edits, test execution, supplier/payment calls, or deployment occurred in this diagnostic pass. Production processing stays disabled. Audit details: [docs/production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
+
+
+## Latest work — Duitku status amount overflow guard (2026-10-14)
+
+- Fixed a numeric validation edge case in `app/services/duitku.php`: arbitrary-length numeric response amounts are now compared as normalized decimal strings, avoiding PHP integer saturation.
+- Source commit: [b6bba9d](https://github.com/sulistio95/PluQ-I/commit/b6bba9d5e3c5e2f9c708ef5904b52d06cb0b9662). Regression test commit: [12042e3](https://github.com/sulistio95/PluQ-I/commit/12042e37603638481ce23cddeed87c4b8ac3601a).
+- Added coverage for oversized values and the exact `PHP_INT_MAX` saturation case. Test execution is still unverified because GitHub Actions failures have not exposed normal steps/logs; do not report this test as passing.
+- No live gateway/provider calls or deployment. Keep live payment and supplier-order flags disabled. Next: verify CI execution and run the PHP/MySQL integration suite before considering staging.
