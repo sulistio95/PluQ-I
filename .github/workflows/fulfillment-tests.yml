@@ -33,6 +33,8 @@ jobs:
         run: php tests/checkout_gate_test.php
       - name: Test supplier response mapping
         run: php tests/provider_response_mapping_test.php
+      - name: Test supplier retry safety
+        run: php tests/fulfillment-retry-safety-test.php
 
   mysql-callback-integration:
     runs-on: ubuntu-latest
