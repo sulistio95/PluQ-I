@@ -399,3 +399,13 @@ Commit `5877fa6e1fbd75bea0fe812c8e8a56ad4fecd738` extends `tests/reconcile-coold
 - Handoff commit `f33f062705e451820aa5828266d62ff32f13d8dc` triggered syntax [38468686551](https://github.com/sulistio95/PluQ-I/actions/runs/38468686551), fulfillment [38468686528](https://github.com/sulistio95/PluQ-I/actions/runs/38468686528), and PHP quality [38468686565](https://github.com/sulistio95/PluQ-I/actions/runs/38468686565). All failed before any step or log was exposed. No test assertion is shown to have run.
 - No source change was made because no specific code defect was established. The admin reconciliation HTTP integration test remains runtime-unverified. Next required step is owner-side GitHub Actions settings/billing/status investigation or GitHub Support; live payment/provider calls and deployment remain disabled.
 - Audit note updated in commit `8fff19d3d64eed7a3182a1c8f08632fe9b43f86a`.
+
+
+## Checkout idempotency review — 2026-10-14
+
+- Re-read `app/services/order_checkout.php`, `app/services/checkout_quote.php`, `public/create-payment.php`, migrations 003/010, and checkout fingerprint/concurrency tests.
+- Source review confirms unique checkout-key constraint, SHA-256 storage, request fingerprint binding email/game/product/account, rejection of same-key changed payload, no repeat Duitku dispatch on duplicate/deadlock recovery, and manual-review handling for ambiguous gateway timeout. Quote logic rechecks reserve balance, cheapest eligible offer, exclusions, and account-field validation.
+- No definite source defect was established; no speculative source edit was made. Existing DB integration coverage is present but **not newly runtime-verified** because current GitHub Actions runs fail before showing any steps/logs.
+- Latest runs on commit `213cccdd7e5db035ee0d3985884d0a64d12330f8`: PHP quality [38468745359](https://github.com/sulistio95/PluQ-I/actions/runs/38468745359) and fulfillment [38468745412](https://github.com/sulistio95/PluQ-I/actions/runs/38468745412) failed within seconds with job logs/steps unavailable; root cause remains unknown.
+- Audit update: commit `f620f2f49f44f9ce6e3726dc2f87d0dfb59fef56` in [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
+- Next: continue source review on a separate subsystem without enabling live gateway/supplier calls; owner-side GitHub Actions settings, billing/budget, GitHub Status, or GitHub Support remain necessary to restore test execution. Do not deploy or enable production payment flags before successful CI and staging verification.
