@@ -24,11 +24,22 @@ function digiflazz_balance(): array
         'username' => $cfg['username'],
         'sign' => md5($cfg['username'] . $cfg['api_key'] . 'depo'),
     ]);
+    return digiflazz_map_balance_response($response);
+}
+
+/** Validate the supplier balance before converting it; malformed text must not silently become zero. */
+function digiflazz_map_balance_response(array $response): array
+{
     $data = $response['data'] ?? null;
-    if (!is_array($data) || !isset($data['deposit'])) {
-        throw new RuntimeException('Digiflazz balance response is missing the balance field.');
+    if (!is_array($data) || !array_key_exists('deposit', $data)
+        || !is_numeric($data['deposit'])) {
+        throw new RuntimeException('Digiflazz balance response has an invalid balance field.');
     }
-    return ['balance' => (float) $data['deposit'], 'raw' => $response];
+    $balance = (float) $data['deposit'];
+    if (!is_finite($balance) || $balance < 0) {
+        throw new RuntimeException('Digiflazz balance response has an invalid balance field.');
+    }
+    return ['balance' => $balance, 'raw' => $response];
 }
 
 function digiflazz_price_list(?string $category = null): array
