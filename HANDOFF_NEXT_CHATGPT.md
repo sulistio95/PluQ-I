@@ -456,3 +456,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - All three workflows still fail immediately without exposed steps/logs on current notes commits: syntax [38474672764](https://github.com/sulistio95/PluQ-I/actions/runs/38474672764), PHP quality [38474672798](https://github.com/sulistio95/PluQ-I/actions/runs/38474672798), fulfillment [38474672805](https://github.com/sulistio95/PluQ-I/actions/runs/38474672805). Root cause remains unknown; do not infer that application tests themselves failed.
 - Keep live supplier/payment processing and deployment paused until Actions execution is inspectable and staging verification passes.
 - Audit detail: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md), commit `0a21f099fa60dab90d58a02502c33a4fd9683d80`.
+
+
+## Supplier retry duplicate-order guard — 2026-10-14
+
+- Source review found that a VIPayment `RETRYING` record with no saved provider `trxid` could reach the new-order request path. That is unsafe because the earlier request may already have been accepted by the supplier.
+- Fixed in [9930da7](https://github.com/sulistio95/PluQ-I/commit/9930da74ac4d1d8f49e86add191811f4745064dd): ambiguous `PROCESSING` requests and VIPayment `RETRYING` records without a transaction reference now require manual review; VIPayment status polling is retained when a reference exists; Digiflazz retry remains fail-closed.
+- Added `tests/fulfillment-retry-safety-test.php` in [99cfd7e](https://github.com/sulistio95/PluQ-I/commit/99cfd7ebaa150051ef6676cd2ed2b2a42ee0542e) and included it in `.github/workflows/fulfillment-tests.yml` in [4af58c0](https://github.com/sulistio95/PluQ-I/commit/4af58c07616cf8b64989ce5d6f9b01872a46e72f).
+- CI/runtime result is not yet verified because Actions has been failing before steps/logs are exposed. No live API calls or deployment. Keep live processing disabled. Audit details: [production-readiness-audit.md](https://github.com/sulistio95/PluQ-I/blob/main/docs/production-readiness-audit.md).
