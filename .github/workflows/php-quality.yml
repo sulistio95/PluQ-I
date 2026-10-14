@@ -38,6 +38,8 @@ jobs:
         run: php tests/checkout-request-fingerprint.php
       - name: Test supplier account and response mapping
         run: php tests/fulfillment-mapping.php
+      - name: Test provider budget capacity boundaries
+        run: php tests/provider-budget-capacity.php
       - name: Test admin authorization roles
         run: php tests/admin-authorization.php
       - name: Test admin login throttle cleanup scope
