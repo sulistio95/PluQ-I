@@ -33,6 +33,16 @@ function provider_budget_reserve_paid_order(PDO $pdo, int $orderId): array
         throw new DomainException('Only a paid order can reserve provider budget.');
     }
 
+    // Serialize all reservations for this provider before probing the unique
+    // order_id index for an absent reservation. Under InnoDB REPEATABLE READ,
+    // locking reads of absent keys can take gap locks; probing those gaps first
+    // from two transactions can deadlock when both later insert. Lock order is
+    // therefore order row -> provider row -> reservation row.
+    $providerQuery = $pdo->prepare("SELECT id,balance,reserve_percentage,status,last_balance_check_at
+        FROM providers WHERE id=:id LIMIT 1 FOR UPDATE");
+    $providerQuery->execute(['id' => $order['provider_id']]);
+    $provider = $providerQuery->fetch(PDO::FETCH_ASSOC);
+
     $existingQuery = $pdo->prepare("SELECT id,provider_id,amount,status
         FROM provider_budget_reservations WHERE order_id=:id LIMIT 1 FOR UPDATE");
     $existingQuery->execute(['id' => $orderId]);
@@ -45,10 +55,6 @@ function provider_budget_reserve_paid_order(PDO $pdo, int $orderId): array
         return ['reserved' => in_array($existing['status'], ['ACTIVE','REVIEW','SETTLED'], true), 'status' => $existing['status'], 'existing' => true];
     }
 
-    $providerQuery = $pdo->prepare("SELECT id,balance,reserve_percentage,status,last_balance_check_at
-        FROM providers WHERE id=:id LIMIT 1 FOR UPDATE");
-    $providerQuery->execute(['id' => $order['provider_id']]);
-    $provider = $providerQuery->fetch(PDO::FETCH_ASSOC);
     if (!$provider || !in_array($provider['status'], ['ACTIVE','LOW_BALANCE'], true)
         || $provider['balance'] === null || (float)$provider['balance'] < 0) {
         return ['reserved' => false, 'status' => 'UNAVAILABLE', 'existing' => false];
