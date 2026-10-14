@@ -736,3 +736,12 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Audit notes updated in commit [433f55d](https://github.com/sulistio95/PluQ-I/commit/433f55d683a9622ef4f3db3a684b27d11e54f471).
 - This regression test is committed but has not yet been executed locally or confirmed green in Actions. Earlier CI log downloads were unavailable; fetch latest Actions runs and inspect job results next.
 - Keep production payments, supplier ordering, Google Drive backup, and deployment disabled until CI and PHP 8.2 + MySQL/MariaDB staging verification pass.
+
+
+### Latest CI follow-up — 2026-10-15
+
+- After regression commit `88aec00`, all three workflows reported failure: [syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38633330500), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38633330555), [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/38633330567). Runs triggered by audit-doc commit `433f55d` also failed: [syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38633351092), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38633351125), [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/38633350950).
+- Job steps are empty and log downloads return NOT_FOUND, so root cause cannot currently be identified. Do not assume the Actions quota is the cause or that the code itself is the cause.
+- At the time of this note, the newest runs triggered by the handoff update were still queued: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38633370983) and [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/38633370846). Recheck their final state.
+- Audit record updated in [commit `e196df9`](https://github.com/sulistio95/PluQ-I/commit/e196df911e86ffed5eaab413775d8b70bc078db7). The handoff should be considered updated by this commit after this write succeeds.
+- Next: recheck latest Actions, obtain readable logs or local/staging PHP 8.2 + MySQL/MariaDB results, then address evidence-backed failures. Keep all production integrations disabled until verification passes.
