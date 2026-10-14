@@ -74,3 +74,11 @@ Production payment mode must be implemented deliberately and separately from san
 - Source review on 2026-10-14 found that checkout compares each order to a stored provider balance/reserve percentage but does not reserve aggregate capacity for paid orders waiting in the queue. Concurrent orders can all pass against the same snapshot and collectively exceed the configured usable balance.
 - Before supplier ordering is enabled, add an InnoDB-backed provider budget reservation/commitment ledger, serialize capacity decisions by locking the provider row, and release reservations idempotently only on definitive terminal outcomes. Keep reservations for ambiguous/manual-review orders until reconciliation.
 - Add MySQL concurrency tests proving multiple simultaneous orders cannot reserve more than the configured usable balance. This is a source-level finding, not evidence of a live overspend. Do not enable supplier ordering until fixed and tested.
+
+## Provider budget reservation implementation — 2026-10-14
+
+- New migration: `database/migrations/011_provider_budget_reservations.sql`; new service: `app/services/provider_budget.php`. Apply migration 011 before releasing code that requires the reservation table.
+- Normal successful-payment callback must reserve supplier cost under a provider-row lock before enqueueing fulfillment. If capacity cannot be reserved, expect payment `PAID`, order `MANUAL_REVIEW`, and zero new `FULFILL_ORDER` jobs.
+- `ACTIVE` and `REVIEW` reservations consume capacity. Supplier-confirmed success changes the reservation to `SETTLED`; definitive supplier failure changes it to `RELEASED` while refund review remains pending; ambiguous outcomes stay in `REVIEW` and continue consuming capacity.
+- Unit boundary test added at `tests/provider-budget-capacity.php` and included in the PHP quality workflow. This does not replace a MySQL concurrency test: before enabling supplier orders, verify simultaneous callbacks cannot reserve more than the configured usable balance and test duplicate callback/idempotency behavior.
+- This implementation has not yet passed a successful CI run or live MySQL integration test. Keep supplier orders and production deployment disabled until verified.
