@@ -61,10 +61,10 @@ function provider_budget_reserve_paid_order(PDO $pdo, int $orderId): array
         WHERE r.provider_id=:id
           AND (
             r.status IN ('ACTIVE','REVIEW')
-            OR (r.status='SETTLED' AND (:last_check IS NULL OR r.updated_at > :last_check))
+            OR (r.status='SETTLED' AND (:last_check_null IS NULL OR r.updated_at > :last_check_after))
           )");
     $lastBalanceCheck = $provider['last_balance_check_at'];
-    $usedQuery->execute(['id' => $provider['id'], 'last_check' => $lastBalanceCheck]);
+    $usedQuery->execute(['id' => $provider['id'], 'last_check_null' => $lastBalanceCheck, 'last_check_after' => $lastBalanceCheck]);
     $committed = (float)$usedQuery->fetchColumn();
     $cost = (float)$order['base_price'];
     if (!provider_budget_capacity_allows((float)$provider['balance'], (float)$provider['reserve_percentage'], $committed, $cost)) {
