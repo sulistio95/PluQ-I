@@ -603,3 +603,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 ### CI status after heredoc test fix — 2026-10-14
 
 - Workflow runs for the heredoc correction: [PHP quality 38508784612](https://github.com/sulistio95/PluQ-I/actions/runs/38508784612), [fulfillment safety 38508784598](https://github.com/sulistio95/PluQ-I/actions/runs/38508784598), and [syntax checks 38508784571](https://github.com/sulistio95/PluQ-I/actions/runs/38508784571). Completed-failure jobs expose `steps: null`; no actual step output is accessible. The fulfillment PHP unit job was still queued at check time. Treat tests as unverified, not passed.
+
+
+### Free WordPress.com deployment idea and latest test note — 2026-10-14
+
+- User suggested using the connected WordPress account for free deployment testing without buying a domain. Checked the WordPress.com connected-site listing: it returned zero accessible sites, so no existing test site was available to target.
+- WordPress.com Free is not a general-purpose host for this standalone PHP/MySQL app and does not allow plugin installation/custom PHP runtime. See [code restrictions](https://wordpress.com/support/code/) and [plan features](https://wordpress.com/support/plan-features/). Do not claim PluQ-I has been deployed or tested by publishing a WordPress page; a static demo is not an app-runtime test. No site was created or modified.
+- Fixed literal \\n output in the sandbox callback integration test diagnostics in commit [9309e7e](https://github.com/sulistio95/PluQ-I/commit/9309e7e2a6d8edc11d836a1b7075ecd7787eac89). This is cosmetic; MySQL integration is still unverified.
+- Latest observed Actions jobs fail before any steps (runner_id=0, steps empty), with no usable test logs. Resume by resolving Actions runner availability or arranging an actual PHP/MySQL staging runtime. Keep payments, supplier fulfillment and deployment disabled until test evidence is available.
