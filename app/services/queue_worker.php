@@ -41,8 +41,10 @@ function queue_finalize_job(PDO $pdo, array $job, string $token, string $outcome
                     $supplierLock->execute(['id' => $reviewOrderId]);
                     $reviewSupplier = $supplierLock->fetch();
                     if ($reviewOrder && $reviewOrder['payment_status'] === 'PAID'
-                        && !in_array($reviewOrder['order_status'], ['SUCCESS', 'REFUNDED'], true)) {
-                        $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error=:error WHERE id=:id AND payment_status='PAID' AND order_status NOT IN ('SUCCESS','REFUNDED')")
+                        && in_array($reviewOrder['order_status'], ['QUEUED', 'PROCESSING', 'RETRYING'], true)) {
+                        // Do not rewrite an order that another path has already moved to a
+                        // terminal or explicitly reviewed state while this job was running.
+                        $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error=:error WHERE id=:id AND payment_status='PAID' AND order_status IN ('QUEUED','PROCESSING','RETRYING')")
                             ->execute(['error' => $message, 'id' => $reviewOrderId]);
                         if ($reviewSupplier && in_array($reviewSupplier['status'], ['PENDING', 'PROCESSING', 'RETRYING'], true)) {
                             $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error=:error WHERE order_id=:id AND status IN ('PENDING','PROCESSING','RETRYING')")
