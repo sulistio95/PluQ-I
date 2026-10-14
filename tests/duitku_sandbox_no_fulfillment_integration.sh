@@ -55,7 +55,7 @@ $orderId = '0123456789abcdef0123456789';
 $q = $pdo->prepare('SELECT status FROM payment_transactions WHERE merchant_order_id = ?');
 $q->execute([$orderId]);
 if ($q->fetchColumn() !== 'PAID') {
-    fwrite(STDERR, "Sandbox callback must record payment as PAID.\\n");
+    fwrite(STDERR, "Sandbox callback must record payment as PAID.\n");
     exit(1);
 }
 
@@ -68,7 +68,7 @@ if (
     || $row['order_status'] !== 'MANUAL_REVIEW'
     || !str_contains((string)$row['last_error'], 'supplier fulfillment intentionally disabled')
 ) {
-    fwrite(STDERR, "Sandbox callback must mark the order for manual review without fulfillment.\\n");
+    fwrite(STDERR, "Sandbox callback must mark the order for manual review without fulfillment.\n");
     exit(1);
 }
 
@@ -81,9 +81,9 @@ $q = $pdo->prepare(
 );
 $q->execute([$orderId]);
 if ((int)$q->fetchColumn() !== 0) {
-    fwrite(STDERR, "Sandbox callback must not enqueue fulfillment for this order.\\n");
+    fwrite(STDERR, "Sandbox callback must not enqueue fulfillment for this order.\n");
     exit(1);
 }
 
-echo "Duitku sandbox-only callback did not enqueue supplier fulfillment.\\n";
+echo "Duitku sandbox-only callback did not enqueue supplier fulfillment.\n";
 PHP
