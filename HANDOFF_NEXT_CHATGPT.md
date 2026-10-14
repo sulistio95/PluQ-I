@@ -728,3 +728,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - A proposed regression test using stale status arguments was not committed because the test-file write was blocked. Do not assume this case is covered or that runtime verification passed.
 - Latest Actions runs are failures: [syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38632601867), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38632599511), [fulfillment tests](https://github.com/sulistio95/PluQ-I/actions/runs/38632599912). Job metadata confirms failure but detailed logs/steps are unavailable, so root cause remains unknown.
 - Next steps: add the stale-snapshot regression test when writes are available; recover readable CI logs or run PHP 8.2 + MySQL/MariaDB staging tests; fix only evidence-backed failures; update both notes after each meaningful change. Keep production payments, supplier orders, Google Drive backup and deployment disabled until verification passes.
+
+
+### Regression test added — 2026-10-15
+
+- Commit [88aec00](https://github.com/sulistio95/PluQ-I/commit/88aec00533beba80d959f6cb08fd45a5167c5f3f) extends `tests/reconcile-cooldown-concurrency-integration.php`: it supplies deliberately stale payment/order statuses to `duitku_reconcile_admit_lookup()` and asserts the STARTED audit details match the locked current database statuses. Existing concurrent admission assertions remain.
+- Audit notes updated in commit [433f55d](https://github.com/sulistio95/PluQ-I/commit/433f55d683a9622ef4f3db3a684b27d11e54f471).
+- This regression test is committed but has not yet been executed locally or confirmed green in Actions. Earlier CI log downloads were unavailable; fetch latest Actions runs and inspect job results next.
+- Keep production payments, supplier ordering, Google Drive backup, and deployment disabled until CI and PHP 8.2 + MySQL/MariaDB staging verification pass.
