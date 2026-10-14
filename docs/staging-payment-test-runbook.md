@@ -82,3 +82,6 @@ Production payment mode must be implemented deliberately and separately from san
 - `ACTIVE` and `REVIEW` reservations consume capacity. Supplier-confirmed success changes the reservation to `SETTLED`; definitive supplier failure changes it to `RELEASED` while refund review remains pending; ambiguous outcomes stay in `REVIEW` and continue consuming capacity.
 - Unit boundary test added at `tests/provider-budget-capacity.php` and included in the PHP quality workflow. This does not replace a MySQL concurrency test: before enabling supplier orders, verify simultaneous callbacks cannot reserve more than the configured usable balance and test duplicate callback/idempotency behavior.
 - This implementation has not yet passed a successful CI run or live MySQL integration test. Keep supplier orders and production deployment disabled until verified.
+
+- Additional fail-closed guard: queue processing must refuse to call suppliers unless the order has an `ACTIVE` provider budget reservation. Test old/unreserved queue rows, `REVIEW` reservations, and duplicate callbacks; all must avoid a supplier API call and route inconsistent paid orders to manual review.
+- Migration 011 has been added to the MySQL CI migration list and README install order. CI has not yet shown executed steps; do not count the test as passed.
