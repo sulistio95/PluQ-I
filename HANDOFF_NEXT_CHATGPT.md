@@ -646,3 +646,6 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Supplier success -> `SETTLED`; definitive supplier rejection -> `RELEASED` with refund pending; ambiguous result -> `REVIEW`, which still consumes budget until an operator reconciles it.
 - Added `tests/provider-budget-capacity.php` and wired it into `.github/workflows/php-quality.yml`.
 - Next: verify latest GitHub Actions runs, run PHP lint/unit tests, and add a real MySQL concurrency integration test with two or more simultaneous paid callbacks sharing one provider. Check migration runner/install instructions and require migration 011 before deploying the new callback/service. No live API calls or deployments. Do not claim tests passed until workflow output shows the steps and results.
+
+- Follow-up guard: `fulfillment_process()` now checks the reservation ledger before any supplier API request and blocks any paid queue job without an `ACTIVE` reservation, moving it to manual review. Migration 011 is included in the MySQL integration workflow migration list and in README setup steps.
+- CI still needs diagnosis: latest workflow jobs report failed with `steps:null` and no logs, so there is no PHP lint, unit-test, or MySQL test evidence. Next investigate runner/workflow service and add real MySQL contention tests for reservation locking. Keep all live operations disabled.
