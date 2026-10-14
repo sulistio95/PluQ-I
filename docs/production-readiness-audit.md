@@ -532,3 +532,9 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Source review found a defect in the new sandbox-only callback integration test: it asserted the entire shared test database contained exactly one `FULFILL_ORDER` job. Earlier integration cases can legitimately create unrelated jobs, making this assertion order-dependent and potentially flaky.
 - Corrected the assertion in [fb3623c](https://github.com/sulistio95/PluQ-I/commit/fb3623cfa920afec7e5dc76978b2455064f569b9) to count only `FULFILL_ORDER` jobs whose JSON payload `order_id` matches the sandbox fixture order. Expected count is now zero for that order; unrelated test jobs no longer affect the result.
 - This is a test-only correction. It has **not** been executed against MySQL because GitHub Actions has not exposed runner steps/logs. PHP/MySQL runtime result remains unverified; keep live payments, supplier ordering, and deployment disabled.
+
+
+### CI result after sandbox assertion correction — 2026-10-14
+
+- New workflow runs for the correction, fulfillment [38505439662](https://github.com/sulistio95/PluQ-I/actions/runs/38505439662) and PHP quality [38505439765](https://github.com/sulistio95/PluQ-I/actions/runs/38505439765), completed with failure. Job records expose `steps: null`; no test output was provided. The PHP quality run for the source-test commit [38505408114](https://github.com/sulistio95/PluQ-I/actions/runs/38505408114) shows the same symptom.
+- This confirms the runner visibility/allocation blocker persists; it does **not** establish that the assertion change failed. Keep test status unverified and do not enable production payment/supplier flow or deploy.
