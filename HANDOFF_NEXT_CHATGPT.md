@@ -589,3 +589,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 
 - Latest fulfillment run [38505439662](https://github.com/sulistio95/PluQ-I/actions/runs/38505439662) and PHP quality run [38505439765](https://github.com/sulistio95/PluQ-I/actions/runs/38505439765) failed with job `steps: null`; no actual test logs are available. PHP quality run [38505408114](https://github.com/sulistio95/PluQ-I/actions/runs/38505408114) has the same symptom.
 - Do not treat this as a source test failure or success. Continue by resolving owner-side Actions runner/account availability, then inspect and run the actual test suite. The test-only assertion correction and notes are committed; live payments, supplier calls, and deployment remain disabled.
+
+
+
+### Sandbox integration script quoting fix — 2026-10-14
+
+- Source audit found shell quoting risk in `tests/duitku_sandbox_no_fulfillment_integration.sh`: a `php -r '…'` argument contained SQL single-quoted literals and JSON path `'$.order_id'`, which the shell could remove before PHP executed it.
+- Fixed by using a single-quoted PHP heredoc, commit [acac0af](https://github.com/sulistio95/PluQ-I/commit/acac0afad5b2c735272e0150b9261817e82db4c6). This preserves SQL quoting as authored. The test still needs a real MySQL run; do not claim it passed until Actions steps/logs are available.
+- Continue by checking new CI run results and testing the actual script. Production payments, supplier calls and deployment remain disabled.
