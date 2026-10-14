@@ -38,8 +38,24 @@ try {
             ],JSON_THROW_ON_ERROR);
             $q=$pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Conflicting terminal Duitku callback; payment state preserved for manual reconciliation' WHERE id=:id AND order_status<>'MANUAL_REVIEW'");
             $q->execute(['id'=>$tx['order_id']]);
-            $q=$pdo->prepare("INSERT INTO audit_logs (actor_type,action,entity_type,entity_id,details) VALUES ('GATEWAY','DUITKU_TERMINAL_CALLBACK_CONFLICT','ORDER',:entity_id,:details)");
-            $q->execute(['entity_id'=>(string)$tx['order_id'],'details'=>$details]);
+            // Gateway retries are expected. Record each distinct stored/incoming status conflict
+            // once per order so repeated identical callbacks cannot flood the audit log.
+            $q=$pdo->prepare("SELECT id FROM audit_logs
+                WHERE action='DUITKU_TERMINAL_CALLBACK_CONFLICT'
+                  AND entity_type='ORDER'
+                  AND entity_id=:entity_id
+                  AND JSON_UNQUOTE(JSON_EXTRACT(details, '$.stored_payment_status'))=:stored_status
+                  AND JSON_UNQUOTE(JSON_EXTRACT(details, '$.incoming_payment_status'))=:incoming_status
+                LIMIT 1 FOR UPDATE");
+            $q->execute([
+                'entity_id'=>(string)$tx['order_id'],
+                'stored_status'=>(string)$tx['status'],
+                'incoming_status'=>$status,
+            ]);
+            if ($q->fetchColumn() === false) {
+                $q=$pdo->prepare("INSERT INTO audit_logs (actor_type,action,entity_type,entity_id,details) VALUES ('GATEWAY','DUITKU_TERMINAL_CALLBACK_CONFLICT','ORDER',:entity_id,:details)");
+                $q->execute(['entity_id'=>(string)$tx['order_id'],'details'=>$details]);
+            }
         }
         $pdo->commit();
         json_response(['status'=>'ok']);
