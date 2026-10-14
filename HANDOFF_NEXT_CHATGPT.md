@@ -690,3 +690,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Not yet executed successfully. Do not claim test success until the MySQL workflow produces step logs and passes.
 
 - After the latest test hardening, syntax workflow runs [38533061161](https://github.com/sulistio95/PluQ-I/actions/runs/38533061161) and [38533044011](https://github.com/sulistio95/PluQ-I/actions/runs/38533044011) still report failure with `steps: null`; no test commands ran. Latest fulfillment/PHP-quality runs were queued at inspection. Continue runner diagnostics; do not attribute this to a PHP assertion without logs and do not mark tests as passed.
+
+### Stale fulfillment job guard — 2026-10-14
+
+- Latest code commit: [dd980d6](https://github.com/sulistio95/PluQ-I/commit/dd980d6b6d80f2ff82e598f6794e2ec2892178e1). fulfillment_process() now allows supplier processing only for paid orders in QUEUED, PROCESSING, or RETRYING; a paid order already in MANUAL_REVIEW cannot be revived by a duplicate job even if its budget reservation is ACTIVE.
+- An in-flight PROCESSING/RETRYING order without a durable supplier transaction is moved to MANUAL_REVIEW, with its budget reservation resolved to REVIEW, instead of creating a fresh supplier request that might double-purchase.
+- Regression test expanded in [43b1bf5](https://github.com/sulistio95/PluQ-I/commit/43b1bf5e14434e39094af6926d632dbce46ea145); it now seeds the reservation and verifies a duplicate job does not revive a reviewed order. Cleanup deletes the reservation before the order to respect the foreign key.
+- GitHub Actions may be usage-limited until the next reset per user's report. Do not claim tests passed. Resume by checking whether Actions can assign runners, then run PHP lint, PHP unit tests, and MySQL 8.4 integration tests. Do not change the separate PluQ repository or enable live operations.
