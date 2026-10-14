@@ -68,3 +68,9 @@ Production payment mode must be implemented deliberately and separately from san
 - 2026-10-14: source review confirmed the sandbox-only Duitku guard and combined checkout/supplier feature gate.
 - 2026-10-14: recent GitHub Actions runs failed before runner allocation or step recording; cause remains unknown and application tests are not claimed as passed.
 - 2026-10-14: no live payment, supplier purchase, or deployment was performed.
+
+## Additional gate — provider balance concurrency
+
+- Source review on 2026-10-14 found that checkout compares each order to a stored provider balance/reserve percentage but does not reserve aggregate capacity for paid orders waiting in the queue. Concurrent orders can all pass against the same snapshot and collectively exceed the configured usable balance.
+- Before supplier ordering is enabled, add an InnoDB-backed provider budget reservation/commitment ledger, serialize capacity decisions by locking the provider row, and release reservations idempotently only on definitive terminal outcomes. Keep reservations for ambiguous/manual-review orders until reconciliation.
+- Add MySQL concurrency tests proving multiple simultaneous orders cannot reserve more than the configured usable balance. This is a source-level finding, not evidence of a live overspend. Do not enable supplier ordering until fixed and tested.
