@@ -747,3 +747,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Log integrasi MySQL yang sebelumnya tidak terbaca kini menunjukkan kegagalan konkret pada uji dua worker: `SQLSTATE[40001]`, kode MySQL `1213`, deadlock saat reservasi serentak. Pemeriksaan key yang belum ada sebelum lock provider memungkinkan gap-lock InnoDB bersaing ketika kedua worker hendak memasukkan reservasi.
 - PHP quality dan syntax lulus pada head dokumentasi sebelumnya (`e546adac`), tetapi uji MySQL memang menemukan cacat konkurensi. Perbaikan sudah committed; hasil integrasi pada commit perbaikan masih menunggu. Jangan menganggap bug selesai sebelum rerun berhasil.
 - Pembayaran live, pemesanan supplier, backup Google Drive, dan deployment tetap nonaktif.
+
+
+## Lanjutan uji konkurensi supplier dan koreksi fixture — 2026-10-15
+
+- Uji MySQL reservasi saldo supplier lulus pada commit kode `e98b4f4`; PHP quality dan syntax juga lulus. Kegagalan MySQL 1213 sebelumnya sudah ditangani dengan mengunci provider sebelum pencarian reservation yang belum ada.
+- Workflow fulfillment kemudian menemukan kegagalan pada `tests/uncertain_supplier_integration.sh`: fixture untuk transaksi supplier ambigu tidak membuat baris `provider_budget_reservations` yang diwajibkan migrasi 011. Safety gate produksi benar menghentikan job sebelum cabang ambiguous-supplier, sehingga transaksi fixture tetap PROCESSING dan assertion gagal. Commit `9c5ae47d9784dbb5e00c36112fe0ba64083f3a40` menambahkan reservation ACTIVE ke fixture sementara agar pengujian mencapai cabang yang dimaksud. Ini memperbaiki fixture tes, bukan melonggarkan pengamanan produksi.
+- CI untuk koreksi fixture masih menunggu. Jangan aktifkan pembayaran live, supplier ordering, backup Drive, atau deployment sampai seluruh uji MySQL lulus.
