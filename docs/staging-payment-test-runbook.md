@@ -20,7 +20,7 @@ This is an operational checklist, not a production approval. No live payment or 
 - [ ] Generate unique staging `APP_KEY` and `SCHEDULER_TOKEN`; never reuse production secrets.
 - [ ] Upload private `.env` outside the public document root if possible. Keep `APP_DEBUG=false`.
 - [ ] Keep `CHECKOUT_PAYMENTS_ENABLED=false`, `SUPPLIER_ORDERS_ENABLED=false`, and `SETTLEMENT_BACKUP_ENABLED=false`.
-- [ ] Import `database/schema.mysql.sql`, then apply migrations 002 through 010 in order (migrations 006–007 are required if settlement backup is later enabled).
+- [ ] Import `database/schema.mysql.sql`, then apply migrations 002 through 011 in order (migrations 006–007 are required if settlement backup is later enabled; migration 011 is required before the callback or fulfillment code that uses provider budget reservations).
 - [ ] Run `php bin/preflight.php` from CLI. Save output without secrets and resolve every failed check.
 - [ ] Verify backup creation and restore to a disposable database before any real transaction.
 
@@ -87,3 +87,10 @@ Production payment mode must be implemented deliberately and separately from san
 - Migration 011 has been added to the MySQL CI migration list and README install order. CI has not yet shown executed steps; do not count the test as passed.
 
 - Verify stale-balance protection: after a supplier success, the `SETTLED` reservation must continue counting until a balance sync that started after the settlement updates `last_balance_check_at`. Simulate a slow balance request overlapping a supplier success and ensure the older request's late response does not release that commitment.
+
+
+### Reservation recovery consistency fix — 2026-10-14
+
+- Source audit found a crash-recovery path in `app/services/fulfillment.php`: if the supplier transaction was already persisted as `SUCCESS` but the process crashed before resolving the budget reservation, the next worker marked the order successful without changing the reservation from `ACTIVE` to `SETTLED`.
+- Fixed in commit [defd9d5](https://github.com/sulistio95/PluQ-I/commit/defd9d599f8c71b795ac7525addfa44f46a70178). The recovery branch now resolves the reservation to `SETTLED` inside the same DB transaction. This is an idempotent state-recovery fix and keeps the balance ledger consistent.
+- Updated staging instructions to include migration 011 in the ordered migration list. Runtime PHP/MySQL tests remain unverified because GitHub Actions has not exposed executed steps/logs. Next priority: diagnose runner availability and add/execute a MySQL contention test proving two concurrent reservations cannot exceed the provider's usable balance. Keep payment/supplier production operations disabled.
