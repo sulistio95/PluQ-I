@@ -133,6 +133,37 @@ jobs:
         run: php tests/queue-worker-concurrency-integration.php
       - name: Test duplicate concurrent callbacks against MySQL
         run: bash tests/duitku_callback_integration.sh
+      - name: Create isolated sandbox-only callback fixture
+        run: |
+          set -eu
+          mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" <<'SQL'
+          INSERT INTO orders (public_id, game_id, product_id, provider_id, customer_game_data, base_price, selling_price, admin_fee, payment_status, order_status)
+          SELECT '0123456789abcdef0123456789', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','sandbox-user'), 1000, 1500, 1000, 'PENDING', 'PENDING'
+          FROM games g JOIN products p ON p.game_id = g.id
+          WHERE g.slug = 'integration-game' AND p.provider_product_code = 'integration-sku';
+          INSERT INTO payment_transactions (order_id, gateway, merchant_order_id, amount, status)
+          SELECT id, 'DUITKU', public_id, 2500, 'PENDING'
+          FROM orders WHERE public_id = '0123456789abcdef0123456789';
+          SQL
+      - name: Restart callback server in isolated sandbox-only mode
+        run: |
+          set -eu
+          pkill -f '[p]hp -S 127.0.0.1:8080' || true
+          APP_ENV=staging CHECKOUT_PAYMENTS_ENABLED=true SUPPLIER_ORDERS_ENABLED=false DUITKU_ENV=sandbox \
+            php -S 127.0.0.1:8080 -t public >/tmp/pluq-php-sandbox-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            code="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/duitku-callback.php || true)"
+            if [ "$code" = "405" ]; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/pluq-php-sandbox-server.log
+          exit 1
+      - name: Verify sandbox payment never queues supplier fulfillment
+        env:
+          APP_ENV: staging
+          CHECKOUT_PAYMENTS_ENABLED: 'true'
+          SUPPLIER_ORDERS_ENABLED: 'false'
+        run: bash tests/duitku_sandbox_no_fulfillment_integration.sh
       - name: Test stale queue recovery against MySQL
         run: bash tests/queue_recovery_integration.sh
       - name: Test worker finalization after lease revocation
