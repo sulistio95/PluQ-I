@@ -692,3 +692,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Regresi tes untuk argumen status usang belum masuk repo karena pembaruan `tests/reconcile-cooldown-concurrency-integration.php` ditolak alat; jangan menganggap pengujian ini tersedia atau lulus.
 - CI setelah commit ini gagal: [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38632601867), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38632599511), dan [fulfillment safety tests](https://github.com/sulistio95/PluQ-I/actions/runs/38632599912). Job gagal terkonfirmasi, tetapi detail langkah/log tidak tersedia; penyebab belum diketahui.
 - Status verifikasi: belum ada bukti lint atau tes integrasi berhasil dijalankan. Pembayaran produksi, pemesanan supplier, backup Google Drive, dan deployment tetap nonaktif sampai regresi tes dan verifikasi staging PHP 8.2 + MySQL/MariaDB berhasil.
+
+
+### Regresi snapshot status rekonsiliasi Duitku — 2026-10-15 (commit 88aec00)
+
+- Menambahkan pemeriksaan pada `tests/reconcile-cooldown-concurrency-integration.php`: setelah tes konkurensi, tes menghapus marker audit fixture, memanggil admission dengan status pemanggil yang sengaja usang, lalu membandingkan status `before` pada audit STARTED dengan status terkini yang dibaca dari database.
+- Commit tes: [88aec00](https://github.com/sulistio95/PluQ-I/commit/88aec00533beba80d959f6cb08fd45a5167c5f3f). Perubahan tes sudah tersimpan; belum dijalankan secara runtime di sesi ini.
+- CI sebelumnya masih gagal dan endpoint langkah/log job tidak menyediakan rincian yang dapat dibaca (steps kosong, unduhan log mengembalikan NOT_FOUND). Karena tes baru memicu workflow baru, periksa hasil run terbaru sebelum menyimpulkan lulus/gagal.
+- Pembayaran produksi, pemesanan supplier, backup Google Drive, dan deployment tetap nonaktif hingga tes CI serta verifikasi staging PHP 8.2 + MySQL/MariaDB berhasil.
