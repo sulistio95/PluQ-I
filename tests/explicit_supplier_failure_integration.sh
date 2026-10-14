@@ -92,5 +92,20 @@ if (!$recoveredOrder || $recoveredOrder['payment_status'] !== 'PAID'
     exit(1);
 }
 
+// A stale explicit-failure signal must not overwrite an order already sent to manual review.
+$pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW' WHERE id=?")->execute([$recovery['id']]);
+$blocked = false;
+try {
+    fulfillment_record_explicit_failure($pdo, (int)$recovery['id']);
+} catch (DomainException $e) {
+    $blocked = true;
+}
+$q = $pdo->prepare("SELECT order_status FROM orders WHERE id=?");
+$q->execute([$recovery['id']]);
+if (!$blocked || $q->fetchColumn() !== 'MANUAL_REVIEW') {
+    fwrite(STDERR, "Explicit supplier failure must not overwrite MANUAL_REVIEW.\\n");
+    exit(1);
+}
+
 echo "Explicit supplier failure and crash-window recovery integration test passed.\\n";
 PHP
