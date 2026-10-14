@@ -12,6 +12,12 @@ WHERE g.slug='integration-game' AND p.provider_product_code='integration-sku';
 INSERT INTO supplier_transactions (order_id,provider_id,reference_id,status,attempts)
 SELECT o.id,o.provider_id,CONCAT('PQI-',o.public_id),'PROCESSING',1
 FROM orders o WHERE o.public_id='9876543210abcdef9876543210';
+-- Migration 011 requires a capacity reservation before supplier processing.
+-- Keep the fixture valid so this test reaches the ambiguous-supplier branch,
+-- rather than being stopped earlier by the missing-reservation safety gate.
+INSERT INTO provider_budget_reservations (order_id,provider_id,amount,status)
+SELECT o.id,o.provider_id,o.base_price,'ACTIVE'
+FROM orders o WHERE o.public_id='9876543210abcdef9876543210';
 -- Model a crashed/abandoned request, not an active request made seconds ago.
 UPDATE supplier_transactions st
 JOIN orders o ON o.id = st.order_id
