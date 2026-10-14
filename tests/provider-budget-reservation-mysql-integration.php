@@ -65,7 +65,7 @@ try {
     $stmt->execute(['game' => $gameId, 'provider' => $providerId, 'sku' => 'BUDGET_SKU_' . $token]);
     $productId = (int)$pdo->lastInsertId();
 
-    foreach ([300000, 200001, 300000, 300000] as $index => $cost) {
+    foreach ([300000, 200001, 300000, 300000, 300000, 200001] as $index => $cost) {
         $publicId = bin2hex(random_bytes(13));
         $stmt = $pdo->prepare("INSERT INTO orders
             (public_id,game_id,product_id,provider_id,customer_game_data,base_price,selling_price,admin_fee,payment_status,order_status)
@@ -166,7 +166,29 @@ try {
     budget_integration_assert((float)$stmt->fetchColumn() <= 500000,
         'Concurrent reservations exceeded configured usable provider capacity.');
 
-    echo "MySQL provider budget reservation capacity, idempotency, release, and concurrency checks passed." . PHP_EOL;
+    // A settled purchase must remain committed if the cached balance timestamp is
+    // equal to its updated_at timestamp. MySQL TIMESTAMP commonly has second precision,
+    // so equality cannot prove that the balance query began after the supplier purchase.
+    $pdo->beginTransaction();
+    provider_budget_resolve($pdo, $orderIds[2], 'RELEASED', 'Clear concurrency fixture');
+    provider_budget_resolve($pdo, $orderIds[3], 'RELEASED', 'Clear concurrency fixture');
+    $settled = provider_budget_reserve_paid_order($pdo, $orderIds[4]);
+    budget_integration_assert($settled['reserved'] === true, 'Settled timestamp fixture should reserve capacity.');
+    provider_budget_resolve($pdo, $orderIds[4], 'SETTLED', 'Timestamp-boundary test');
+    $boundary = '2026-10-14 12:00:00';
+    $pdo->prepare('UPDATE provider_budget_reservations SET updated_at=:boundary WHERE order_id=:id')
+        ->execute(['boundary' => $boundary, 'id' => $orderIds[4]]);
+    $pdo->prepare('UPDATE providers SET last_balance_check_at=:boundary WHERE id=:id')
+        ->execute(['boundary' => $boundary, 'id' => $providerId]);
+    $pdo->commit();
+
+    $pdo->beginTransaction();
+    $afterSettled = provider_budget_reserve_paid_order($pdo, $orderIds[5]);
+    $pdo->commit();
+    budget_integration_assert($afterSettled['reserved'] === false && $afterSettled['status'] === 'CAPACITY_EXCEEDED',
+        'A settled purchase with a timestamp equal to the cached balance check was incorrectly excluded from commitments.');
+
+    echo "MySQL provider budget reservation capacity, idempotency, release, concurrency, and stale-balance boundary checks passed." . PHP_EOL;
 } finally {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
