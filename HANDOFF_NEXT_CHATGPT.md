@@ -597,3 +597,9 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Source audit found shell quoting risk in `tests/duitku_sandbox_no_fulfillment_integration.sh`: a `php -r '…'` argument contained SQL single-quoted literals and JSON path `'$.order_id'`, which the shell could remove before PHP executed it.
 - Fixed by using a single-quoted PHP heredoc, commit [acac0af](https://github.com/sulistio95/PluQ-I/commit/acac0afad5b2c735272e0150b9261817e82db4c6). This preserves SQL quoting as authored. The test still needs a real MySQL run; do not claim it passed until Actions steps/logs are available.
 - Continue by checking new CI run results and testing the actual script. Production payments, supplier calls and deployment remain disabled.
+
+
+
+### CI status after heredoc test fix — 2026-10-14
+
+- Workflow runs for the heredoc correction: [PHP quality 38508784612](https://github.com/sulistio95/PluQ-I/actions/runs/38508784612), [fulfillment safety 38508784598](https://github.com/sulistio95/PluQ-I/actions/runs/38508784598), and [syntax checks 38508784571](https://github.com/sulistio95/PluQ-I/actions/runs/38508784571). Completed-failure jobs expose `steps: null`; no actual step output is accessible. The fulfillment PHP unit job was still queued at check time. Treat tests as unverified, not passed.
