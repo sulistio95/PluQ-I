@@ -126,23 +126,28 @@ try {
     @unlink($barrierPath);
     $workers = [];
     foreach ([$orderIds[2], $orderIds[3]] as $concurrentOrderId) {
+        $stdoutPath = tempnam(sys_get_temp_dir(), 'pluq-budget-out-');
+        $stderrPath = tempnam(sys_get_temp_dir(), 'pluq-budget-err-');
+        budget_integration_assert(is_string($stdoutPath) && is_string($stderrPath), 'Could not allocate worker output files.');
+        $stdoutHandle = fopen($stdoutPath, 'wb');
+        $stderrHandle = fopen($stderrPath, 'wb');
         $command = [PHP_BINARY, __FILE__, '--worker', (string)$concurrentOrderId, $barrierPath];
-        $pipes = [];
-        $process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        $process = proc_open($command, [0 => ['pipe', 'r'], 1 => $stdoutHandle, 2 => $stderrHandle], $pipes);
         budget_integration_assert(is_resource($process), 'Could not start concurrent reservation worker.');
         fclose($pipes[0]);
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-        $workers[] = ['process' => $process, 'stdout' => $pipes[1], 'stderr' => $pipes[2], 'out' => '', 'err' => ''];
+        $workers[] = ['process' => $process, 'stdout_path' => $stdoutPath, 'stderr_path' => $stderrPath,
+            'stdout_handle' => $stdoutHandle, 'stderr_handle' => $stderrHandle];
     }
     // Release both independent connections from the same barrier.
     file_put_contents($barrierPath, 'go');
     foreach ($workers as &$worker) {
-        $worker['out'] .= stream_get_contents($worker['stdout']);
-        $worker['err'] .= stream_get_contents($worker['stderr']);
-        fclose($worker['stdout']);
-        fclose($worker['stderr']);
         $worker['exit'] = proc_close($worker['process']);
+        fclose($worker['stdout_handle']);
+        fclose($worker['stderr_handle']);
+        $worker['out'] = (string)file_get_contents($worker['stdout_path']);
+        $worker['err'] = (string)file_get_contents($worker['stderr_path']);
+        @unlink($worker['stdout_path']);
+        @unlink($worker['stderr_path']);
         budget_integration_assert($worker['exit'] === 0,
             'Concurrent worker failed: ' . trim($worker['err']));
         $decoded = json_decode(trim($worker['out']), true);
