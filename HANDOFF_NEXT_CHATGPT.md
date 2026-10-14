@@ -759,3 +759,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Commit `8a81ae54b4bb927252ace3d4e715a071b78b515c` updates `tests/reconcile-cooldown-regression.php`: its lock assertion expected the old single-table query, while the service now locks the payment joined to its order and reads both statuses under lock. The guard now checks the joined SELECT, the current order status fields, and the lock target in sequence.
 - Audit documentation updated in commit `034d4802d36392f748734a5d85de511b19837892`.
 - This test fix has not yet been runtime-verified. Previous CI runs failed quickly and logs are unavailable; the stale assertion can explain a PHP-quality failure but is not proven to explain every failed workflow. Check Actions for this commit and do not enable production payment/supplier/Drive backup flags.
+
+
+## CI follow-up — 2026-10-15
+
+- Latest Actions runs `38646127276` (syntax), `38646127259` (PHP quality), and `38646127248` (fulfillment) failed almost immediately after commit `2c357655b107f42b164ccab9850bf0be48c840ba`.
+- Jobs report `runner_id=0`, empty steps, and no runner name; log retrieval returns `BlobNotFound`. The annotations endpoint is unavailable through the current GitHub connection. Root cause is therefore unknown; do not assume quota or claim the tests ran.
+- The regression assertion was aligned with the joined lock query in commit `8a81ae54b4bb927252ace3d4e715a071b78b515c`, but still needs runtime verification.
+- Continue only in PluQ-I. Keep payment/provider/Drive backup live operations disabled until CI and MySQL integration tests can actually execute and pass.
