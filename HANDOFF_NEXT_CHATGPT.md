@@ -776,3 +776,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Attempted a fresh public Git clone for local PHP verification, but this runtime could not resolve `github.com`; no local test result is claimed.
 - Source review reconfirmed the reconciliation helper locks the payment/order row set, validates gateway/order ID/amount against locked data, records the STARTED audit marker before network I/O, and commits before calling Duitku. The structural and MySQL concurrency tests are present, but remain unverified at runtime.
 - Next action: inspect repository Actions settings/notifications and obtain a usable runner/log; then run PHP lint/quality and MySQL integration tests. Avoid another code change without test evidence. Keep live payments, supplier orders, Drive backup, and deployment disabled.
+
+
+## Provider-budget concurrency fix — 2026-10-15
+
+- Commit `e98b4f4eea9af9d14a6863d4d1fd314c18ae6e96` changes `app/services/provider_budget.php` lock order to lock the provider row before checking the unique reservation key. Existing-reservation idempotency is still checked before rejecting an unavailable provider.
+- This was driven by the now-readable MySQL CI log: the budget integration failed with `SQLSTATE[40001] / MySQL 1213 Deadlock found when trying to get lock` in the two-worker capacity race. The previous lock order checked for a missing reservation before serializing on the provider, allowing competing InnoDB gap locks and insert deadlock.
+- Syntax and PHP quality workflows passed on the immediately preceding docs head (`e546adac`); the MySQL integration exposed the concurrency defect. The fix commit has newly triggered workflows; do not mark the integration test passed until its rerun is green.
+- Live payment, supplier ordering, Google Drive backup, and deployment remain disabled.
