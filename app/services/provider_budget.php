@@ -54,14 +54,16 @@ function provider_budget_reserve_paid_order(PDO $pdo, int $orderId): array
         return ['reserved' => false, 'status' => 'UNAVAILABLE', 'existing' => false];
     }
 
-    // Settled purchases continue consuming the cached balance until a later successful
-    // balance sync reflects that spend. Otherwise a second order could reuse stale funds.
+    // Settled purchases continue consuming the cached balance until a balance sync that
+    // definitely started after settlement reflects that spend. Use >= because MySQL
+    // timestamp columns may have second precision: equality is ambiguous, so count it
+    // conservatively rather than risk reusing stale funds.
     $usedQuery = $pdo->prepare("SELECT COALESCE(SUM(r.amount),0)
         FROM provider_budget_reservations r
         WHERE r.provider_id=:id
           AND (
             r.status IN ('ACTIVE','REVIEW')
-            OR (r.status='SETTLED' AND (:last_check_null IS NULL OR r.updated_at > :last_check_after))
+            OR (r.status='SETTLED' AND (:last_check_null IS NULL OR r.updated_at >= :last_check_after))
           )");
     $lastBalanceCheck = $provider['last_balance_check_at'];
     $usedQuery->execute(['id' => $provider['id'], 'last_check_null' => $lastBalanceCheck, 'last_check_after' => $lastBalanceCheck]);
