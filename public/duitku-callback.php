@@ -21,9 +21,30 @@ try {
     $q=$pdo->prepare("SELECT pt.id,pt.order_id,pt.amount,pt.status FROM payment_transactions pt WHERE pt.merchant_order_id=:oid AND pt.gateway='DUITKU' LIMIT 1 FOR UPDATE");
     $q->execute(['oid'=>$orderId]); $tx=$q->fetch();
     if (!$tx || (int)$tx['amount']!==$amount) { $pdo->rollBack(); json_response(['error'=>'order_mismatch'],400); }
-    if ($tx['status']!=='PENDING') { $pdo->commit(); json_response(['status'=>'ok']); }
-    $safe=json_encode(['merchantOrderId'=>$orderId,'amount'=>(string)$amount,'resultCode'=>$resultCode,'reference'=>(string)($_POST['reference']??'')],JSON_THROW_ON_ERROR);
     $status=duitku_callback_result_state($resultCode);
+    if ($tx['status']!=='PENDING') {
+        if ($tx['status'] !== $status) {
+            // Preserve the terminal payment record, but make the contradiction visible for human reconciliation.
+            // A signed late callback must never silently rewrite a previously terminal payment state.
+            $details=json_encode([
+                'gateway'=>'DUITKU',
+                'merchant_order_id'=>$orderId,
+                'stored_payment_status'=>(string)$tx['status'],
+                'incoming_payment_status'=>$status,
+                'incoming_result_code'=>$resultCode,
+                'amount'=>(string)$amount,
+                'reference'=>(string)($_POST['reference']??''),
+                'resolution'=>'payment state preserved; order requires manual reconciliation',
+            ],JSON_THROW_ON_ERROR);
+            $q=$pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Conflicting terminal Duitku callback; payment state preserved for manual reconciliation' WHERE id=:id AND order_status<>'MANUAL_REVIEW'");
+            $q->execute(['id'=>$tx['order_id']]);
+            $q=$pdo->prepare("INSERT INTO audit_logs (actor_type,action,entity_type,entity_id,details) VALUES ('GATEWAY','DUITKU_TERMINAL_CALLBACK_CONFLICT','ORDER',:entity_id,:details)");
+            $q->execute(['entity_id'=>(string)$tx['order_id'],'details'=>$details]);
+        }
+        $pdo->commit();
+        json_response(['status'=>'ok']);
+    }
+    $safe=json_encode(['merchantOrderId'=>$orderId,'amount'=>(string)$amount,'resultCode'=>$resultCode,'reference'=>(string)($_POST['reference']??'')],JSON_THROW_ON_ERROR);
     // Duitku's server-to-server callback uses 00 for success and 01 for failed payment.
     $q=$pdo->prepare("UPDATE payment_transactions SET status=:status,gateway_reference=COALESCE(NULLIF(:ref,''),gateway_reference),callback_payload=:payload,callback_received_at=NOW() WHERE id=:id AND status='PENDING'");
     $q->execute(['status'=>$status,'ref'=>(string)($_POST['reference']??''),'payload'=>$safe,'id'=>$tx['id']]);
