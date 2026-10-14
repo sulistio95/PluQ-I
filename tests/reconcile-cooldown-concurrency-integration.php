@@ -118,7 +118,40 @@ try {
     $count->execute(['entity' => $entityId]);
     reconcile_concurrency_assert((int)$count->fetchColumn() === 1, 'Expected exactly one STARTED audit row for concurrent attempts.');
 
-    echo "Concurrent MySQL Duitku reconciliation admission passed: one admitted, one cooldown-rejected, one audit marker; no gateway request was made.\n";
+    // Independently verify audit details come from the locked database snapshot,
+    // not stale statuses supplied by the admin page before acquiring the lock.
+    $pdo->prepare("DELETE FROM audit_logs WHERE action='DUITKU_STATUS_LOOKUP' AND entity_type='PAYMENT_TRANSACTION' AND entity_id=:entity")
+        ->execute(['entity' => $entityId]);
+    $pdo = $connect();
+    duitku_reconcile_admit_lookup(
+        $pdo,
+        $paymentId,
+        null,
+        $merchantOrderId,
+        (int)$payment['amount'],
+        '__STALE_PAYMENT_STATUS__',
+        '__STALE_ORDER_PAYMENT_STATUS__',
+        '__STALE_ORDER_STATUS__',
+        '127.0.0.1'
+    );
+    $audit = $pdo->prepare("SELECT details FROM audit_logs
+        WHERE action='DUITKU_STATUS_LOOKUP' AND entity_type='PAYMENT_TRANSACTION' AND entity_id=:entity
+        ORDER BY id DESC LIMIT 1");
+    $audit->execute(['entity' => $entityId]);
+    $details = json_decode((string)$audit->fetchColumn(), true, 512, JSON_THROW_ON_ERROR);
+    $currentStmt = $pdo->prepare("SELECT pt.status AS payment_status,o.payment_status AS order_payment_status,o.order_status
+        FROM payment_transactions pt JOIN orders o ON o.id=pt.order_id WHERE pt.id=:id");
+    $currentStmt->execute(['id' => $paymentId]);
+    $currentStates = $currentStmt->fetch(PDO::FETCH_ASSOC);
+    reconcile_concurrency_assert(is_array($details) && is_array($currentStates), 'Could not read reconciliation audit or current statuses.');
+    reconcile_concurrency_assert(
+        ($details['payment_status_before'] ?? null) === (string)$currentStates['payment_status']
+        && ($details['order_payment_status_before'] ?? null) === (string)$currentStates['order_payment_status']
+        && ($details['order_status_before'] ?? null) === (string)$currentStates['order_status'],
+        'STARTED audit must record locked current statuses, not stale caller arguments.'
+    );
+
+    echo "Concurrent MySQL Duitku reconciliation admission and locked-status audit checks passed; no gateway request was made.\n";
 } finally {
     @unlink($gate);
     foreach ($resultPaths as $resultPath) {
