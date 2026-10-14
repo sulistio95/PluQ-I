@@ -44,6 +44,10 @@ try {
     ]);
     $orderId = (int) $pdo->lastInsertId();
 
+    $insertBudget = $pdo->prepare("INSERT INTO provider_budget_reservations
+        (order_id, provider_id, amount, status) VALUES (:order_id, :provider_id, 1000, 'ACTIVE')");
+    $insertBudget->execute(['order_id' => $orderId, 'provider_id' => $fixture['provider_id']]);
+
     $insertSupplier = $pdo->prepare("INSERT INTO supplier_transactions
         (order_id, provider_id, reference_id, status, attempts)
         VALUES (:order_id, :provider_id, :reference, 'PROCESSING', 1)");
@@ -87,7 +91,24 @@ try {
             . var_export($staleOrderStatus, true) . ", supplier=" . var_export($staleSupplierStatus, true));
     }
 
-    echo "Duplicate queue job preserves fresh PROCESSING state; stale ambiguous requests enter manual review without resubmission.\\n";
+    // Even if an active budget reservation remains, a stale duplicate job cannot
+    // revive an order that has already entered MANUAL_REVIEW.
+    $pdo->prepare("UPDATE provider_budget_reservations SET status='ACTIVE' WHERE order_id=:id")
+        ->execute(['id' => $orderId]);
+    $reviewOutcome = fulfillment_process($pdo, $orderId);
+    if ($reviewOutcome !== 'REVIEW') {
+        throw new RuntimeException("Expected MANUAL_REVIEW order to remain blocked, got " . $reviewOutcome);
+    }
+    $checkOrder->execute(['id' => $orderId]);
+    if ($checkOrder->fetchColumn() !== 'MANUAL_REVIEW') {
+        throw new RuntimeException("Duplicate job revived a MANUAL_REVIEW order.");
+    }
+    $checkSupplier->execute(['id' => $orderId]);
+    if ($checkSupplier->fetchColumn() !== 'REVIEW') {
+        throw new RuntimeException("Duplicate job changed the reviewed supplier transaction.");
+    }
+
+    echo "Duplicate queue job preserves fresh PROCESSING state; stale ambiguous requests enter manual review; reviewed orders cannot be revived.\\n";
 } finally {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
@@ -96,6 +117,7 @@ try {
         $pdo->beginTransaction();
         try {
             $pdo->prepare('DELETE FROM supplier_transactions WHERE order_id=:id')->execute(['id' => $orderId]);
+            $pdo->prepare('DELETE FROM provider_budget_reservations WHERE order_id=:id')->execute(['id' => $orderId]);
             $pdo->prepare('DELETE FROM orders WHERE id=:id')->execute(['id' => $orderId]);
             $pdo->commit();
         } catch (Throwable $e) {
