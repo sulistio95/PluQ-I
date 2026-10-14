@@ -539,3 +539,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 
 - After repeat-callback audit deduplication, the new runs (fulfillment 38493159152, PHP quality 38493159289, syntax 38493159116) also failed with no usable step logs. This is still an execution visibility blocker, not a proven source-level failure.
 - New callback conflict idempotency coverage is committed but not verified by execution. Inspect repository/account Actions settings or run in a controlled PHP 8.2 + MySQL 8.4 environment before claiming success.
+
+
+## Hosting and real-payment readiness update — 2026-10-14
+
+- Created [docs/staging-payment-test-runbook.md](docs/staging-payment-test-runbook.md) in commit [4b418ad](https://github.com/sulistio95/PluQ-I/commit/4b418ada3fc5b7c9a0d9423e2942c25d1dda5ac0). It lists the staging setup, CI restoration, isolated Duitku sandbox test, supplier API verification, and production exit gates.
+- New blocking source findings: `app/services/duitku.php` intentionally accepts only `DUITKU_ENV=sandbox`, so production Duitku support does not yet exist. `checkout_payments_enabled()` requires both `CHECKOUT_PAYMENTS_ENABLED=true` and `SUPPLIER_ORDERS_ENABLED=true`, so public checkout cannot currently be sandbox-tested independently of supplier-order enablement. Do not work around this by enabling supplier calls blindly; next code task is a sandbox-only payment path with no supplier purchase calls and DB integration tests.
+- Fresh Actions job metadata for runs [38493246965](https://github.com/sulistio95/PluQ-I/actions/runs/38493246965) and [38493246898](https://github.com/sulistio95/PluQ-I/actions/runs/38493246898) shows runner ID 0 and empty step arrays. Root cause is still unknown; do not claim test execution or success.
+- No live payment/provider call, supplier purchase, or deployment. Keep `CHECKOUT_PAYMENTS_ENABLED=false` and `SUPPLIER_ORDERS_ENABLED=false` until CI is observable and the sandbox-only path is implemented and verified.
