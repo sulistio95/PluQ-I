@@ -54,9 +54,14 @@ if (!$row || $row["payment_status"] !== "PAID" || $row["order_status"] !== "MANU
     || !str_contains((string)$row["last_error"], "supplier fulfillment intentionally disabled")) {
     fwrite(STDERR, "Sandbox callback must mark the order for manual review without fulfillment.\\n"); exit(1);
 }
-$q = $pdo->query("SELECT COUNT(*) FROM job_queue WHERE job_type = " . $pdo->quote("FULFILL_ORDER"));
-if ((int)$q->fetchColumn() !== 1) {
-    fwrite(STDERR, "Sandbox callback must not enqueue a supplier fulfillment job.\\n"); exit(1);
+$q = $pdo->prepare("SELECT COUNT(*) FROM job_queue
+    WHERE job_type = 'FULFILL_ORDER'
+      AND JSON_UNQUOTE(JSON_EXTRACT(payload, '$.order_id')) = (
+          SELECT CAST(id AS CHAR) FROM orders WHERE public_id = ?
+      )");
+$q->execute([$orderId]);
+if ((int)$q->fetchColumn() !== 0) {
+    fwrite(STDERR, "Sandbox callback must not enqueue fulfillment for this order.\\n"); exit(1);
 }
 echo "Duitku sandbox-only callback did not enqueue supplier fulfillment.\\n";
 '
