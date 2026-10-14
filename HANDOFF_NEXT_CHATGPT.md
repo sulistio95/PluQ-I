@@ -624,3 +624,9 @@ Login page and rate-limit helper review found that a successful login clears fai
 - While Actions is unavailable, reviewed the sandbox integration fixture, callback signature construction, test environment flags, and assertions against the workflow. Their order ID and amount setup are consistent on source review; the test is intended to verify PAID payment, MANUAL_REVIEW order, and no fulfillment queue job for the fixture order.
 - Fixed the double-escaped newline in the checkout-gate test's success output, commit [654bd26](https://github.com/sulistio95/PluQ-I/commit/654bd269d5ba396a555a47abba23ebb06351865a). The earlier sandbox script diagnostic cleanup is [9309e7e](https://github.com/sulistio95/PluQ-I/commit/9309e7e2a6d8edc11d836a1b7075ecd7787eac89).
 - These are source reviews and cosmetic test-output changes, not evidence that tests passed. PHP/MySQL runtime and callback integration remain unverified; keep live payments, supplier ordering, and deployment disabled.
+
+### Independent test attempt and Actions status — 2026-10-14
+
+- Local PHP 8.4.24 is available, but an independent repository clone failed because this runtime cannot resolve `github.com`; the committed project tests therefore could not be run locally.
+- Latest runs for commit `3e933fa847c1268825f88713c009855f46398b18`: syntax [38511159260](https://github.com/sulistio95/PluQ-I/actions/runs/38511159260), fulfillment [38511159043](https://github.com/sulistio95/PluQ-I/actions/runs/38511159043), and PHP quality [38511159024](https://github.com/sulistio95/PluQ-I/actions/runs/38511159024) are completed failures. Runner jobs have repeatedly exposed `steps: null`, so there is no application test output. Do not interpret this as a code pass or a confirmed test assertion failure.
+- Continue source-level audit while waiting for GitHub runner limits to reset; do not enable payments, supplier orders, or deployment before actual PHP/MySQL test evidence is available.
