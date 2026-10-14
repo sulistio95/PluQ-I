@@ -791,3 +791,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - The provider-budget MySQL concurrency case now passes on code commit `e98b4f4` (PHP quality and syntax workflows also passed). It had previously reproduced MySQL 1213 due to reservation lock ordering; provider row locking now precedes the absent-key reservation lookup.
 - The same fulfillment workflow then reached `tests/uncertain_supplier_integration.sh` and failed because its ambiguous-supplier fixture omitted the mandatory migration-011 `provider_budget_reservations` row. The production safety gate correctly stopped the job before the test's intended ambiguous-supplier branch, leaving the fixture's supplier row PROCESSING. Commit `9c5ae47d9784dbb5e00c36112fe0ba64083f3a40` adds an ACTIVE budget reservation to this disposable test fixture so the test exercises the intended branch. This is a test-fixture correction, not a production bypass.
 - CI for the fixture correction is pending. Keep live integrations and deployment disabled until the full MySQL suite passes.
+
+
+## Follow-up: explicit supplier-failure recovery fixture — 2026-10-15
+
+- On the rerun after commit `9c5ae47`, the ambiguous-supplier integration passed. The next MySQL step exposed two issues in `tests/explicit_supplier_failure_integration.sh`: PHP running from standard input did not define `STDERR`, masking the intended assertion, and the crash-recovery fixture lacked the migration-011 budget reservation, so the production safety gate correctly stopped before the persisted-failure recovery branch.
+- Commit `5a4181d548d7d40a8c825b75a2ec3f2917d51279` defines a CLI stderr stream for stdin execution and seeds an ACTIVE reservation for the recovery fixture. These are test-harness/fixture corrections; production guards are unchanged. Re-run the MySQL workflow and address any next evidence-backed failure.
+- The provider budget concurrency test and ambiguous-supplier test have passed on recent runs; the full integration suite is not yet green. Keep live integrations disabled.
