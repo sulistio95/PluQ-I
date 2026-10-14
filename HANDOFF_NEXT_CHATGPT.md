@@ -798,3 +798,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - On the rerun after commit `9c5ae47`, the ambiguous-supplier integration passed. The next MySQL step exposed two issues in `tests/explicit_supplier_failure_integration.sh`: PHP running from standard input did not define `STDERR`, masking the intended assertion, and the crash-recovery fixture lacked the migration-011 budget reservation, so the production safety gate correctly stopped before the persisted-failure recovery branch.
 - Commit `5a4181d548d7d40a8c825b75a2ec3f2917d51279` defines a CLI stderr stream for stdin execution and seeds an ACTIVE reservation for the recovery fixture. These are test-harness/fixture corrections; production guards are unchanged. Re-run the MySQL workflow and address any next evidence-backed failure.
 - The provider budget concurrency test and ambiguous-supplier test have passed on recent runs; the full integration suite is not yet green. Keep live integrations disabled.
+
+
+## Verification result — MySQL fulfillment suite green (2026-10-15)
+
+- Commit `5a4181d548d7d40a8c825b75a2ec3f2917d51279` passed all three GitHub Actions workflows: syntax `38656968511`, PHP quality `38656968476`, and fulfillment safety `38656968414`.
+- The MySQL fulfillment job completed successfully, including provider budget capacity/idempotency/concurrency/stale-balance checks, three concurrent checkout-idempotency attempts, MySQL deadlock classification, concurrent Duitku reconciliation admission, queue-claim/callback concurrency, duplicate active supplier queue, stale queue recovery, lease revocation, ambiguous supplier review, explicit supplier failure/refund recovery, sandbox-payment isolation, and read-only reconciliation checks.
+- The concrete reservation deadlock was fixed by provider-first serialization before the absent reservation lookup; both supplier integration fixtures were corrected to include the mandatory active budget reservation where needed. PHP-from-stdin stderr is now explicitly initialized in the explicit-failure test.
+- This is CI verification against GitHub Actions PHP 8.2 and MySQL 8.4 test services, not a production-host or live gateway certification. Keep live payments, supplier ordering, Drive backup, and deployment disabled pending shared-host staging verification.
