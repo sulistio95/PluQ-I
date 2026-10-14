@@ -108,7 +108,29 @@ try {
         throw new RuntimeException("Duplicate job changed the reviewed supplier transaction.");
     }
 
-    echo "Duplicate queue job preserves fresh PROCESSING state; stale ambiguous requests enter manual review; reviewed orders cannot be revived.\\n";
+    // Terminal/reconciliation states must never be revived by stale queue entries.
+    // Keep the supplier row in REVIEW and the reservation ACTIVE to exercise the guard
+    // independently of those later-stage safety checks.
+    foreach (['FAILED', 'REFUND_PENDING', 'REFUNDED'] as $blockedStatus) {
+        $pdo->prepare("UPDATE orders SET order_status=:status WHERE id=:id")
+            ->execute(['status' => $blockedStatus, 'id' => $orderId]);
+
+        $blockedOutcome = fulfillment_process($pdo, $orderId);
+        if ($blockedOutcome !== 'IGNORED') {
+            throw new RuntimeException("Expected {$blockedStatus} order to be ignored, got " . $blockedOutcome);
+        }
+
+        $checkOrder->execute(['id' => $orderId]);
+        if ($checkOrder->fetchColumn() !== $blockedStatus) {
+            throw new RuntimeException("Duplicate job changed terminal order status {$blockedStatus}.");
+        }
+        $checkSupplier->execute(['id' => $orderId]);
+        if ($checkSupplier->fetchColumn() !== 'REVIEW') {
+            throw new RuntimeException("Duplicate job changed supplier review state for {$blockedStatus}.");
+        }
+    }
+
+    echo "Duplicate queue job preserves fresh PROCESSING state; stale ambiguous requests enter manual review; reviewed and terminal orders cannot be revived.\\n";
 } finally {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
