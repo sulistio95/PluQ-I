@@ -704,3 +704,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Commit [3c401d4](https://github.com/sulistio95/PluQ-I/commit/3c401d404f7237ff469800252b32abb703b4e12e) extends `tests/duplicate-queue-processing-integration.php`: besides the existing fresh/stale PROCESSING and MANUAL_REVIEW cases, it now checks that stale queue jobs cannot revive `FAILED`, `REFUND_PENDING`, or `REFUNDED` orders when the budget reservation remains ACTIVE. Each call must return `IGNORED`, and the supplier row must remain `REVIEW`.
 - This is test coverage added to the repository, not a passing runtime result. The latest known Actions problem is failure before runner steps/logs; check current run state before claiming any test passed.
 - Next: continue source audit of payment/refund state transitions and admin security; when Actions is available, run PHP lint/quality and MySQL fulfillment integration tests including this regression. Keep checkout payments, supplier ordering, settlement backup, and deployment disabled pending staging evidence.
+
+
+### Latest work — queue finalization state-preservation guard (2026-10-15)
+
+- Commit [47f06b9](https://github.com/sulistio95/PluQ-I/commit/47f06b9580b8435e99efcf228780f5db71c4e28f) fixes `app/services/queue_worker.php`: an `ERROR` or exhausted retry can no longer overwrite existing `FAILED`, `REFUND_PENDING`, `REFUNDED`, or `MANUAL_REVIEW` order states. Only `QUEUED`, `PROCESSING`, and `RETRYING` orders are transitioned to `MANUAL_REVIEW` by this path.
+- Commit [7b3bc13](https://github.com/sulistio95/PluQ-I/commit/7b3bc13f7aeddee9ef21d779a58696f98b07da76) adds MySQL integration assertions for the protected states to `tests/worker-lease-revocation-integration.php`.
+- Tests have not yet been executed successfully; verify PHP lint and the full MySQL fulfillment workflow when GitHub Actions provides usable runner logs. Do not mark this change as runtime-verified and do not enable production payments/supplier execution.
+- Next source-audit priority: refund/admin reconciliation state transitions and audit trail consistency, followed by actual staging verification.
