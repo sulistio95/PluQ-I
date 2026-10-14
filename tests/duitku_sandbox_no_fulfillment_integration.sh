@@ -35,33 +35,55 @@ if [ "${response_code}" != "200" ]; then
   exit 1
 fi
 
-php -r '
+php <<'PHP'
+<?php
+declare(strict_types=1);
+
 $pdo = new PDO(
-    sprintf("mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4", getenv("DB_HOST"), getenv("DB_PORT"), getenv("DB_DATABASE")),
-    getenv("DB_USERNAME"), getenv("DB_PASSWORD"),
+    sprintf(
+        'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+        getenv('DB_HOST'),
+        getenv('DB_PORT'),
+        getenv('DB_DATABASE')
+    ),
+    getenv('DB_USERNAME'),
+    getenv('DB_PASSWORD'),
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
-$orderId = "0123456789abcdef0123456789";
-$q = $pdo->prepare("SELECT status FROM payment_transactions WHERE merchant_order_id = ?");
+
+$orderId = '0123456789abcdef0123456789';
+$q = $pdo->prepare('SELECT status FROM payment_transactions WHERE merchant_order_id = ?');
 $q->execute([$orderId]);
-if ($q->fetchColumn() !== "PAID") {
-    fwrite(STDERR, "Sandbox callback must record payment as PAID.\\n"); exit(1);
+if ($q->fetchColumn() !== 'PAID') {
+    fwrite(STDERR, "Sandbox callback must record payment as PAID.\\n");
+    exit(1);
 }
-$q = $pdo->prepare("SELECT payment_status, order_status, last_error FROM orders WHERE public_id = ?");
+
+$q = $pdo->prepare('SELECT payment_status, order_status, last_error FROM orders WHERE public_id = ?');
 $q->execute([$orderId]);
 $row = $q->fetch(PDO::FETCH_ASSOC);
-if (!$row || $row["payment_status"] !== "PAID" || $row["order_status"] !== "MANUAL_REVIEW"
-    || !str_contains((string)$row["last_error"], "supplier fulfillment intentionally disabled")) {
-    fwrite(STDERR, "Sandbox callback must mark the order for manual review without fulfillment.\\n"); exit(1);
+if (
+    !$row
+    || $row['payment_status'] !== 'PAID'
+    || $row['order_status'] !== 'MANUAL_REVIEW'
+    || !str_contains((string)$row['last_error'], 'supplier fulfillment intentionally disabled')
+) {
+    fwrite(STDERR, "Sandbox callback must mark the order for manual review without fulfillment.\\n");
+    exit(1);
 }
-$q = $pdo->prepare("SELECT COUNT(*) FROM job_queue
-    WHERE job_type = 'FULFILL_ORDER'
-      AND JSON_UNQUOTE(JSON_EXTRACT(payload, '$.order_id')) = (
-          SELECT CAST(id AS CHAR) FROM orders WHERE public_id = ?
-      )");
+
+$q = $pdo->prepare(
+    "SELECT COUNT(*) FROM job_queue
+     WHERE job_type = 'FULFILL_ORDER'
+       AND JSON_UNQUOTE(JSON_EXTRACT(payload, '$.order_id')) = (
+           SELECT CAST(id AS CHAR) FROM orders WHERE public_id = ?
+       )"
+);
 $q->execute([$orderId]);
 if ((int)$q->fetchColumn() !== 0) {
-    fwrite(STDERR, "Sandbox callback must not enqueue fulfillment for this order.\\n"); exit(1);
+    fwrite(STDERR, "Sandbox callback must not enqueue fulfillment for this order.\\n");
+    exit(1);
 }
+
 echo "Duitku sandbox-only callback did not enqueue supplier fulfillment.\\n";
-'
+PHP
