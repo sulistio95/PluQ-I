@@ -649,3 +649,5 @@ Login page and rate-limit helper review found that a successful login clears fai
 
 - Follow-up guard: `fulfillment_process()` now checks the reservation ledger before any supplier API request and blocks any paid queue job without an `ACTIVE` reservation, moving it to manual review. Migration 011 is included in the MySQL integration workflow migration list and in README setup steps.
 - CI still needs diagnosis: latest workflow jobs report failed with `steps:null` and no logs, so there is no PHP lint, unit-test, or MySQL test evidence. Next investigate runner/workflow service and add real MySQL contention tests for reservation locking. Keep all live operations disabled.
+
+- Further concurrency hardening: settled reservation amounts remain included in capacity usage until `providers.last_balance_check_at` is newer than the reservation update. Balance sync records the query start time before the external HTTP request, not response completion time, to avoid an in-flight stale response incorrectly clearing a later settled spend. Verify this behavior with MySQL integration tests and controlled supplier balance checks.
