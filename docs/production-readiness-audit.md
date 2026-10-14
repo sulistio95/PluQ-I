@@ -684,3 +684,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Metadata job mengonfirmasi kesimpulan `failure`, tetapi pengambilan log rinci menghasilkan `NOT_FOUND` dan ringkasan langkah tidak tersedia. Penyebab belum terverifikasi; jangan menebak bahwa kegagalan hanya disebabkan runner atau limit.
 - Langkah berikut: pulihkan akses log/runner atau jalankan tes di lingkungan PHP 8.2 + MySQL/MariaDB, identifikasi kegagalan pertama, perbaiki sumber atau konfigurasi yang benar-benar terkait, lalu ulangi seluruh workflow.
 - Temuan snapshot status rekonsiliasi Duitku tetap terbuka; tidak ada perubahan kode rekonsiliasi pada pembaruan ini. Pembayaran langsung dan pemesanan supplier tetap nonaktif sampai tes relevan terbukti lulus.
+
+
+### Pembaruan rekonsiliasi Duitku — 2026-10-15 (commit 9c138c9)
+
+- Koreksi status sebelumnya: perubahan kode telah diterapkan pada `app/services/duitku_reconcile.php` dalam [commit `9c138c9`](https://github.com/sulistio95/PluQ-I/commit/9c138c98f1d492d90980bcfe268092ab4ce67f99). Transaksi kini mengunci baris pembayaran dan pesanan terkait, memvalidasi gateway, merchant order ID, serta nominal, lalu mencatat status `before` dari snapshot database terkunci. Pernyataan lama di atas bahwa perubahan kode belum diterapkan sudah kedaluwarsa.
+- Regresi tes untuk argumen status usang belum masuk repo karena pembaruan `tests/reconcile-cooldown-concurrency-integration.php` ditolak alat; jangan menganggap pengujian ini tersedia atau lulus.
+- CI setelah commit ini gagal: [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38632601867), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38632599511), dan [fulfillment safety tests](https://github.com/sulistio95/PluQ-I/actions/runs/38632599912). Job gagal terkonfirmasi, tetapi detail langkah/log tidak tersedia; penyebab belum diketahui.
+- Status verifikasi: belum ada bukti lint atau tes integrasi berhasil dijalankan. Pembayaran produksi, pemesanan supplier, backup Google Drive, dan deployment tetap nonaktif sampai regresi tes dan verifikasi staging PHP 8.2 + MySQL/MariaDB berhasil.
