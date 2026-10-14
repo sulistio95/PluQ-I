@@ -655,3 +655,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Extended `tests/duplicate-queue-processing-integration.php` in commit [3c401d4](https://github.com/sulistio95/PluQ-I/commit/3c401d404f7237ff469800252b32abb703b4e12e).
 - After the fixture is moved to `MANUAL_REVIEW`, the test now also changes the same paid order through `FAILED`, `REFUND_PENDING`, and `REFUNDED` while retaining an ACTIVE budget reservation and supplier state `REVIEW`. Each stale-job invocation must return `IGNORED` and preserve both order status and supplier review state.
 - This adds source-level regression coverage for the terminal-status allowlist; it does not prove the integration test passed. PHP/MySQL execution remains blocked/unverified until GitHub Actions provides actual runner steps and logs. Do not enable live payments, supplier execution, or deployment.
+
+
+### Queue error finalization preserves terminal order states — 2026-10-15
+
+- Source audit found that `queue_finalize_job()` could replace an order already marked `FAILED` or `REFUND_PENDING` with `MANUAL_REVIEW` when a validly leased queue job later finalized as `ERROR`/retry exhaustion. This was an unnecessary state overwrite during a race with another order-state transition.
+- Fixed in [47f06b9](https://github.com/sulistio95/PluQ-I/commit/47f06b9580b8435e99efcf228780f5db71c4e28f): queue error handling now moves an order to `MANUAL_REVIEW` only if its current status is `QUEUED`, `PROCESSING`, or `RETRYING`. Terminal and already-reviewed states are preserved; the queue job itself still records its failure.
+- Added integration regression coverage in [7b3bc13](https://github.com/sulistio95/PluQ-I/commit/7b3bc13f7aeddee9ef21d779a58696f98b07da76) for `FAILED`, `REFUND_PENDING`, `REFUNDED`, and `MANUAL_REVIEW` states.
+- Runtime verification is pending: GitHub Actions has previously failed before exposing runner steps. This is a source change plus test coverage, not a passing test result. Keep production payment and supplier flags disabled until the workflow and MySQL integration suite actually pass.
