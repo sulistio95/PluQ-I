@@ -562,3 +562,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 
 - The new workflow runs [38497627559](https://github.com/sulistio95/PluQ-I/actions/runs/38497627559), [38497627399](https://github.com/sulistio95/PluQ-I/actions/runs/38497627399), and [38497627390](https://github.com/sulistio95/PluQ-I/actions/runs/38497627390) have failed before step summaries were exposed (`steps: null`). This remains the existing GitHub Actions execution blocker; it does not prove the new PHP assertions or MySQL callback integration failed.
 - The sandbox-only integration is committed and wired into CI, but no test pass is claimed. Next action remains restoring observable runner execution, then reviewing the actual test output and fixing any confirmed source/test defects.
+
+
+### GitHub Actions rerun diagnosis — 2026-10-14
+
+- Manually re-ran failed jobs for workflow run [38497627559](https://github.com/sulistio95/PluQ-I/actions/runs/38497627559) (attempt 2). It failed again within about three seconds before any steps began.
+- GitHub job metadata again reports `runner_id=0`, blank `runner_name`, and an empty `steps` list; log download returns `BlobNotFound`. This is strong evidence the failure occurs before a runner executes the repository workflow, but the exact account/repository-level cause is not exposed by the available API.
+- No code change can responsibly fix an unobserved account-level runner allocation problem. Repository owner should inspect **Settings → Actions → General** and the account's Actions usage/billing/spending limit, and check whether hosted Actions runners are allowed for this private repository. Do not change workflow permissions or enable supplier processing as a workaround.
+- The sandbox gate and callback safety changes remain committed; test pass is still unconfirmed until a runner executes the steps.
