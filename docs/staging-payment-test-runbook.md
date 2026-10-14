@@ -85,3 +85,5 @@ Production payment mode must be implemented deliberately and separately from san
 
 - Additional fail-closed guard: queue processing must refuse to call suppliers unless the order has an `ACTIVE` provider budget reservation. Test old/unreserved queue rows, `REVIEW` reservations, and duplicate callbacks; all must avoid a supplier API call and route inconsistent paid orders to manual review.
 - Migration 011 has been added to the MySQL CI migration list and README install order. CI has not yet shown executed steps; do not count the test as passed.
+
+- Verify stale-balance protection: after a supplier success, the `SETTLED` reservation must continue counting until a balance sync that started after the settlement updates `last_balance_check_at`. Simulate a slow balance request overlapping a supplier success and ensure the older request's late response does not release that commitment.
