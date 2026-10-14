@@ -73,7 +73,29 @@ try {
             .", supplier=".var_export($supplierStatus,true));
     }
 
-    echo "Revoked worker lease cannot finalize queue/order/supplier state.\n";
+    // A worker that still owns its queue lease may nevertheless race with an
+    // independent order-state transition. Error finalization must not rewrite
+    // terminal/refund/review states back into MANUAL_REVIEW.
+    foreach (['FAILED', 'REFUND_PENDING', 'REFUNDED', 'MANUAL_REVIEW'] as $protectedStatus) {
+        $freshToken = bin2hex(random_bytes(16));
+        $pdo->prepare("UPDATE orders SET order_status=:status,last_error='pre-existing protected state' WHERE id=:id")
+            ->execute(['status' => $protectedStatus, 'id' => $orderId]);
+        $pdo->prepare("UPDATE job_queue SET status='PROCESSING',locked_at=NOW(),lock_token=:token,last_error=NULL WHERE id=:id")
+            ->execute(['token' => $freshToken, 'id' => $jobId]);
+
+        $finalized = queue_finalize_job($pdo, $job, $freshToken, 'ERROR');
+        if ($finalized !== 'FINALIZED') {
+            throw new RuntimeException("Expected error finalization for protected state to complete, got {$finalized}");
+        }
+        $q = $pdo->prepare("SELECT order_status FROM orders WHERE id=:id");
+        $q->execute(['id' => $orderId]);
+        $actualStatus = $q->fetchColumn();
+        if ($actualStatus !== $protectedStatus) {
+            throw new RuntimeException("Queue error overwrote protected order status {$protectedStatus} with {$actualStatus}");
+        }
+    }
+
+    echo "Revoked worker lease cannot finalize protected state; queue errors preserve terminal, refund, and review order states.\\n";
 } finally {
     if ($pdo->inTransaction()) $pdo->rollBack();
     if ($jobId !== null || $orderId !== null) {
