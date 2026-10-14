@@ -519,3 +519,9 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - GitHub job metadata again reports `runner_id=0`, blank `runner_name`, and an empty `steps` list; log download returns `BlobNotFound`. This is strong evidence the failure occurs before a runner executes the repository workflow, but the exact account/repository-level cause is not exposed by the available API.
 - No code change can responsibly fix an unobserved account-level runner allocation problem. Repository owner should inspect **Settings → Actions → General** and the account's Actions usage/billing/spending limit, and check whether hosted Actions runners are allowed for this private repository. Do not change workflow permissions or enable supplier processing as a workaround.
 - The sandbox gate and callback safety changes remain committed; test pass is still unconfirmed until a runner executes the steps.
+
+
+### Local gate-logic smoke test — 2026-10-14
+
+- Ran a standalone PHP CLI smoke test against the exact sandbox gate conditions for five scenarios: default-off, staging sandbox allowed, production sandbox-only rejected, non-sandbox Duitku rejected in isolated mode, and normal supplier-enabled path preserved. All five assertions passed.
+- Scope limitation: this executed a standalone copy of the gate logic because the private repository cannot be cloned into this runtime and GitHub Actions has not started a runner. It is **not** a substitute for `php tests/checkout_gate_test.php`, PHP lint of the committed tree, or the MySQL callback integration workflow.
