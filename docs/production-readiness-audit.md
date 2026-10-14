@@ -632,3 +632,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Expanded `tests/provider-budget-reservation-mysql-integration.php` with a regression case: a SETTLED Rp300,000 purchase whose reservation timestamp equals the provider balance-check timestamp must still block a Rp200,001 reservation against Rp500,000 capacity.
 - Commits: [d61a7c8](https://github.com/sulistio95/PluQ-I/commit/d61a7c89be9ca8c21a78495339746af62efd07de) and [8fb1105](https://github.com/sulistio95/PluQ-I/commit/8fb110597c22ecf6bbd5e4919bb2cc3dfa676961).
 - Verification remains blocked: GitHub Actions job [38529853413](https://github.com/sulistio95/PluQ-I/actions/runs/38529853413) has an empty runner name and zero steps; downloading its logs returns `BlobNotFound`. Public status currently reports GitHub systems operational, so the exact per-repository/job failure cause is unconfirmed. Local container cannot resolve `raw.githubusercontent.com`, so repository PHP lint could not be run here. Do not claim the MySQL test passed; keep production checkout/supplier fulfillment disabled.
+
+
+### Concurrent reservation test synchronization fix — 2026-10-14
+
+- Tightened the race test so each child process writes its own `.ready` marker and waits at the shared barrier. The parent now waits until both independent workers have reached the barrier before releasing them; it fails the test if both do not become ready within 15 seconds. This avoids mistaking two sequential starts for a genuine contention test.
+- Renamed the MySQL workflow step to make its full scope explicit: capacity, idempotency, concurrency, and stale-balance timestamp boundary. Commits: [6025cd6](https://github.com/sulistio95/PluQ-I/commit/6025cd6e7be77d3f6d0dbe2e601297a4b5b1009a) and [870daf7](https://github.com/sulistio95/PluQ-I/commit/870daf71c105589a627dd63d8da299c9cd62b899).
+- This improves test synchronization but does not constitute a passing result. GitHub Actions still needs to start a runner and record logs before these MySQL assertions can be verified.
