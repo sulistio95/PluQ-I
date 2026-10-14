@@ -538,3 +538,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 
 - New workflow runs for the correction, fulfillment [38505439662](https://github.com/sulistio95/PluQ-I/actions/runs/38505439662) and PHP quality [38505439765](https://github.com/sulistio95/PluQ-I/actions/runs/38505439765), completed with failure. Job records expose `steps: null`; no test output was provided. The PHP quality run for the source-test commit [38505408114](https://github.com/sulistio95/PluQ-I/actions/runs/38505408114) shows the same symptom.
 - This confirms the runner visibility/allocation blocker persists; it does **not** establish that the assertion change failed. Keep test status unverified and do not enable production payment/supplier flow or deploy.
+
+
+
+### Sandbox integration script quoting fix — 2026-10-14
+
+- Follow-up source review found the SQL assertion in `tests/duitku_sandbox_no_fulfillment_integration.sh` was embedded in a shell single-quoted `php -r` program while the SQL also contained single-quoted literals and the JSON path `'$.order_id'`. The shell could strip those quotes before PHP received the code, causing malformed SQL and invalidating the intended integration assertion.
+- Replaced the inline `php -r '…'` block with a quoted PHP heredoc (`php <<'PHP'`) so SQL string literals and the JSON path reach PDO unchanged. Change: [acac0af](https://github.com/sulistio95/PluQ-I/commit/acac0afad5b2c735272e0150b9261817e82db4c6).
+- This is a source-level fix; the MySQL integration has not yet executed. Latest Actions failures have missing step summaries, so runtime result remains unknown. Keep production payment, supplier fulfillment and deployment disabled.
