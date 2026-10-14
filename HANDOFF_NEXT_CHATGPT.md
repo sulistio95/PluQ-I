@@ -583,3 +583,9 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Reviewed the sandbox-only callback integration script and found its queue assertion counted all `FULFILL_ORDER` jobs in the shared MySQL test database. Since earlier integration tests can create unrelated queue jobs, this could fail even when the sandbox order correctly created no supplier job.
 - Fixed in [fb3623c](https://github.com/sulistio95/PluQ-I/commit/fb3623cfa920afec7e5dc76978b2455064f569b9): assert zero fulfillment jobs for the specific sandbox fixture's `order_id` in the JSON payload.
 - Test has not yet run on MySQL. Recheck GitHub Actions runner allocation/log visibility, then execute the full fulfillment workflow and confirm the sandbox callback case. No live payment/provider call or deployment; keep production flags disabled.
+
+
+### CI result after sandbox assertion correction — 2026-10-14
+
+- Latest fulfillment run [38505439662](https://github.com/sulistio95/PluQ-I/actions/runs/38505439662) and PHP quality run [38505439765](https://github.com/sulistio95/PluQ-I/actions/runs/38505439765) failed with job `steps: null`; no actual test logs are available. PHP quality run [38505408114](https://github.com/sulistio95/PluQ-I/actions/runs/38505408114) has the same symptom.
+- Do not treat this as a source test failure or success. Continue by resolving owner-side Actions runner/account availability, then inspect and run the actual test suite. The test-only assertion correction and notes are committed; live payments, supplier calls, and deployment remain disabled.
