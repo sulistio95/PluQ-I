@@ -730,3 +730,12 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - The Jobs API reports `runner_id=0`, empty `steps`, and no runner name for these jobs. Log downloads return `BlobNotFound`; the GitHub integration cannot access the check-run annotations endpoint. Therefore, these results do **not** identify a PHP/test failure, and no cause such as Actions quota has been proven.
 - The structural regression guard was updated in commit `8a81ae54b4bb927252ace3d4e715a071b78b515c` to match the joined payment/order row-lock query; this change is still not runtime-verified because no CI step results are available.
 - Next verification: restore usable Actions runner/log access, then run the PHP syntax/quality suites and MySQL fulfillment integration. Keep live payment, supplier ordering, Drive backup, and deployment disabled until actual tests complete.
+
+
+## Status lanjutan — diagnosis GitHub Actions (2026-10-15)
+
+- Metadata GitHub menunjukkan repository `sulistio95/PluQ-I` bersifat **public**. Jatah menit Actions bulanan untuk private repository karena itu bukan penjelasan yang paling mungkin untuk kegagalan ini; penyebab sebenarnya tetap belum diketahui.
+- Tiga workflow pada commit `34d9ebb9` gagal hampir seketika: syntax `38646530354`, fulfillment `38646530361`, PHP quality `38646530385`. Run pada `8edca90f` juga gagal cepat. Jobs tidak menampilkan langkah maupun runner yang ditugaskan, dan log tidak dapat diunduh. Ini **bukan bukti** bahwa skrip tes berjalan lalu gagal.
+- Percobaan checkout Git lokal untuk menjalankan PHP terhalang kegagalan resolusi DNS `github.com`; belum ada hasil tes lokal yang dapat diklaim.
+- Review sumber terbaru: helper rekonsiliasi memvalidasi gateway, merchant order ID, nominal, dan status terkini di bawah row lock; menulis audit `STARTED` dan commit sebelum melakukan permintaan jaringan Duitku. Tes struktural dan integrasi konkurensi sudah ada tetapi belum terverifikasi berjalan.
+- Tindakan berikutnya: pulihkan akses runner/log melalui pengaturan atau notifikasi Actions, lalu jalankan lint/quality dan integrasi MySQL. Jangan aktifkan pembayaran live, pemesanan supplier, backup Drive, atau deployment sebelum hasil tes nyata tersedia.
