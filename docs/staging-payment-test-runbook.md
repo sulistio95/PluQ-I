@@ -110,3 +110,11 @@ Production payment mode must be implemented deliberately and separately from san
 - **Status: not yet executed successfully.** Run [38529583687](https://github.com/sulistio95/PluQ-I/actions/runs/38529583687) failed before steps/logs were recorded. A local PHP syntax check of a process-I/O snippet is not proof of this integration test. Diagnose runner failure and rerun the full workflow before treating provider budget locking as verified. Keep production payments, supplier orders, and deployment disabled.
 
 - CI retry evidence — 2026-10-14: manually reran the syntax-check job in [workflow run 38529853413](https://github.com/sulistio95/PluQ-I/actions/runs/38529853413); retry still failed before step recording. New PHP quality and fulfillment runs show the same symptom. This remains an infrastructure/runner diagnostic blocker of unknown cause, not evidence that the integration assertions passed or failed.
+
+
+### Stale cached balance timestamp regression — 2026-10-14
+
+- `provider_budget_reserve_paid_order()` conservatively counts SETTLED reservations when `reservation.updated_at >= providers.last_balance_check_at`; equality is ambiguous because timestamps may have only second precision.
+- The MySQL integration test now checks that a settled Rp300,000 purchase at the exact same timestamp as the cached balance check blocks a further Rp200,001 commitment against Rp500,000 capacity. It also covers two concurrent Rp300,000 reservations, expecting only one to be admitted.
+- Code commits: [d61a7c8](https://github.com/sulistio95/PluQ-I/commit/d61a7c89be9ca8c21a78495339746af62efd07de), [8fb1105](https://github.com/sulistio95/PluQ-I/commit/8fb110597c22ecf6bbd5e4919bb2cc3dfa676961). Neither test is verified as passing until the MySQL workflow has actual step logs and success.
+- Runner diagnosis: run [38529853413](https://github.com/sulistio95/PluQ-I/actions/runs/38529853413) reports no runner name or steps and log download returns `BlobNotFound`. Current public GitHub status is operational; cause of this repo's failure remains unknown. Local PHP lint could not run because this environment cannot resolve `raw.githubusercontent.com`.
