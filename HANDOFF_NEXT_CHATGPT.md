@@ -681,3 +681,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Hardened `app/services/provider_budget.php`: settled reservations remain committed when `updated_at >= last_balance_check_at`, not only strictly greater. Equal timestamps are ambiguous under second-precision storage; conservative capacity blocking is safer than reusing stale balance.
 - Added an integration regression to `tests/provider-budget-reservation-mysql-integration.php`: equal balance/reservation timestamps must still block a second order that would exceed usable capacity. Commits [d61a7c8](https://github.com/sulistio95/PluQ-I/commit/d61a7c89be9ca8c21a78495339746af62efd07de) and [8fb1105](https://github.com/sulistio95/PluQ-I/commit/8fb110597c22ecf6bbd5e4919bb2cc3dfa676961).
 - CI still unverified: run [38529853413](https://github.com/sulistio95/PluQ-I/actions/runs/38529853413) has no runner name/steps; logs return `BlobNotFound`. Public GitHub status was operational at the latest check; don't assume a current global incident or a code-level cause. Local runtime couldn't resolve `raw.githubusercontent.com`, so PHP lint was not executed locally. Next: get a real Actions runner/logs, run PHP lint and full MySQL 8.4 integration, and fix any actual failures. Keep live operations disabled.
+
+
+### Reservation contention test synchronization — 2026-10-14
+
+- The MySQL integration test now waits for each independent PHP worker's ready marker before releasing the shared barrier, ensuring both workers are poised to reserve at the same time. It fails if both workers do not reach the barrier within 15 seconds and always releases started workers to avoid leaving them waiting.
+- Workflow step label updated to name all covered cases (capacity, idempotency, concurrency, stale-balance boundary). Commits [6025cd6](https://github.com/sulistio95/PluQ-I/commit/6025cd6e7be77d3f6d0dbe2e601297a4b5b1009a) and [870daf7](https://github.com/sulistio95/PluQ-I/commit/870daf71c105589a627dd63d8da299c9cd62b899).
+- Not yet executed successfully. Do not claim test success until the MySQL workflow produces step logs and passes.
