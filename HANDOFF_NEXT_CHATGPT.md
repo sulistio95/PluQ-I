@@ -519,3 +519,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Retried step-summary retrieval for jobs `115598975273`, `115598975592`, and `115598975726`; all return empty step arrays. Log retrieval returns `BlobNotFound`, so the runner/test failure cause remains unknown and no tests can be claimed to have run.
 - Read-only review covered Duitku callback terminal-state handling, checkout idempotency, order-status display, and supplier recovery. No extra code change was made: contradictory terminal callbacks need DB integration coverage and a defined manual-reconciliation policy; do not auto-flip a terminal failed payment to paid without reconciliation.
 - Next: restore CI logs or run PHP/MySQL integration tests in controlled staging. Keep live payments and supplier orders disabled; do not deploy.
+
+
+## Contradictory terminal Duitku callback — 2026-10-14
+
+- Added fail-safe reconciliation behavior in commit [9008996](https://github.com/sulistio95/PluQ-I/commit/9008996d5000da74b1fdd0dc0ed0006586582b26). If a signed callback contradicts a payment transaction's already-terminal state, the transaction's payment status is preserved, the order is flagged \`MANUAL_REVIEW\`, and \`audit_logs\` captures both states plus callback metadata. No new fulfillment job is enqueued.
+- Added regression assertions in \`tests/duitku_callback_integration.sh\` (commit [8454a51](https://github.com/sulistio95/PluQ-I/commit/8454a51937c35ca4616403ae51b8b187d174f5cc)).
+- **Not runtime-verified yet**: current GitHub Actions jobs still fail before exposing step summaries/logs. After the runner issue is resolved, execute the full MySQL integration workflow and verify the new conflict case. No live gateway/provider calls or deployment; keep live payment/supplier execution disabled.
