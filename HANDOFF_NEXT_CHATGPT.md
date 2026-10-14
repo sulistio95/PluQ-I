@@ -784,3 +784,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - This was driven by the now-readable MySQL CI log: the budget integration failed with `SQLSTATE[40001] / MySQL 1213 Deadlock found when trying to get lock` in the two-worker capacity race. The previous lock order checked for a missing reservation before serializing on the provider, allowing competing InnoDB gap locks and insert deadlock.
 - Syntax and PHP quality workflows passed on the immediately preceding docs head (`e546adac`); the MySQL integration exposed the concurrency defect. The fix commit has newly triggered workflows; do not mark the integration test passed until its rerun is green.
 - Live payment, supplier ordering, Google Drive backup, and deployment remain disabled.
+
+
+## Follow-up: provider reservation deadlock and integration fixture — 2026-10-15
+
+- The provider-budget MySQL concurrency case now passes on code commit `e98b4f4` (PHP quality and syntax workflows also passed). It had previously reproduced MySQL 1213 due to reservation lock ordering; provider row locking now precedes the absent-key reservation lookup.
+- The same fulfillment workflow then reached `tests/uncertain_supplier_integration.sh` and failed because its ambiguous-supplier fixture omitted the mandatory migration-011 `provider_budget_reservations` row. The production safety gate correctly stopped the job before the test's intended ambiguous-supplier branch, leaving the fixture's supplier row PROCESSING. Commit `9c5ae47d9784dbb5e00c36112fe0ba64083f3a40` adds an ACTIVE budget reservation to this disposable test fixture so the test exercises the intended branch. This is a test-fixture correction, not a production bypass.
+- CI for the fixture correction is pending. Keep live integrations and deployment disabled until the full MySQL suite passes.
