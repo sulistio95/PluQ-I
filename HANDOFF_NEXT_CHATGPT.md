@@ -752,3 +752,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Regression test `88aec00533beba80d959f6cb08fd45a5167c5f3f` checks concurrent cooldown admission and confirms audit before-status fields are loaded from locked database state, not stale admin-page arguments. It does not call the gateway.
 - Latest workflows observed on prior handoff commit `55af1b0c1c15a0428e63fcb78810281063fa237c` failed: syntax `38633432251`, fulfillment `38633432240`, PHP quality `38633432207`. Job-step responses are empty; downloading logs returns `BlobNotFound`. Do not infer the root cause. Test remains unverified until it runs successfully against MySQL and PHP.
 - Audit note was updated in commit `645b3e6d6990204d80ee280d1395b6c5b65cc677`. Next: inspect Actions on the new handoff commit; if logs remain inaccessible, do static review only and document the limitation. Do not make repeated documentation-only commits just to trigger CI. Do not enable production payment, supplier ordering, or Drive settlement backup.
+
+
+## Latest code change — stale reconciliation assertion corrected (2026-10-15)
+
+- Commit `8a81ae54b4bb927252ace3d4e715a071b78b515c` updates `tests/reconcile-cooldown-regression.php`: its lock assertion expected the old single-table query, while the service now locks the payment joined to its order and reads both statuses under lock. The guard now checks the joined SELECT, the current order status fields, and the lock target in sequence.
+- Audit documentation updated in commit `034d4802d36392f748734a5d85de511b19837892`.
+- This test fix has not yet been runtime-verified. Previous CI runs failed quickly and logs are unavailable; the stale assertion can explain a PHP-quality failure but is not proven to explain every failed workflow. Check Actions for this commit and do not enable production payment/supplier/Drive backup flags.
