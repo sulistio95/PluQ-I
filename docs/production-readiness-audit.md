@@ -552,3 +552,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 ### CI verification after heredoc correction — 2026-10-14
 
 - Workflows for the heredoc fix are now recorded: [PHP quality 38508784612](https://github.com/sulistio95/PluQ-I/actions/runs/38508784612), [fulfillment safety 38508784598](https://github.com/sulistio95/PluQ-I/actions/runs/38508784598), and [syntax checks 38508784571](https://github.com/sulistio95/PluQ-I/actions/runs/38508784571). Failed jobs still report `steps: null`; the fulfillment PHP test job was queued when checked. No application test output is available yet, so do not interpret these as code-test failures or passes.
+
+
+### Sandbox test output cleanup and free WordPress deployment assessment — 2026-10-14
+
+- Follow-up review found the sandbox callback integration test's PHP diagnostic strings contained double-escaped newline sequences, which would print literal \\n instead of line breaks. Corrected the test output strings in [9309e7e](https://github.com/sulistio95/PluQ-I/commit/9309e7e2a6d8edc11d836a1b7075ecd7787eac89). This is cosmetic and does not establish a test pass; the MySQL integration remains unexecuted.
+- Investigated the suggestion to use the connected WordPress.com account for free deployment testing. The connected WordPress site listing currently returns **zero accessible sites**, so there is no identified site to deploy to. WordPress.com Free also does not provide a general-purpose runtime for this repository's standalone PHP application or plugin installation; custom PHP/plugins and hosting developer features require a plugin-enabled paid plan. Official references: [WordPress.com code restrictions](https://wordpress.com/support/code/) and [plan features](https://wordpress.com/support/plan-features/).
+- Therefore, WordPress.com Free cannot currently serve as the PHP/MySQL staging host for PluQ-I. A free WordPress.com site could only be considered for a static/demo presentation, not as proof that the PHP app, PDO database, callback, or queue works. No WordPress site was created or modified. Continue with safe source/CI verification; production payment, supplier ordering and deployment remain disabled.
+- GitHub Actions still fails before runner steps are exposed (runner_id=0, empty steps); test results remain unverified.
