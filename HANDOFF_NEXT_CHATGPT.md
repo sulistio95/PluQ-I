@@ -712,3 +712,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Commit [7b3bc13](https://github.com/sulistio95/PluQ-I/commit/7b3bc13f7aeddee9ef21d779a58696f98b07da76) adds MySQL integration assertions for the protected states to `tests/worker-lease-revocation-integration.php`.
 - Tests have not yet been executed successfully; verify PHP lint and the full MySQL fulfillment workflow when GitHub Actions provides usable runner logs. Do not mark this change as runtime-verified and do not enable production payments/supplier execution.
 - Next source-audit priority: refund/admin reconciliation state transitions and audit trail consistency, followed by actual staging verification.
+
+### Latest work — supplier-failure transition guard (2026-10-15)
+
+- Source audit found `fulfillment_record_explicit_failure()` could overwrite any paid order status to `FAILED`, even if a stale/future call reached a successful, refunded, or manually reviewed order.
+- Fixed in commit [4fbef73](https://github.com/sulistio95/PluQ-I/commit/4fbef73bb60eb6111c3701f9c7e666f5d51d6b47): lock/read current order state; allow only `QUEUED`, `PROCESSING`, `RETRYING`, or idempotent `FAILED`; constrain refund insertion to paid orders still in `FAILED`. Other states throw `DomainException` without modifying order/refund/reservation.
+- Added regression coverage in [eb30cf4](https://github.com/sulistio95/PluQ-I/commit/eb30cf4d677ee30a5a293b73fda811fb0a4381a1): after crash-window refund recovery, move fixture to `MANUAL_REVIEW` and assert another explicit-failure call is rejected without overwriting that state. Runtime PHP/MySQL test remains unverified.
+- Continue with source audit of `public/admin/reconcile.php` and related reconciliation/audit-log code. Check current GitHub Actions runner status before claiming any test result; keep live payment, supplier ordering, backups, and deployment disabled until real staging evidence exists.
