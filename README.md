@@ -73,6 +73,7 @@ PHP extensions: `pdo_mysql`, `curl`, `openssl`, `json`, `mbstring`, and `fileinf
    - `database/migrations/008_admin_login_rate_limit.sql` (required for database-backed admin login throttling)
    - `database/migrations/009_refund_order_latest_index.sql` (recommended for efficient latest-refund lookups in admin/status queries)
    - `database/migrations/010_checkout_payload_fingerprint.sql` (required to prevent an idempotency key from being reused with different checkout details)
+   - `database/migrations/011_provider_budget_reservations.sql` (required before enabling paid supplier fulfillment; reserves aggregate provider purchasing capacity)
 7. Configure Duitku sandbox credentials and set `DUITKU_PAYMENT_METHOD` to a method enabled for the sandbox merchant. Configure HTTPS callback URL `https://your-domain/duitku-callback.php` and return URL `https://your-domain/order-status.php`.
 8. Point the document root at `public/` if supported. Otherwise deny direct access to `app/`, `config/`, `database/`, `bin/`, `tests/`, `.env`, and logs.
 9. Run migrations and create the first admin from the server CLI; do not create an admin through a public one-off script.
