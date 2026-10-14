@@ -481,3 +481,9 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Updated `public/duitku-callback.php` in [commit 363d985](https://github.com/sulistio95/PluQ-I/commit/363d98545e872207cf68f95259e4915bfdff47ec): under the existing payment-row lock, check for an existing conflict audit event with the same order and stored/incoming payment states before inserting. The original terminal payment remains unchanged and the order remains flagged for manual review.
 - Extended `tests/duitku_callback_integration.sh` in [commit 44dd349](https://github.com/sulistio95/PluQ-I/commit/44dd34915ab3679c8a73acce6ccd43a10205e7dc) to submit the same conflicting callback twice before asserting there is still exactly one audit event and no duplicate fulfillment job.
 - Verification: **not runtime-tested yet**. Latest workflow runs for the previous note commit fail almost immediately with no steps or runner assignment visible. New commits may trigger fresh runs; inspect their job records before drawing conclusions. No live gateway/provider requests or deployment were made.
+
+
+### CI status after repeat-callback audit deduplication — 2026-10-14
+
+- Fresh runs triggered by the code and note commits again failed before exposing step-level execution: [fulfillment 38493159152](https://github.com/sulistio95/PluQ-I/actions/runs/38493159152), [PHP quality 38493159289](https://github.com/sulistio95/PluQ-I/actions/runs/38493159289), and [syntax 38493159116](https://github.com/sulistio95/PluQ-I/actions/runs/38493159116). Job records have no usable log URL; this does not reveal a PHP assertion or syntax failure.
+- The latest callback audit-deduplication change and repeated-callback regression are committed but remain **unverified at runtime**. The runner/Actions configuration issue remains the next blocking item; do not treat these runs as test results.
