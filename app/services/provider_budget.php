@@ -1,6 +1,19 @@
 <?php
 declare(strict_types=1);
 
+/** Pure capacity calculation, kept separate so boundary conditions can be tested without supplier credentials. */
+function provider_budget_capacity_allows(float $balance, float $reservePercentage, float $committed, float $cost): bool
+{
+    if (!is_finite($balance) || !is_finite($reservePercentage)
+        || !is_finite($committed) || !is_finite($cost)
+        || $balance < 0 || $reservePercentage < 0 || $reservePercentage > 100
+        || $committed < 0 || $cost <= 0) {
+        return false;
+    }
+    $capacity = $balance * $reservePercentage / 100;
+    return is_finite($capacity) && $committed + $cost <= $capacity;
+}
+
 /**
  * Reserve provider purchasing capacity for a paid order.
  * Caller must be inside a DB transaction. Locking the provider row serializes
@@ -41,14 +54,12 @@ function provider_budget_reserve_paid_order(PDO $pdo, int $orderId): array
         return ['reserved' => false, 'status' => 'UNAVAILABLE', 'existing' => false];
     }
 
-    $capacity = (float)$provider['balance'] * (float)$provider['reserve_percentage'] / 100;
     $usedQuery = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM provider_budget_reservations
         WHERE provider_id=:id AND status IN ('ACTIVE','REVIEW')");
     $usedQuery->execute(['id' => $provider['id']]);
     $committed = (float)$usedQuery->fetchColumn();
     $cost = (float)$order['base_price'];
-    if (!is_finite($capacity) || !is_finite($committed) || !is_finite($cost)
-        || $cost <= 0 || $committed + $cost > $capacity) {
+    if (!provider_budget_capacity_allows((float)$provider['balance'], (float)$provider['reserve_percentage'], $committed, $cost)) {
         return ['reserved' => false, 'status' => 'CAPACITY_EXCEEDED', 'existing' => false];
     }
 
