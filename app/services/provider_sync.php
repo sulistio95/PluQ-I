@@ -21,6 +21,10 @@ function sync_provider_balance(PDO $pdo, string $providerCode): array
         return ['provider' => $providerCode, 'balance' => null, 'status' => 'DISABLED', 'skipped' => true];
     }
 
+    // Capture the balance-query start time before the network request. A settled purchase
+    // after this instant must still count against the cached balance, even if the API response
+    // arrives later and is written to the database after that purchase.
+    $checkTime = (string)$pdo->query('SELECT NOW()')->fetchColumn();
     $result = $providerCode === 'DIGI' ? digiflazz_balance() : vipayment_profile();
     $balance = (float) ($result['balance'] ?? -1);
     if (!is_finite($balance) || $balance < 0) {
@@ -29,9 +33,14 @@ function sync_provider_balance(PDO $pdo, string $providerCode): array
 
     $status = $balance < (float) $provider['balance_threshold'] ? 'LOW_BALANCE' : 'ACTIVE';
     $update = $pdo->prepare('UPDATE providers
-        SET balance = :balance, status = :status, last_balance_check_at = NOW(), last_error = NULL
+        SET balance = :balance, status = :status, last_balance_check_at = :checked_at, last_error = NULL
         WHERE id = :id AND status <> "DISABLED"');
-    $update->execute(['balance' => $balance, 'status' => $status, 'id' => $provider['id']]);
+    $update->execute([
+        'balance' => $balance,
+        'status' => $status,
+        'checked_at' => $checkTime,
+        'id' => $provider['id'],
+    ]);
     return ['provider' => $providerCode, 'balance' => $balance, 'status' => $status, 'skipped' => false];
 }
 
