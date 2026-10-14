@@ -11,6 +11,37 @@ function budget_integration_assert(bool $condition, string $message): void
     }
 }
 
+// Worker mode is launched by the parent test as a separate PHP process so each
+// contender uses its own PDO connection and transaction.
+if (($argv[1] ?? '') === '--worker') {
+    $orderId = (int)($argv[2] ?? 0);
+    $barrierPath = (string)($argv[3] ?? '');
+    if ($orderId < 1 || $barrierPath === '') {
+        fwrite(STDERR, "Worker requires order ID and barrier path.\\n");
+        exit(2);
+    }
+    $deadline = microtime(true) + 15.0;
+    while (!is_file($barrierPath) && microtime(true) < $deadline) {
+        usleep(10000);
+    }
+    if (!is_file($barrierPath)) {
+        fwrite(STDERR, "Timed out waiting for concurrency barrier.\\n");
+        exit(3);
+    }
+    $workerPdo = database();
+    $workerPdo->beginTransaction();
+    try {
+        $result = provider_budget_reserve_paid_order($workerPdo, $orderId);
+        $workerPdo->commit();
+        echo json_encode($result, JSON_THROW_ON_ERROR) . PHP_EOL;
+        exit(0);
+    } catch (Throwable $e) {
+        if ($workerPdo->inTransaction()) $workerPdo->rollBack();
+        fwrite(STDERR, $e->getMessage() . PHP_EOL);
+        exit(4);
+    }
+}
+
 $pdo = database();
 $token = bin2hex(random_bytes(6));
 $providerId = null;
@@ -34,7 +65,7 @@ try {
     $stmt->execute(['game' => $gameId, 'provider' => $providerId, 'sku' => 'BUDGET_SKU_' . $token]);
     $productId = (int)$pdo->lastInsertId();
 
-    foreach ([300000, 200001] as $index => $cost) {
+    foreach ([300000, 200001, 300000, 300000] as $index => $cost) {
         $publicId = bin2hex(random_bytes(13));
         $stmt = $pdo->prepare("INSERT INTO orders
             (public_id,game_id,product_id,provider_id,customer_game_data,base_price,selling_price,admin_fee,payment_status,order_status)
@@ -85,7 +116,52 @@ try {
     $stmt->execute(['id' => $orderIds[1]]);
     budget_integration_assert((int)$stmt->fetchColumn() === 1, 'Duplicate reservation created more than one ledger row.');
 
-    echo "MySQL provider budget reservation integration checks passed." . PHP_EOL;
+    // Clear the sequential fixture's commitment, then race two independent PHP
+    // processes for Rp300,000 each against the same Rp500,000 usable capacity.
+    $pdo->beginTransaction();
+    provider_budget_resolve($pdo, $orderIds[1], 'RELEASED', 'Prepare concurrent reservation test');
+    $pdo->commit();
+
+    $barrierPath = sys_get_temp_dir() . '/pluq-budget-barrier-' . $token;
+    @unlink($barrierPath);
+    $workers = [];
+    foreach ([$orderIds[2], $orderIds[3]] as $concurrentOrderId) {
+        $command = [PHP_BINARY, __FILE__, '--worker', (string)$concurrentOrderId, $barrierPath];
+        $pipes = [];
+        $process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        budget_integration_assert(is_resource($process), 'Could not start concurrent reservation worker.');
+        fclose($pipes[0]);
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+        $workers[] = ['process' => $process, 'stdout' => $pipes[1], 'stderr' => $pipes[2], 'out' => '', 'err' => ''];
+    }
+    // Release both independent connections from the same barrier.
+    file_put_contents($barrierPath, 'go');
+    foreach ($workers as &$worker) {
+        $worker['out'] .= stream_get_contents($worker['stdout']);
+        $worker['err'] .= stream_get_contents($worker['stderr']);
+        fclose($worker['stdout']);
+        fclose($worker['stderr']);
+        $worker['exit'] = proc_close($worker['process']);
+        budget_integration_assert($worker['exit'] === 0,
+            'Concurrent worker failed: ' . trim($worker['err']));
+        $decoded = json_decode(trim($worker['out']), true);
+        budget_integration_assert(is_array($decoded) && array_key_exists('reserved', $decoded),
+            'Concurrent worker returned invalid result: ' . trim($worker['out']));
+        $worker['result'] = $decoded;
+    }
+    unset($worker);
+    @unlink($barrierPath);
+
+    $admitted = count(array_filter($workers, static fn(array $w): bool => $w['result']['reserved'] === true));
+    budget_integration_assert($admitted === 1,
+        'Concurrent reservation race admitted ' . $admitted . ' orders; expected exactly one within Rp500,000 capacity.');
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM provider_budget_reservations WHERE provider_id=:provider AND status IN ('ACTIVE','REVIEW')");
+    $stmt->execute(['provider' => $providerId]);
+    budget_integration_assert((float)$stmt->fetchColumn() <= 500000,
+        'Concurrent reservations exceeded configured usable provider capacity.');
+
+    echo "MySQL provider budget reservation capacity, idempotency, release, and concurrency checks passed." . PHP_EOL;
 } finally {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
