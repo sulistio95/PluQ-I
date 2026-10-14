@@ -225,6 +225,9 @@ function fulfillment_process(PDO $pdo, int $orderId): string
             return 'REVIEW';
         } elseif ($supplier['status']==='SUCCESS') {
             $pdo->prepare("UPDATE orders SET order_status='SUCCESS',fulfilled_at=COALESCE(fulfilled_at,NOW()) WHERE id=:id")->execute(['id'=>$orderId]);
+            // Recover the crash window where the supplier success was persisted but the
+            // reservation resolution was not. Keep the balance commitment settled idempotently.
+            provider_budget_resolve($pdo, $orderId, 'SETTLED', 'Recovered previously persisted supplier success');
             $pdo->commit(); return 'DONE';
         } elseif ($supplier['status']==='FAILED') {
             // Recover the crash window where the definitive supplier failure was saved,
