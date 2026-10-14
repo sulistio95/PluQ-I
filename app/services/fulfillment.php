@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/digiflazz.php';
 require_once __DIR__ . '/vipayment.php';
+require_once __DIR__ . '/provider_budget.php';
 
 function fulfillment_enabled(): bool
 {
@@ -165,6 +166,9 @@ function fulfillment_record_explicit_failure(PDO $pdo, int $orderId, string $rea
                 SELECT id,selling_price+admin_fee,'PENDING',:reason FROM orders WHERE id=:id AND payment_status='PAID'")
                 ->execute(['reason' => $reason, 'id' => $orderId]);
         }
+        // Definitive supplier rejection means the purchasing capacity is no longer committed.
+        // Keep the reservation update in the same transaction as failure/refund review.
+        provider_budget_resolve($pdo, $orderId, 'RELEASED', 'Supplier definitively rejected the order; refund pending');
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
@@ -245,6 +249,8 @@ function fulfillment_process(PDO $pdo, int $orderId): string
                     ->execute(['id'=>$orderId]);
                 $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Supplier outcome uncertain; manual review required' WHERE id=:id AND payment_status='PAID' AND order_status IN ('PROCESSING','RETRYING')")
                     ->execute(['id'=>$orderId]);
+                // Unknown outcome retains capacity until reconciliation; releasing it could overspend.
+                provider_budget_resolve($pdo, $orderId, 'REVIEW', 'Supplier outcome uncertain; retain capacity pending reconciliation');
             }
             $pdo->commit();
         } catch (Throwable $persistError) {
@@ -298,6 +304,7 @@ function fulfillment_process(PDO $pdo, int $orderId): string
                 fulfilled_at=NOW(),last_error=NULL WHERE id=:id AND payment_status='PAID'
                 AND order_status IN ('PROCESSING','RETRYING')")
                 ->execute(['ref'=>$result['reference'],'id'=>$orderId]);
+            provider_budget_resolve($pdo, $orderId, 'SETTLED', 'Supplier confirmed successful fulfillment');
         } elseif ($state==='PENDING') {
             $pdo->prepare("UPDATE orders SET order_status='RETRYING',
                 last_error='Supplier processing; status will be checked again'
@@ -307,6 +314,7 @@ function fulfillment_process(PDO $pdo, int $orderId): string
             $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error=:reason
                 WHERE id=:id AND payment_status='PAID' AND order_status IN ('PROCESSING','RETRYING')")
                 ->execute(['reason'=>$reason,'id'=>$orderId]);
+            provider_budget_resolve($pdo, $orderId, 'REVIEW', $reason ?? 'Supplier response requires manual reconciliation');
         }
         $pdo->commit();
     } catch (Throwable $e) {
