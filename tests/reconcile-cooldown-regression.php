@@ -21,18 +21,23 @@ reconcile_cooldown_assert(is_string($source) && $source !== '', 'Could not read 
 $route = file_get_contents(dirname(__DIR__) . '/public/admin/reconcile.php');
 reconcile_cooldown_assert(is_string($route) && str_contains($route, 'duitku_reconcile_admit_lookup('), 'Admin route must use the tested admission helper.');
 
-$lock = strpos($source, "SELECT id FROM payment_transactions WHERE id=:id FOR UPDATE");
+$lockSelect = strpos($source, "SELECT pt.id,pt.gateway,pt.merchant_order_id,pt.amount,pt.status AS payment_status");
+$lockTarget = strpos($source, "WHERE pt.id=:id");
+$lock = ($lockSelect !== false && $lockTarget !== false && strpos($source, "FOR UPDATE", $lockTarget) !== false)
+    ? $lockSelect
+    : false;
+$lockedOrderStates = strpos($source, "o.payment_status AS order_payment_status,o.order_status");
 $recent = strpos($source, "SELECT id FROM audit_logs");
 $started = strpos($source, "'outcome' => 'STARTED'");
 $commit = strpos($source, '$pdo->commit();');
 $admitCall = strpos($route, 'duitku_reconcile_admit_lookup(');
 $network = strpos($route, 'duitku_query_transaction_status(');
 reconcile_cooldown_assert(
-    $lock !== false && $recent !== false && $started !== false && $commit !== false && $admitCall !== false && $network !== false,
-    'Expected row lock, cooldown query, STARTED marker, commit, and gateway request are required.'
+    $lock !== false && $lockedOrderStates !== false && $recent !== false && $started !== false && $commit !== false && $admitCall !== false && $network !== false,
+    'Expected payment/order row lock, cooldown query, STARTED marker, commit, and gateway request are required.'
 );
 reconcile_cooldown_assert(
-    $lock < $recent && $recent < $started && $started < $commit && $admitCall < $network,
+    $lock < $lockedOrderStates && $lockedOrderStates < $recent && $recent < $started && $started < $commit && $admitCall < $network,
     'Admission helper must lock, check cooldown, persist STARTED and commit; route must admit before network I/O.'
 );
 
