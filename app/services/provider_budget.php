@@ -45,7 +45,7 @@ function provider_budget_reserve_paid_order(PDO $pdo, int $orderId): array
         return ['reserved' => in_array($existing['status'], ['ACTIVE','REVIEW','SETTLED'], true), 'status' => $existing['status'], 'existing' => true];
     }
 
-    $providerQuery = $pdo->prepare("SELECT id,balance,reserve_percentage,status
+    $providerQuery = $pdo->prepare("SELECT id,balance,reserve_percentage,status,last_balance_check_at
         FROM providers WHERE id=:id LIMIT 1 FOR UPDATE");
     $providerQuery->execute(['id' => $order['provider_id']]);
     $provider = $providerQuery->fetch(PDO::FETCH_ASSOC);
@@ -54,9 +54,17 @@ function provider_budget_reserve_paid_order(PDO $pdo, int $orderId): array
         return ['reserved' => false, 'status' => 'UNAVAILABLE', 'existing' => false];
     }
 
-    $usedQuery = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM provider_budget_reservations
-        WHERE provider_id=:id AND status IN ('ACTIVE','REVIEW')");
-    $usedQuery->execute(['id' => $provider['id']]);
+    // Settled purchases continue consuming the cached balance until a later successful
+    // balance sync reflects that spend. Otherwise a second order could reuse stale funds.
+    $usedQuery = $pdo->prepare("SELECT COALESCE(SUM(r.amount),0)
+        FROM provider_budget_reservations r
+        WHERE r.provider_id=:id
+          AND (
+            r.status IN ('ACTIVE','REVIEW')
+            OR (r.status='SETTLED' AND (:last_check IS NULL OR r.updated_at > :last_check))
+          )");
+    $lastBalanceCheck = $provider['last_balance_check_at'];
+    $usedQuery->execute(['id' => $provider['id'], 'last_check' => $lastBalanceCheck]);
     $committed = (float)$usedQuery->fetchColumn();
     $cost = (float)$order['base_price'];
     if (!provider_budget_capacity_allows((float)$provider['balance'], (float)$provider['reserve_percentage'], $committed, $cost)) {
