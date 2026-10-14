@@ -10,6 +10,7 @@ try {
     require_once PLUQI_ROOT.'/config/database.php';
     require_once PLUQI_ROOT.'/app/services/duitku.php';
     require_once PLUQI_ROOT.'/app/services/checkout_quote.php';
+    require_once PLUQI_ROOT.'/app/services/provider_budget.php';
     $config=duitku_config();
     if (!duitku_verify_callback($config,$_POST)) json_response(['error'=>'invalid_signature'],400);
     $orderId=(string)$_POST['merchantOrderId'];
@@ -76,22 +77,47 @@ try {
             WHERE id=:id");
         $q->execute(['id'=>$tx['order_id']]);
     } elseif ($status==='PAID') {
-        $q=$pdo->prepare("UPDATE orders SET payment_status='PAID',order_status='QUEUED',paid_at=NOW() WHERE id=:id AND payment_status='PENDING'");
+        $q=$pdo->prepare("UPDATE orders SET payment_status='PAID',order_status='PENDING',paid_at=COALESCE(paid_at,NOW()) WHERE id=:id AND payment_status='PENDING'");
         $q->execute(['id'=>$tx['order_id']]);
         if ($q->rowCount() === 1) {
-            // Queue only when this callback performed the first valid PENDING -> PAID transition.
-            // This prevents a stale/inconsistent payment row from enqueuing duplicate fulfillment.
-            $q=$pdo->prepare("INSERT INTO job_queue (job_type,payload,status,available_at) VALUES ('FULFILL_ORDER',:payload,'PENDING',NOW())");
-            $q->execute(['payload'=>json_encode(['order_id'=>(int)$tx['order_id']],JSON_THROW_ON_ERROR)]);
+            // Reserve provider capacity in the same transaction before a supplier job can be queued.
+            // The provider-row lock serializes concurrent paid callbacks against one usable-balance budget.
+            $reservation=provider_budget_reserve_paid_order($pdo,(int)$tx['order_id']);
+            if (!empty($reservation['reserved'])) {
+                $q=$pdo->prepare("UPDATE orders SET order_status='QUEUED',last_error=NULL WHERE id=:id AND payment_status='PAID' AND order_status='PENDING'");
+                $q->execute(['id'=>$tx['order_id']]);
+                if ($q->rowCount() === 1) {
+                    $q=$pdo->prepare("INSERT INTO job_queue (job_type,payload,status,available_at) VALUES ('FULFILL_ORDER',:payload,'PENDING',NOW())");
+                    $q->execute(['payload'=>json_encode(['order_id'=>(int)$tx['order_id']],JSON_THROW_ON_ERROR)]);
+                } else {
+                    throw new RuntimeException('Order state changed while queueing a reserved order.');
+                }
+            } else {
+                // Payment is real, but capacity is unavailable. Never discard the paid state or send
+                // an unreserved order to the supplier; surface it for human reconciliation.
+                $q=$pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error=:reason WHERE id=:id AND payment_status='PAID'");
+                $q->execute([
+                    'reason'=>'Payment received but provider budget reservation failed (' . (string)$reservation['status'] . '); supplier order not queued',
+                    'id'=>$tx['order_id']
+                ]);
+            }
         } else {
-            $q=$pdo->prepare("SELECT payment_status FROM orders WHERE id=:id LIMIT 1 FOR UPDATE");
+            $q=$pdo->prepare("SELECT payment_status,order_status FROM orders WHERE id=:id LIMIT 1 FOR UPDATE");
             $q->execute(['id'=>$tx['order_id']]);
-            $orderPaymentStatus=(string)$q->fetchColumn();
-            if ($orderPaymentStatus !== 'PAID') {
+            $existingOrder=$q->fetch(PDO::FETCH_ASSOC);
+            if (!$existingOrder || $existingOrder['payment_status'] !== 'PAID') {
                 // Money was reported as paid, but the order could not make the normal transition.
-                // Keep the payment recorded and require reconciliation rather than silently dropping it.
                 $q=$pdo->prepare("UPDATE orders SET payment_status='PAID',order_status='MANUAL_REVIEW',paid_at=COALESCE(paid_at,NOW()),last_error='Paid callback received after an incompatible order state; manual reconciliation required' WHERE id=:id");
                 $q->execute(['id'=>$tx['order_id']]);
+            } elseif ($existingOrder['order_status'] === 'QUEUED') {
+                // Repeated callbacks must not enqueue a second job. A previously queued order must
+                // already have its unique budget reservation; missing reservation requires review.
+                $check=$pdo->prepare("SELECT status FROM provider_budget_reservations WHERE order_id=:id LIMIT 1 FOR UPDATE");
+                $check->execute(['id'=>$tx['order_id']]);
+                if ($check->fetchColumn() === false) {
+                    $q=$pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Queued paid order has no provider budget reservation; manual reconciliation required' WHERE id=:id");
+                    $q->execute(['id'=>$tx['order_id']]);
+                }
             }
         }
     } else {
