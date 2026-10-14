@@ -600,3 +600,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Added migration 011 to the MySQL integration workflow and documented it as required in README setup. Current CI run records still show failure before any steps/logs, so the new tests remain unverified.
 
 - Balance-cache race follow-up: successful supplier purchases now remain counted as `SETTLED` commitments until a provider balance sync started after the settlement updates the cached balance. `provider_sync.php` now records the balance-check start time rather than response-write time, so a slow/stale in-flight balance request cannot automatically make a later supplier spend look reflected in that snapshot. This reduces a timing window but still requires staging tests against provider balance consistency.
+
+
+### Reservation recovery consistency fix — 2026-10-14
+
+- Source audit found a crash-recovery path in `app/services/fulfillment.php`: if the supplier transaction was already persisted as `SUCCESS` but the process crashed before resolving the budget reservation, the next worker marked the order successful without changing the reservation from `ACTIVE` to `SETTLED`.
+- Fixed in commit [defd9d5](https://github.com/sulistio95/PluQ-I/commit/defd9d599f8c71b795ac7525addfa44f46a70178). The recovery branch now resolves the reservation to `SETTLED` inside the same DB transaction. This is an idempotent state-recovery fix and keeps the balance ledger consistent.
+- Updated staging instructions to include migration 011 in the ordered migration list. Runtime PHP/MySQL tests remain unverified because GitHub Actions has not exposed executed steps/logs. Next priority: diagnose runner availability and add/execute a MySQL contention test proving two concurrent reservations cannot exceed the provider's usable balance. Keep payment/supplier production operations disabled.
