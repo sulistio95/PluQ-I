@@ -651,3 +651,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - CI still needs diagnosis: latest workflow jobs report failed with `steps:null` and no logs, so there is no PHP lint, unit-test, or MySQL test evidence. Next investigate runner/workflow service and add real MySQL contention tests for reservation locking. Keep all live operations disabled.
 
 - Further concurrency hardening: settled reservation amounts remain included in capacity usage until `providers.last_balance_check_at` is newer than the reservation update. Balance sync records the query start time before the external HTTP request, not response completion time, to avoid an in-flight stale response incorrectly clearing a later settled spend. Verify this behavior with MySQL integration tests and controlled supplier balance checks.
+
+
+### Reservation recovery consistency fix — 2026-10-14
+
+- Source audit found a crash-recovery path in `app/services/fulfillment.php`: if the supplier transaction was already persisted as `SUCCESS` but the process crashed before resolving the budget reservation, the next worker marked the order successful without changing the reservation from `ACTIVE` to `SETTLED`.
+- Fixed in commit [defd9d5](https://github.com/sulistio95/PluQ-I/commit/defd9d599f8c71b795ac7525addfa44f46a70178). The recovery branch now resolves the reservation to `SETTLED` inside the same DB transaction. This is an idempotent state-recovery fix and keeps the balance ledger consistent.
+- Updated staging instructions to include migration 011 in the ordered migration list. Runtime PHP/MySQL tests remain unverified because GitHub Actions has not exposed executed steps/logs. Next priority: diagnose runner availability and add/execute a MySQL contention test proving two concurrent reservations cannot exceed the provider's usable balance. Keep payment/supplier production operations disabled.
