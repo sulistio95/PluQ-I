@@ -767,3 +767,12 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Jobs report `runner_id=0`, empty steps, and no runner name; log retrieval returns `BlobNotFound`. The annotations endpoint is unavailable through the current GitHub connection. Root cause is therefore unknown; do not assume quota or claim the tests ran.
 - The regression assertion was aligned with the joined lock query in commit `8a81ae54b4bb927252ace3d4e715a071b78b515c`, but still needs runtime verification.
 - Continue only in PluQ-I. Keep payment/provider/Drive backup live operations disabled until CI and MySQL integration tests can actually execute and pass.
+
+
+## Continuation update — Actions diagnosis and next safe step (2026-10-15)
+
+- Rechecked repository metadata: `sulistio95/PluQ-I` is **public**. GitHub's standard hosted runner usage for public repositories is normally free, so the account's 2,000-minute private-repository allowance is unlikely to explain these failures. This does not identify the actual cause.
+- Latest workflows for head `34d9ebb9` failed immediately: syntax `38646530354`, fulfillment `38646530361`, PHP quality `38646530385`. Earlier head `8edca90f` also failed immediately. Jobs still have no steps/runner assignment and log downloads are unavailable; treat CI as infrastructure/runner-diagnostic blocked, not as proof that tests executed and failed.
+- Attempted a fresh public Git clone for local PHP verification, but this runtime could not resolve `github.com`; no local test result is claimed.
+- Source review reconfirmed the reconciliation helper locks the payment/order row set, validates gateway/order ID/amount against locked data, records the STARTED audit marker before network I/O, and commits before calling Duitku. The structural and MySQL concurrency tests are present, but remain unverified at runtime.
+- Next action: inspect repository Actions settings/notifications and obtain a usable runner/log; then run PHP lint/quality and MySQL integration tests. Avoid another code change without test evidence. Keep live payments, supplier orders, Drive backup, and deployment disabled.
