@@ -700,3 +700,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Commit tes: [88aec00](https://github.com/sulistio95/PluQ-I/commit/88aec00533beba80d959f6cb08fd45a5167c5f3f). Perubahan tes sudah tersimpan; belum dijalankan secara runtime di sesi ini.
 - CI sebelumnya masih gagal dan endpoint langkah/log job tidak menyediakan rincian yang dapat dibaca (steps kosong, unduhan log mengembalikan NOT_FOUND). Karena tes baru memicu workflow baru, periksa hasil run terbaru sebelum menyimpulkan lulus/gagal.
 - Pembayaran produksi, pemesanan supplier, backup Google Drive, dan deployment tetap nonaktif hingga tes CI serta verifikasi staging PHP 8.2 + MySQL/MariaDB berhasil.
+
+
+### Hasil Actions setelah regresi ditambahkan — 2026-10-15
+
+- Workflow yang dipicu oleh commit tes `88aec00` berakhir gagal: [syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38633330500), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38633330555), [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/38633330567). Workflow pada commit dokumentasi `433f55d` juga gagal: [syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38633351092), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38633351125), [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/38633350950).
+- Job syntax pada run `38633330500` berstatus failure, tetapi API tidak mengembalikan langkah (`steps` kosong) dan unduhan log tidak tersedia. Penyebabnya belum dapat dipastikan; jangan menyimpulkan kegagalan berasal dari kode atau limit Actions tanpa bukti.
+- Pada saat pencatatan, run terbaru setelah commit handoff masih queued: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38633370983) dan [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/38633370846). Status akhir belum diketahui.
+- Regresi tes sudah committed tetapi belum terverifikasi hijau. Jangan mengaktifkan pembayaran produksi, supplier ordering, backup Google Drive, atau deployment sebelum log tersedia dan pengujian staging lulus.
