@@ -3,12 +3,30 @@ declare(strict_types=1);
 require_once __DIR__ . '/pricing.php';
 require_once __DIR__ . '/fulfillment.php';
 
-/** Payments stay off until supplier fulfillment is deliberately enabled for a tested environment. */
+/**
+ * Isolated gateway testing is permitted only in a non-production environment,
+ * with Duitku sandbox explicitly selected and supplier ordering disabled.
+ */
+function checkout_sandbox_only_enabled(): bool
+{
+    $environment = strtolower(trim((string)(getenv('APP_ENV') ?: 'production')));
+    $duitkuEnvironment = strtolower(trim((string)(getenv('DUITKU_ENV') ?: 'sandbox')));
+    $payments = filter_var(getenv('CHECKOUT_PAYMENTS_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+    $suppliers = filter_var(getenv('SUPPLIER_ORDERS_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+
+    return in_array($environment, ['staging', 'test'], true)
+        && $duitkuEnvironment === 'sandbox'
+        && $payments
+        && !$suppliers;
+}
+
+/** Payments stay disabled unless normal fulfillment is enabled or isolated sandbox mode is explicitly configured. */
 function checkout_payments_enabled(): bool
 {
     $payments = filter_var(getenv('CHECKOUT_PAYMENTS_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
     $suppliers = filter_var(getenv('SUPPLIER_ORDERS_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
-    return $payments && $suppliers;
+
+    return $payments && ($suppliers || checkout_sandbox_only_enabled());
 }
 
 function checkout_quote(PDO $pdo, array $input): array
