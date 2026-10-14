@@ -149,6 +149,16 @@ curl --fail --silent --show-error \
   --data-urlencode "signature=${conflict_signature}" \
   http://127.0.0.1:8080/duitku-callback.php >/tmp/pluq-callback-conflict.json
 
+# A repeated identical conflict callback is acknowledged but must not duplicate the audit event.
+curl --fail --silent --show-error \
+  --data-urlencode "merchantCode=${merchant}" \
+  --data-urlencode "amount=${amount}" \
+  --data-urlencode "merchantOrderId=${failed_order_id}" \
+  --data-urlencode "resultCode=00" \
+  --data-urlencode "reference=INTEGRATION-CONFLICTING-SUCCESS" \
+  --data-urlencode "signature=${conflict_signature}" \
+  http://127.0.0.1:8080/duitku-callback.php >/tmp/pluq-callback-conflict-repeat.json
+
 php -r '
 $pdo = new PDO(
     sprintf("mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4", getenv("DB_HOST"), getenv("DB_PORT"), getenv("DB_DATABASE")),
