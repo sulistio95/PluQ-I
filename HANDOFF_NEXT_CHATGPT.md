@@ -576,3 +576,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 
 - Ran a standalone PHP CLI smoke test against the exact sandbox gate conditions for five scenarios: default-off, staging sandbox allowed, production sandbox-only rejected, non-sandbox Duitku rejected in isolated mode, and normal supplier-enabled path preserved. All five assertions passed.
 - Scope limitation: this executed a standalone copy of the gate logic because the private repository cannot be cloned into this runtime and GitHub Actions has not started a runner. It is **not** a substitute for `php tests/checkout_gate_test.php`, PHP lint of the committed tree, or the MySQL callback integration workflow.
+
+
+### Latest test review — sandbox callback assertion — 2026-10-14
+
+- Reviewed the sandbox-only callback integration script and found its queue assertion counted all `FULFILL_ORDER` jobs in the shared MySQL test database. Since earlier integration tests can create unrelated queue jobs, this could fail even when the sandbox order correctly created no supplier job.
+- Fixed in [fb3623c](https://github.com/sulistio95/PluQ-I/commit/fb3623cfa920afec7e5dc76978b2455064f569b9): assert zero fulfillment jobs for the specific sandbox fixture's `order_id` in the JSON payload.
+- Test has not yet run on MySQL. Recheck GitHub Actions runner allocation/log visibility, then execute the full fulfillment workflow and confirm the sandbox callback case. No live payment/provider call or deployment; keep production flags disabled.
