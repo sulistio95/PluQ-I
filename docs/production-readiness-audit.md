@@ -722,3 +722,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Source review identified a concrete stale assertion in `tests/reconcile-cooldown-regression.php`: it searched for the former single-table lock SQL (`SELECT id FROM payment_transactions WHERE id=:id FOR UPDATE`) even though `app/services/duitku_reconcile.php` now locks the payment and joined order rows and selects their current statuses.
 - Commit `8a81ae54b4bb927252ace3d4e715a071b78b515c` updates the structural guard to assert the current joined-payment SELECT, order-status fields, and the lock target before the cooldown/audit/commit sequence. This is a test-maintenance fix based on source comparison; it has **not yet been runtime-verified**.
 - CI runs on the previous head failed very quickly and job logs remain unavailable. This stale assertion plausibly explains a failure in the PHP quality test that executes it, but it does not by itself explain every failed workflow. Recheck CI on this commit and do not claim all workflows passed until actual results are visible.
+
+
+## CI follow-up — 2026-10-15
+
+- Rechecked the latest three GitHub Actions runs for commit `2c357655b107f42b164ccab9850bf0be48c840ba`: syntax `38646127276`, PHP quality `38646127259`, and fulfillment `38646127248` all ended in failure within about 3 seconds.
+- The Jobs API reports `runner_id=0`, empty `steps`, and no runner name for these jobs. Log downloads return `BlobNotFound`; the GitHub integration cannot access the check-run annotations endpoint. Therefore, these results do **not** identify a PHP/test failure, and no cause such as Actions quota has been proven.
+- The structural regression guard was updated in commit `8a81ae54b4bb927252ace3d4e715a071b78b515c` to match the joined payment/order row-lock query; this change is still not runtime-verified because no CI step results are available.
+- Next verification: restore usable Actions runner/log access, then run the PHP syntax/quality suites and MySQL fulfillment integration. Keep live payment, supplier ordering, Drive backup, and deployment disabled until actual tests complete.
