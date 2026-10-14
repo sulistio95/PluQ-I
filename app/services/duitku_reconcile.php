@@ -27,10 +27,27 @@ function duitku_reconcile_admit_lookup(
 
     $pdo->beginTransaction();
     try {
-        $lock = $pdo->prepare('SELECT id FROM payment_transactions WHERE id=:id FOR UPDATE');
+        // Re-read the payment and its order while holding row locks. The caller's
+        // status arguments are only an earlier display snapshot and may be stale
+        // if a Duitku callback ran before this transaction acquired the locks.
+        $lock = $pdo->prepare("SELECT pt.id,pt.gateway,pt.merchant_order_id,pt.amount,pt.status AS payment_status,
+                o.payment_status AS order_payment_status,o.order_status
+            FROM payment_transactions pt
+            JOIN orders o ON o.id=pt.order_id
+            WHERE pt.id=:id
+            FOR UPDATE");
         $lock->execute(['id' => $paymentId]);
-        if (!$lock->fetchColumn()) {
-            throw new DomainException('Transaksi pembayaran tidak lagi tersedia.');
+        $current = $lock->fetch(PDO::FETCH_ASSOC);
+        if (!$current || $current['gateway'] !== 'DUITKU') {
+            throw new DomainException('Transaksi Duitku tidak lagi tersedia.');
+        }
+        $currentAmount = (string)$current['amount'];
+        if (
+            (string)$current['merchant_order_id'] !== $merchantOrderId
+            || !preg_match('/^\\d+\\.00$/', $currentAmount)
+            || (int)$currentAmount !== $amount
+        ) {
+            throw new DomainException('Identitas atau nominal transaksi berubah; pemeriksaan status dibatalkan.');
         }
 
         $recent = $pdo->prepare("SELECT id FROM audit_logs
@@ -52,9 +69,9 @@ function duitku_reconcile_admit_lookup(
                 'outcome' => 'STARTED',
                 'merchant_order_id' => $merchantOrderId,
                 'amount' => $amount,
-                'payment_status_before' => $paymentStatus,
-                'order_payment_status_before' => $orderPaymentStatus,
-                'order_status_before' => $orderStatus,
+                'payment_status_before' => (string)$current['payment_status'],
+                'order_payment_status_before' => (string)$current['order_payment_status'],
+                'order_status_before' => (string)$current['order_status'],
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
             'ip' => substr($ipAddress, 0, 45),
         ]);
