@@ -754,3 +754,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Uji MySQL reservasi saldo supplier lulus pada commit kode `e98b4f4`; PHP quality dan syntax juga lulus. Kegagalan MySQL 1213 sebelumnya sudah ditangani dengan mengunci provider sebelum pencarian reservation yang belum ada.
 - Workflow fulfillment kemudian menemukan kegagalan pada `tests/uncertain_supplier_integration.sh`: fixture untuk transaksi supplier ambigu tidak membuat baris `provider_budget_reservations` yang diwajibkan migrasi 011. Safety gate produksi benar menghentikan job sebelum cabang ambiguous-supplier, sehingga transaksi fixture tetap PROCESSING dan assertion gagal. Commit `9c5ae47d9784dbb5e00c36112fe0ba64083f3a40` menambahkan reservation ACTIVE ke fixture sementara agar pengujian mencapai cabang yang dimaksud. Ini memperbaiki fixture tes, bukan melonggarkan pengamanan produksi.
 - CI untuk koreksi fixture masih menunggu. Jangan aktifkan pembayaran live, supplier ordering, backup Drive, atau deployment sampai seluruh uji MySQL lulus.
+
+
+## Koreksi fixture pemulihan kegagalan supplier — 2026-10-15
+
+- Setelah commit `9c5ae47`, tes integrasi supplier ambigu lulus. Langkah MySQL berikutnya menemukan dua masalah pada `tests/explicit_supplier_failure_integration.sh`: eksekusi PHP dari stdin tidak mendefinisikan konstanta `STDERR`, sehingga assertion sebenarnya tertutupi; dan fixture crash-recovery tidak memiliki reservasi saldo migrasi 011, sehingga safety gate menghentikan alur sebelum cabang pemulihan supplier FAILED.
+- Commit `5a4181d548d7d40a8c825b75a2ec3f2917d51279` menyediakan stream stderr untuk mode stdin dan menambahkan reservation ACTIVE pada fixture pemulihan. Perubahan ini hanya memperbaiki harness/fixture tes; guard produksi tidak diubah. Uji MySQL perlu dijalankan ulang.
+- Uji konkurensi reservasi saldo dan supplier ambigu sudah lulus pada run terbaru, tetapi keseluruhan integrasi belum hijau. Integrasi live tetap nonaktif.
