@@ -54,4 +54,4 @@ putenv('DUITKU_ENV');
 putenv('CHECKOUT_PAYMENTS_ENABLED');
 putenv('SUPPLIER_ORDERS_ENABLED');
 
-fwrite(STDOUT, "Checkout payment gate tests passed.\\n");
+fwrite(STDOUT, "Checkout payment gate tests passed.\n");
