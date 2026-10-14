@@ -525,3 +525,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 
 - Ran a standalone PHP CLI smoke test against the exact sandbox gate conditions for five scenarios: default-off, staging sandbox allowed, production sandbox-only rejected, non-sandbox Duitku rejected in isolated mode, and normal supplier-enabled path preserved. All five assertions passed.
 - Scope limitation: this executed a standalone copy of the gate logic because the private repository cannot be cloned into this runtime and GitHub Actions has not started a runner. It is **not** a substitute for `php tests/checkout_gate_test.php`, PHP lint of the committed tree, or the MySQL callback integration workflow.
+
+
+### Sandbox callback integration assertion correction — 2026-10-14
+
+- Source review found a defect in the new sandbox-only callback integration test: it asserted the entire shared test database contained exactly one `FULFILL_ORDER` job. Earlier integration cases can legitimately create unrelated jobs, making this assertion order-dependent and potentially flaky.
+- Corrected the assertion in [fb3623c](https://github.com/sulistio95/PluQ-I/commit/fb3623cfa920afec7e5dc76978b2455064f569b9) to count only `FULFILL_ORDER` jobs whose JSON payload `order_id` matches the sandbox fixture order. Expected count is now zero for that order; unrelated test jobs no longer affect the result.
+- This is a test-only correction. It has **not** been executed against MySQL because GitHub Actions has not exposed runner steps/logs. PHP/MySQL runtime result remains unverified; keep live payments, supplier ordering, and deployment disabled.
