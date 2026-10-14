@@ -149,21 +149,33 @@ function fulfillment_record_explicit_failure(PDO $pdo, int $orderId, string $rea
 {
     $pdo->beginTransaction();
     try {
-        $q = $pdo->prepare("SELECT id, payment_status FROM orders WHERE id=:id LIMIT 1 FOR UPDATE");
+        $q = $pdo->prepare("SELECT id, payment_status, order_status FROM orders WHERE id=:id LIMIT 1 FOR UPDATE");
         $q->execute(['id' => $orderId]);
-        $order = $q->fetch();
+        $order = $q->fetch(PDO::FETCH_ASSOC);
         if (!$order || $order['payment_status'] !== 'PAID') {
             throw new DomainException('Only a paid order can enter supplier-failure refund review.');
         }
 
-        $pdo->prepare("UPDATE orders SET order_status='FAILED',last_error=:reason WHERE id=:id AND payment_status='PAID'")
-            ->execute(['reason' => $reason, 'id' => $orderId]);
+        // This helper can be reached by crash recovery or a future admin action. Do not let
+        // a stale failure signal overwrite success, a refund decision, or manual review.
+        $allowedStatuses = ['QUEUED', 'PROCESSING', 'RETRYING', 'FAILED'];
+        if (!in_array((string)$order['order_status'], $allowedStatuses, true)) {
+            throw new DomainException('Order state does not permit supplier-failure refund processing.');
+        }
+
+        if ($order['order_status'] !== 'FAILED') {
+            $pdo->prepare("UPDATE orders SET order_status='FAILED',last_error=:reason
+                WHERE id=:id AND payment_status='PAID'
+                  AND order_status IN ('QUEUED','PROCESSING','RETRYING')")
+                ->execute(['reason' => $reason, 'id' => $orderId]);
+        }
 
         $q = $pdo->prepare("SELECT id FROM refunds WHERE order_id=:id LIMIT 1 FOR UPDATE");
         $q->execute(['id' => $orderId]);
         if (!$q->fetch()) {
             $pdo->prepare("INSERT INTO refunds (order_id,amount,status,reason)
-                SELECT id,selling_price+admin_fee,'PENDING',:reason FROM orders WHERE id=:id AND payment_status='PAID'")
+                SELECT id,selling_price+admin_fee,'PENDING',:reason FROM orders
+                WHERE id=:id AND payment_status='PAID' AND order_status='FAILED'")
                 ->execute(['reason' => $reason, 'id' => $orderId]);
         }
         // Definitive supplier rejection means the purchasing capacity is no longer committed.
