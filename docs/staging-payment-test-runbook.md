@@ -101,3 +101,10 @@ Production payment mode must be implemented deliberately and separately from san
 - Added `tests/provider-budget-reservation-mysql-integration.php` in commit [ed2ae8a](https://github.com/sulistio95/PluQ-I/commit/ed2ae8ab9c290408eda293ed64dde1db3fca15db). Against the configured MySQL schema, it creates disposable fixtures and checks that a Rp300,000 commitment blocks a further Rp200,001 against Rp500,000 usable capacity; releasing the first reservation frees capacity; and duplicate reservation calls reuse the single ledger row.
 - Wired the test into `.github/workflows/fulfillment-tests.yml` after migration 011 in commit [81aea76](https://github.com/sulistio95/PluQ-I/commit/81aea76c0ff25d0132721fae1680750a9cab0573).
 - This is a real-MySQL integration test for aggregate capacity/idempotency, but **not yet a simultaneous multi-connection contention test**. It has not run successfully because current GitHub Actions runs fail before step logs are available. Do not represent this test as passed. Continue investigating CI runner failure and add a genuine concurrent reservation test before enabling supplier orders.
+
+
+### Concurrent provider-budget integration test — 2026-10-14
+
+- `tests/provider-budget-reservation-mysql-integration.php` now covers aggregate capacity, release, duplicate idempotency, and a simultaneous two-process/two-PDO contention attempt. Two orders each cost Rp300,000 and compete for Rp500,000 usable capacity; only one should reserve successfully.
+- Test is wired into the existing MySQL 8.4 job after migration 011; no workflow change was needed for the expanded script.
+- **Status: not yet executed successfully.** Run [38529583687](https://github.com/sulistio95/PluQ-I/actions/runs/38529583687) failed before steps/logs were recorded. A local PHP syntax check of a process-I/O snippet is not proof of this integration test. Diagnose runner failure and rerun the full workflow before treating provider budget locking as verified. Keep production payments, supplier orders, and deployment disabled.
