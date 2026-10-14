@@ -761,3 +761,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Setelah commit `9c5ae47`, tes integrasi supplier ambigu lulus. Langkah MySQL berikutnya menemukan dua masalah pada `tests/explicit_supplier_failure_integration.sh`: eksekusi PHP dari stdin tidak mendefinisikan konstanta `STDERR`, sehingga assertion sebenarnya tertutupi; dan fixture crash-recovery tidak memiliki reservasi saldo migrasi 011, sehingga safety gate menghentikan alur sebelum cabang pemulihan supplier FAILED.
 - Commit `5a4181d548d7d40a8c825b75a2ec3f2917d51279` menyediakan stream stderr untuk mode stdin dan menambahkan reservation ACTIVE pada fixture pemulihan. Perubahan ini hanya memperbaiki harness/fixture tes; guard produksi tidak diubah. Uji MySQL perlu dijalankan ulang.
 - Uji konkurensi reservasi saldo dan supplier ambigu sudah lulus pada run terbaru, tetapi keseluruhan integrasi belum hijau. Integrasi live tetap nonaktif.
+
+
+## Hasil verifikasi — seluruh workflow fulfillment MySQL lulus (2026-10-15)
+
+- Commit `5a4181d548d7d40a8c825b75a2ec3f2917d51279` lulus ketiga workflow: syntax `38656968511`, PHP quality `38656968476`, dan fulfillment safety `38656968414`.
+- Job MySQL fulfillment selesai sukses. Cakupannya meliputi batas kapasitas/idempotensi/konkurensi/stale balance reservasi provider, tiga percobaan konkurensi checkout, klasifikasi deadlock MySQL, admission rekonsiliasi Duitku serentak, klaim antrean dan callback bersamaan, job duplikat ketika supplier aktif, pemulihan lock usang, lease revocation, review hasil supplier ambigu, kegagalan supplier/refund dan pemulihannya, isolasi pembayaran sandbox, serta pemeriksaan rekonsiliasi read-only.
+- Deadlock reservasi diperbaiki dengan serialisasi melalui lock provider sebelum pencarian reservation yang belum ada. Fixture tes supplier ambigu dan kegagalan eksplisit juga dilengkapi reservation ACTIVE yang diwajibkan migrasi 011; tes stdin PHP kini menyiapkan stream STDERR.
+- Ini merupakan verifikasi CI pada PHP 8.2 dan layanan tes MySQL 8.4, bukan sertifikasi hosting produksi atau gateway live. Pembayaran live, supplier ordering, backup Drive, dan deployment tetap nonaktif sampai staging di shared hosting diverifikasi.
