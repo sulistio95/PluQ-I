@@ -598,3 +598,5 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 
 - Follow-up hardening: `app/services/fulfillment.php` now refuses to call a supplier for paid jobs unless their budget reservation is `ACTIVE`. Missing, released, settled-but-inconsistent, or review reservations move the order to `MANUAL_REVIEW` and block supplier execution. This is a fail-closed guard for old queue rows and partial/misordered deployments.
 - Added migration 011 to the MySQL integration workflow and documented it as required in README setup. Current CI run records still show failure before any steps/logs, so the new tests remain unverified.
+
+- Balance-cache race follow-up: successful supplier purchases now remain counted as `SETTLED` commitments until a provider balance sync started after the settlement updates the cached balance. `provider_sync.php` now records the balance-check start time rather than response-write time, so a slow/stale in-flight balance request cannot automatically make a later supplier spend look reflected in that snapshot. This reduces a timing window but still requires staging tests against provider balance consistency.
