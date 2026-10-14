@@ -546,3 +546,9 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Follow-up source review found the SQL assertion in `tests/duitku_sandbox_no_fulfillment_integration.sh` was embedded in a shell single-quoted `php -r` program while the SQL also contained single-quoted literals and the JSON path `'$.order_id'`. The shell could strip those quotes before PHP received the code, causing malformed SQL and invalidating the intended integration assertion.
 - Replaced the inline `php -r '…'` block with a quoted PHP heredoc (`php <<'PHP'`) so SQL string literals and the JSON path reach PDO unchanged. Change: [acac0af](https://github.com/sulistio95/PluQ-I/commit/acac0afad5b2c735272e0150b9261817e82db4c6).
 - This is a source-level fix; the MySQL integration has not yet executed. Latest Actions failures have missing step summaries, so runtime result remains unknown. Keep production payment, supplier fulfillment and deployment disabled.
+
+
+
+### CI verification after heredoc correction — 2026-10-14
+
+- Workflows for the heredoc fix are now recorded: [PHP quality 38508784612](https://github.com/sulistio95/PluQ-I/actions/runs/38508784612), [fulfillment safety 38508784598](https://github.com/sulistio95/PluQ-I/actions/runs/38508784598), and [syntax checks 38508784571](https://github.com/sulistio95/PluQ-I/actions/runs/38508784571). Failed jobs still report `steps: null`; the fulfillment PHP test job was queued when checked. No application test output is available yet, so do not interpret these as code-test failures or passes.
