@@ -745,3 +745,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - At the time of this note, the newest runs triggered by the handoff update were still queued: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38633370983) and [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/38633370846). Recheck their final state.
 - Audit record updated in [commit `e196df9`](https://github.com/sulistio95/PluQ-I/commit/e196df911e86ffed5eaab413775d8b70bc078db7). The handoff should be considered updated by this commit after this write succeeds.
 - Next: recheck latest Actions, obtain readable logs or local/staging PHP 8.2 + MySQL/MariaDB results, then address evidence-backed failures. Keep all production integrations disabled until verification passes.
+
+
+## Latest continuation note — reconciliation regression CI remains opaque (2026-10-15)
+
+- Regression test `88aec00533beba80d959f6cb08fd45a5167c5f3f` checks concurrent cooldown admission and confirms audit before-status fields are loaded from locked database state, not stale admin-page arguments. It does not call the gateway.
+- Latest workflows observed on prior handoff commit `55af1b0c1c15a0428e63fcb78810281063fa237c` failed: syntax `38633432251`, fulfillment `38633432240`, PHP quality `38633432207`. Job-step responses are empty; downloading logs returns `BlobNotFound`. Do not infer the root cause. Test remains unverified until it runs successfully against MySQL and PHP.
+- Audit note was updated in commit `645b3e6d6990204d80ee280d1395b6c5b65cc677`. Next: inspect Actions on the new handoff commit; if logs remain inaccessible, do static review only and document the limitation. Do not make repeated documentation-only commits just to trigger CI. Do not enable production payment, supplier ordering, or Drive settlement backup.
