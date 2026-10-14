@@ -9,6 +9,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 try {
     require_once PLUQI_ROOT.'/config/database.php';
     require_once PLUQI_ROOT.'/app/services/duitku.php';
+    require_once PLUQI_ROOT.'/app/services/checkout_quote.php';
     $config=duitku_config();
     if (!duitku_verify_callback($config,$_POST)) json_response(['error'=>'invalid_signature'],400);
     $orderId=(string)$_POST['merchantOrderId'];
@@ -64,7 +65,17 @@ try {
     // Duitku's server-to-server callback uses 00 for success and 01 for failed payment.
     $q=$pdo->prepare("UPDATE payment_transactions SET status=:status,gateway_reference=COALESCE(NULLIF(:ref,''),gateway_reference),callback_payload=:payload,callback_received_at=NOW() WHERE id=:id AND status='PENDING'");
     $q->execute(['status'=>$status,'ref'=>(string)($_POST['reference']??''),'payload'=>$safe,'id'=>$tx['id']]);
-    if ($status==='PAID') {
+    if ($status==='PAID' && checkout_sandbox_only_enabled()) {
+        // Sandbox-only orders are payment-flow tests, never real fulfillment requests.
+        // Keep the successful gateway result visible, but force manual review and do not enqueue a supplier job.
+        $q=$pdo->prepare("UPDATE orders
+            SET payment_status='PAID',
+                order_status='MANUAL_REVIEW',
+                paid_at=COALESCE(paid_at,NOW()),
+                last_error='Duitku sandbox payment test recorded; supplier fulfillment intentionally disabled'
+            WHERE id=:id");
+        $q->execute(['id'=>$tx['order_id']]);
+    } elseif ($status==='PAID') {
         $q=$pdo->prepare("UPDATE orders SET payment_status='PAID',order_status='QUEUED',paid_at=NOW() WHERE id=:id AND payment_status='PENDING'");
         $q->execute(['id'=>$tx['order_id']]);
         if ($q->rowCount() === 1) {
