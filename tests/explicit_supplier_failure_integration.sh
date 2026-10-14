@@ -15,6 +15,7 @@ SQL
 
 php <<'PHP'
 <?php
+if (!defined('STDERR')) define('STDERR', fopen('php://stderr', 'wb'));
 require getcwd() . '/app/bootstrap.php';
 require_once PLUQI_ROOT . '/config/database.php';
 require_once PLUQI_ROOT . '/app/services/fulfillment.php';
@@ -72,6 +73,12 @@ if (!$recovery) { fwrite(STDERR, "Crash-window fixture was not created.\\n"); ex
 $pdo->prepare("INSERT INTO supplier_transactions (order_id,provider_id,reference_id,status,attempts)
     VALUES (?,?,?,'FAILED',1)")->execute([
         $recovery['id'], $recovery['provider_id'], 'PQI-crashrefund012345678901234'
+    ]);
+// Migration 011 requires a reservation before the worker can inspect a
+// persisted supplier failure. Seed it so this fixture reaches that recovery path.
+$pdo->prepare("INSERT INTO provider_budget_reservations (order_id,provider_id,amount,status)
+    VALUES (?,?,?,'ACTIVE')")->execute([
+        $recovery['id'], $recovery['provider_id'], 1000
     ]);
 putenv('SUPPLIER_ORDERS_ENABLED=true');
 $outcome = fulfillment_process($pdo, (int)$recovery['id']);
