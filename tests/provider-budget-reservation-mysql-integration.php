@@ -20,6 +20,8 @@ if (($argv[1] ?? '') === '--worker') {
         fwrite(STDERR, "Worker requires order ID and barrier path.\\n");
         exit(2);
     }
+    $readyPath = $barrierPath . '.' . $orderId . '.ready';
+    file_put_contents($readyPath, 'ready', LOCK_EX);
     $deadline = microtime(true) + 15.0;
     while (!is_file($barrierPath) && microtime(true) < $deadline) {
         usleep(10000);
@@ -138,7 +140,18 @@ try {
         $workers[] = ['process' => $process, 'stdout_path' => $stdoutPath, 'stderr_path' => $stderrPath,
             'stdout_handle' => $stdoutHandle, 'stderr_handle' => $stderrHandle];
     }
-    // Release both independent connections from the same barrier.
+    // Wait until both independent workers are actually at the barrier before releasing them.
+    $readyDeadline = microtime(true) + 15.0;
+    $readyCount = 0;
+    do {
+        $readyCount = 0;
+        foreach ([$orderIds[2], $orderIds[3]] as $readyOrderId) {
+            if (is_file($barrierPath . '.' . $readyOrderId . '.ready')) $readyCount++;
+        }
+        if ($readyCount === 2) break;
+        usleep(10000);
+    } while (microtime(true) < $readyDeadline);
+    // Always release any started worker, even if the readiness timeout is reached.
     file_put_contents($barrierPath, 'go');
     foreach ($workers as &$worker) {
         $worker['exit'] = proc_close($worker['process']);
@@ -157,6 +170,10 @@ try {
     }
     unset($worker);
     @unlink($barrierPath);
+    @unlink($barrierPath . '.' . $orderIds[2] . '.ready');
+    @unlink($barrierPath . '.' . $orderIds[3] . '.ready');
+    budget_integration_assert($readyCount === 2,
+        'Concurrent reservation workers did not both reach the barrier before release.');
 
     $admitted = count(array_filter($workers, static fn(array $w): bool => $w['result']['reserved'] === true));
     budget_integration_assert($admitted === 1,
