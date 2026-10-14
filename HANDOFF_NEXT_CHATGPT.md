@@ -533,3 +533,9 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Follow-up hardening: repeated identical signed callbacks that conflict with a terminal payment state now create one audit event per order + stored/incoming state pair, rather than one row per gateway retry. Source: [363d985](https://github.com/sulistio95/PluQ-I/commit/363d98545e872207cf68f95259e4915bfdff47ec).
 - Integration script now sends the conflicting callback twice and asserts one audit row and no extra fulfillment job: [44dd349](https://github.com/sulistio95/PluQ-I/commit/44dd34915ab3679c8a73acce6ccd43a10205e7dc).
 - Not runtime-verified yet. The Actions runs on the prior note commit failed before exposing runner steps/logs. Check fresh runs after this change; keep live payments, supplier orders, and deployment disabled until actual tests pass.
+
+
+### Latest CI check — 2026-10-14
+
+- After repeat-callback audit deduplication, the new runs (fulfillment 38493159152, PHP quality 38493159289, syntax 38493159116) also failed with no usable step logs. This is still an execution visibility blocker, not a proven source-level failure.
+- New callback conflict idempotency coverage is committed but not verified by execution. Inspect repository/account Actions settings or run in a controlled PHP 8.2 + MySQL 8.4 environment before claiming success.
