@@ -487,3 +487,12 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 
 - Fresh runs triggered by the code and note commits again failed before exposing step-level execution: [fulfillment 38493159152](https://github.com/sulistio95/PluQ-I/actions/runs/38493159152), [PHP quality 38493159289](https://github.com/sulistio95/PluQ-I/actions/runs/38493159289), and [syntax 38493159116](https://github.com/sulistio95/PluQ-I/actions/runs/38493159116). Job records have no usable log URL; this does not reveal a PHP assertion or syntax failure.
 - The latest callback audit-deduplication change and repeated-callback regression are committed but remain **unverified at runtime**. The runner/Actions configuration issue remains the next blocking item; do not treat these runs as test results.
+
+
+## Hosting and real-payment readiness review — 2026-10-14
+
+- Added [staging/payment test runbook](staging-payment-test-runbook.md) in commit [4b418ad](https://github.com/sulistio95/PluQ-I/commit/4b418ada3fc5b7c9a0d9423e2942c25d1dda5ac0).
+- Source review confirms `app/services/duitku.php` deliberately rejects any `DUITKU_ENV` other than `sandbox`; therefore a real production Duitku mode is **not implemented** and must not be activated by changing an environment variable alone.
+- Source review also confirms `checkout_payments_enabled()` requires both `CHECKOUT_PAYMENTS_ENABLED=true` and `SUPPLIER_ORDERS_ENABLED=true`. This blocks isolated sandbox checkout testing without enabling the supplier-order gate. The runbook records the required safe separation and acceptance criteria before testing.
+- Latest GitHub Actions job metadata shows runner ID 0 and empty step arrays, with no usable logs. Cause remains unknown; this is not evidence that a particular application test failed. No CI pass is claimed.
+- No live payment/provider request, supplier purchase, or deployment occurred. Keep both feature flags disabled until sandbox-only payment isolation, observable CI, and staging verification are complete.
