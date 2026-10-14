@@ -648,3 +648,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Fixed in [dd980d6](https://github.com/sulistio95/PluQ-I/commit/dd980d6b6d80f2ff82e598f6794e2ec2892178e1): only QUEUED, PROCESSING, and RETRYING paid orders can proceed; MANUAL_REVIEW stays blocked. If an in-flight order lacks its supplier transaction, it is moved to manual review and its capacity reservation is retained as REVIEW, rather than creating a potentially duplicate purchase.
 - Expanded tests/duplicate-queue-processing-integration.php in [43b1bf5](https://github.com/sulistio95/PluQ-I/commit/43b1bf5e14434e39094af6926d632dbce46ea145) to seed an ACTIVE reservation and assert that a reviewed order remains reviewed despite a duplicate job.
 - Verification pending: GitHub Actions was reported as potentially rate/usage-limited by the user; no new test pass is claimed. When Actions becomes available, run PHP lint and the full MySQL fulfillment integration workflow. Keep payment and supplier production flags disabled.
+
+
+### Terminal order stale-job regression coverage — 2026-10-15
+
+- Extended `tests/duplicate-queue-processing-integration.php` in commit [3c401d4](https://github.com/sulistio95/PluQ-I/commit/3c401d404f7237ff469800252b32abb703b4e12e).
+- After the fixture is moved to `MANUAL_REVIEW`, the test now also changes the same paid order through `FAILED`, `REFUND_PENDING`, and `REFUNDED` while retaining an ACTIVE budget reservation and supplier state `REVIEW`. Each stale-job invocation must return `IGNORED` and preserve both order status and supplier review state.
+- This adds source-level regression coverage for the terminal-status allowlist; it does not prove the integration test passed. PHP/MySQL execution remains blocked/unverified until GitHub Actions provides actual runner steps and logs. Do not enable live payments, supplier execution, or deployment.
