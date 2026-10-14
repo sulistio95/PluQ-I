@@ -118,3 +118,10 @@ Production payment mode must be implemented deliberately and separately from san
 - The MySQL integration test now checks that a settled Rp300,000 purchase at the exact same timestamp as the cached balance check blocks a further Rp200,001 commitment against Rp500,000 capacity. It also covers two concurrent Rp300,000 reservations, expecting only one to be admitted.
 - Code commits: [d61a7c8](https://github.com/sulistio95/PluQ-I/commit/d61a7c89be9ca8c21a78495339746af62efd07de), [8fb1105](https://github.com/sulistio95/PluQ-I/commit/8fb110597c22ecf6bbd5e4919bb2cc3dfa676961). Neither test is verified as passing until the MySQL workflow has actual step logs and success.
 - Runner diagnosis: run [38529853413](https://github.com/sulistio95/PluQ-I/actions/runs/38529853413) reports no runner name or steps and log download returns `BlobNotFound`. Current public GitHub status is operational; cause of this repo's failure remains unknown. Local PHP lint could not run because this environment cannot resolve `raw.githubusercontent.com`.
+
+
+### Reservation contention synchronization — 2026-10-14
+
+- Both child PHP processes now announce readiness through per-order marker files and wait on a common barrier. The parent releases them only after both markers exist (or fails after timeout), making the concurrency assertion meaningful rather than merely starting workers in sequence.
+- MySQL workflow step label now explicitly covers capacity, idempotency, concurrency, and stale-balance timestamp boundary. Commits [6025cd6](https://github.com/sulistio95/PluQ-I/commit/6025cd6e7be77d3f6d0dbe2e601297a4b5b1009a), [870daf7](https://github.com/sulistio95/PluQ-I/commit/870daf71c105589a627dd63d8da299c9cd62b899).
+- Staging gate remains closed until the workflow executes with actual runner logs and the MySQL integration assertions pass.
