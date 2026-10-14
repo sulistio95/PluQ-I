@@ -127,3 +127,9 @@ Production payment mode must be implemented deliberately and separately from san
 - Staging gate remains closed until the workflow executes with actual runner logs and the MySQL integration assertions pass.
 
 - Latest verification attempt after the concurrency and timestamp-boundary changes: syntax runs [38533061161](https://github.com/sulistio95/PluQ-I/actions/runs/38533061161) and [38533044011](https://github.com/sulistio95/PluQ-I/actions/runs/38533044011) failed before steps/logs (`steps: null`). PHP-quality and fulfillment runs were still queued. No PHP lint, MySQL assertion, or application test can be considered executed/passed from these runs.
+
+### Stale fulfillment job regression — 2026-10-14
+
+- New guard [dd980d6](https://github.com/sulistio95/PluQ-I/commit/dd980d6b6d80f2ff82e598f6794e2ec2892178e1) blocks paid orders already in MANUAL_REVIEW from being revived by a duplicate queue job. An in-flight order missing its durable supplier transaction now goes to manual review rather than creating a new supplier request.
+- Regression coverage added to tests/duplicate-queue-processing-integration.php in [43b1bf5](https://github.com/sulistio95/PluQ-I/commit/43b1bf5e14434e39094af6926d632dbce46ea145). Add this test to the required verification evidence once the workflow actually runs and passes.
+- GitHub Actions execution is currently unverified; the user's observation is that it may be usage-limited until the next day. No tests are marked passed based on this code change alone. Keep all production payment and supplier flags disabled.
