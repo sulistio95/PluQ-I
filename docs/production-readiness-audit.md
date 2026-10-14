@@ -739,3 +739,11 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Percobaan checkout Git lokal untuk menjalankan PHP terhalang kegagalan resolusi DNS `github.com`; belum ada hasil tes lokal yang dapat diklaim.
 - Review sumber terbaru: helper rekonsiliasi memvalidasi gateway, merchant order ID, nominal, dan status terkini di bawah row lock; menulis audit `STARTED` dan commit sebelum melakukan permintaan jaringan Duitku. Tes struktural dan integrasi konkurensi sudah ada tetapi belum terverifikasi berjalan.
 - Tindakan berikutnya: pulihkan akses runner/log melalui pengaturan atau notifikasi Actions, lalu jalankan lint/quality dan integrasi MySQL. Jangan aktifkan pembayaran live, pemesanan supplier, backup Drive, atau deployment sebelum hasil tes nyata tersedia.
+
+
+## Perbaikan konkurensi reservasi saldo supplier — 2026-10-15
+
+- Commit `e98b4f4eea9af9d14a6863d4d1fd314c18ae6e96` mengubah urutan lock pada `app/services/provider_budget.php`: setelah mengunci order, transaksi kini mengunci baris provider sebelum memeriksa reservation yang belum ada. Pemeriksaan reservasi yang sudah ada tetap dilakukan sebelum menolak provider nonaktif, agar perilaku idempotensi tidak berubah.
+- Log integrasi MySQL yang sebelumnya tidak terbaca kini menunjukkan kegagalan konkret pada uji dua worker: `SQLSTATE[40001]`, kode MySQL `1213`, deadlock saat reservasi serentak. Pemeriksaan key yang belum ada sebelum lock provider memungkinkan gap-lock InnoDB bersaing ketika kedua worker hendak memasukkan reservasi.
+- PHP quality dan syntax lulus pada head dokumentasi sebelumnya (`e546adac`), tetapi uji MySQL memang menemukan cacat konkurensi. Perbaikan sudah committed; hasil integrasi pada commit perbaikan masih menunggu. Jangan menganggap bug selesai sebelum rerun berhasil.
+- Pembayaran live, pemesanan supplier, backup Google Drive, dan deployment tetap nonaktif.
