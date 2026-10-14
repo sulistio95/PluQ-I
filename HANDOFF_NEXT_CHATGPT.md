@@ -611,3 +611,9 @@ Login page and rate-limit helper review found that a successful login clears fai
 - WordPress.com Free is not a general-purpose host for this standalone PHP/MySQL app and does not allow plugin installation/custom PHP runtime. See [code restrictions](https://wordpress.com/support/code/) and [plan features](https://wordpress.com/support/plan-features/). Do not claim PluQ-I has been deployed or tested by publishing a WordPress page; a static demo is not an app-runtime test. No site was created or modified.
 - Fixed literal \\n output in the sandbox callback integration test diagnostics in commit [9309e7e](https://github.com/sulistio95/PluQ-I/commit/9309e7e2a6d8edc11d836a1b7075ecd7787eac89). This is cosmetic; MySQL integration is still unverified.
 - Latest observed Actions jobs fail before any steps (runner_id=0, steps empty), with no usable test logs. Resume by resolving Actions runner availability or arranging an actual PHP/MySQL staging runtime. Keep payments, supplier fulfillment and deployment disabled until test evidence is available.
+
+
+### Latest Actions result — 2026-10-14
+
+- Runs triggered by the sandbox diagnostic cleanup and documentation updates were checked: fulfillment [38509769564](https://github.com/sulistio95/PluQ-I/actions/runs/38509769564), PHP quality [38509769499](https://github.com/sulistio95/PluQ-I/actions/runs/38509769499), and syntax [38509769497](https://github.com/sulistio95/PluQ-I/actions/runs/38509769497). Each failed with job step metadata `null`, so there is no actual test output and no claim of a code-level failure or pass.
+- Runs for the latest handoff commit are queued: [38509776705](https://github.com/sulistio95/PluQ-I/actions/runs/38509776705), [38509776692](https://github.com/sulistio95/PluQ-I/actions/runs/38509776692), [38509776675](https://github.com/sulistio95/PluQ-I/actions/runs/38509776675). Check again later; they are not passing evidence yet.
