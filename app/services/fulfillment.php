@@ -189,6 +189,13 @@ function fulfillment_process(PDO $pdo, int $orderId): string
         if (!$order || $order['payment_status']!=='PAID') { $pdo->commit(); return 'IGNORED'; }
         if ($order['order_status']==='SUCCESS') { $pdo->commit(); return 'DONE'; }
 
+        // Only queue-eligible paid orders may reach a supplier API. A stale/duplicate
+        // job must never revive FAILED, REFUND_PENDING, REFUNDED, or MANUAL_REVIEW.
+        if (!in_array($order['order_status'], ['QUEUED','PROCESSING','RETRYING'], true)) {
+            $pdo->commit();
+            return $order['order_status'] === 'MANUAL_REVIEW' ? 'REVIEW' : 'IGNORED';
+        }
+
         // Never execute supplier API calls for legacy/unreserved jobs or a reservation
         // already marked for reconciliation. This protects deployments where old queue rows
         // may exist before migration 011 is applied and reviewed.
@@ -208,6 +215,16 @@ function fulfillment_process(PDO $pdo, int $orderId): string
         $reference='PQI-'.$order['public_id'];
         $q=$pdo->prepare("SELECT *, (updated_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)) AS is_recent FROM supplier_transactions WHERE order_id=:id LIMIT 1 FOR UPDATE");
         $q->execute(['id'=>$orderId]); $supplier=$q->fetch() ?: null;
+        if (!$supplier && $order['order_status'] !== 'QUEUED') {
+            // A PROCESSING/RETRYING order without its durable supplier transaction is
+            // inconsistent. Recreating it could repeat a purchase after a partial/manual
+            // repair, so stop for reconciliation instead of submitting a new request.
+            $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Supplier transaction missing for an in-flight order; automatic submission blocked' WHERE id=:id AND payment_status='PAID'")
+                ->execute(['id'=>$orderId]);
+            provider_budget_resolve($pdo, $orderId, 'REVIEW', 'Supplier transaction missing for an in-flight order');
+            $pdo->commit();
+            return 'REVIEW';
+        }
         if (!$supplier) {
             $q=$pdo->prepare("INSERT INTO supplier_transactions (order_id,provider_id,reference_id,status,attempts) VALUES (:oid,:pid,:ref,'PROCESSING',1)");
             $q->execute(['oid'=>$orderId,'pid'=>$order['provider_id'],'ref'=>$reference]);
