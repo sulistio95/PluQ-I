@@ -697,3 +697,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - An in-flight PROCESSING/RETRYING order without a durable supplier transaction is moved to MANUAL_REVIEW, with its budget reservation resolved to REVIEW, instead of creating a fresh supplier request that might double-purchase.
 - Regression test expanded in [43b1bf5](https://github.com/sulistio95/PluQ-I/commit/43b1bf5e14434e39094af6926d632dbce46ea145); it now seeds the reservation and verifies a duplicate job does not revive a reviewed order. Cleanup deletes the reservation before the order to respect the foreign key.
 - GitHub Actions may be usage-limited until the next reset per user's report. Do not claim tests passed. Resume by checking whether Actions can assign runners, then run PHP lint, PHP unit tests, and MySQL 8.4 integration tests. Do not change the separate PluQ repository or enable live operations.
+
+
+### Latest work — terminal order stale-job regression (2026-10-15)
+
+- Commit [3c401d4](https://github.com/sulistio95/PluQ-I/commit/3c401d404f7237ff469800252b32abb703b4e12e) extends `tests/duplicate-queue-processing-integration.php`: besides the existing fresh/stale PROCESSING and MANUAL_REVIEW cases, it now checks that stale queue jobs cannot revive `FAILED`, `REFUND_PENDING`, or `REFUNDED` orders when the budget reservation remains ACTIVE. Each call must return `IGNORED`, and the supplier row must remain `REVIEW`.
+- This is test coverage added to the repository, not a passing runtime result. The latest known Actions problem is failure before runner steps/logs; check current run state before claiming any test passed.
+- Next: continue source audit of payment/refund state transitions and admin security; when Actions is available, run PHP lint/quality and MySQL fulfillment integration tests including this regression. Keep checkout payments, supplier ordering, settlement backup, and deployment disabled pending staging evidence.
