@@ -526,3 +526,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Added fail-safe reconciliation behavior in commit [9008996](https://github.com/sulistio95/PluQ-I/commit/9008996d5000da74b1fdd0dc0ed0006586582b26). If a signed callback contradicts a payment transaction's already-terminal state, the transaction's payment status is preserved, the order is flagged \`MANUAL_REVIEW\`, and \`audit_logs\` captures both states plus callback metadata. No new fulfillment job is enqueued.
 - Added regression assertions in \`tests/duitku_callback_integration.sh\` (commit [8454a51](https://github.com/sulistio95/PluQ-I/commit/8454a51937c35ca4616403ae51b8b187d174f5cc)).
 - **Not runtime-verified yet**: current GitHub Actions jobs still fail before exposing step summaries/logs. After the runner issue is resolved, execute the full MySQL integration workflow and verify the new conflict case. No live gateway/provider calls or deployment; keep live payment/supplier execution disabled.
+
+
+## Repeat-callback audit deduplication — 2026-10-14
+
+- Follow-up hardening: repeated identical signed callbacks that conflict with a terminal payment state now create one audit event per order + stored/incoming state pair, rather than one row per gateway retry. Source: [363d985](https://github.com/sulistio95/PluQ-I/commit/363d98545e872207cf68f95259e4915bfdff47ec).
+- Integration script now sends the conflicting callback twice and asserts one audit row and no extra fulfillment job: [44dd349](https://github.com/sulistio95/PluQ-I/commit/44dd34915ab3679c8a73acce6ccd43a10205e7dc).
+- Not runtime-verified yet. The Actions runs on the prior note commit failed before exposing runner steps/logs. Check fresh runs after this change; keep live payments, supplier orders, and deployment disabled until actual tests pass.
