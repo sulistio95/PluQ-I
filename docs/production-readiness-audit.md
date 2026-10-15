@@ -837,3 +837,12 @@ The shared-hosting preflight previously did not require migration `011_provider_
 
 - **Verification:** CI pending for this change. The preflight has not been executed against a real shared-hosting database.
 - **Production blockers remain:** validate all migrations on a clean target MySQL/MariaDB version, test scheduled queue runs and recovery on the actual host, and keep payments, supplier ordering, and Drive settlement disabled until staging checks pass.
+
+
+## 2026-10-15 — Paginated Google Drive settlement lookup
+
+Commit `29c4ba614bf3950fbd9bb518033029cf53fbcceb` updates `settlement_find_drive_file()` to follow `nextPageToken` and search all matching Drive result pages, rather than inspecting only the first 20 entries. The query remains constrained to the configured folder and matching settlement-period metadata. This reduces the risk of creating a duplicate spreadsheet when the correct existing export is not in the first result page.
+
+- **Verification:** CI pending for this commit; no real Google Drive/OAuth calls performed.
+- **Previously verified:** all three CI workflows passed for preflight schema guard commit `bb025e0539f63916ad87d29dd3fcd570e30a9156c`.
+- **Production gates unchanged:** test on the target hosting environment and validate Google Drive permissions before enabling settlement backup. Payment callbacks and supplier execution remain disabled.
