@@ -104,11 +104,11 @@ try {
     budget_integration_assert($first['reserved'] === true, 'First reservation should be admitted.');
     $pdo->commit();
 
-    // Catalog must hide the offer when its own cost plus existing commitments
+    // Catalog must omit the offer when its own cost plus existing commitments
     // exceed usable capacity, rather than showing a product checkout cannot reserve.
     $catalogRows = catalog_products($pdo, 'budget-test-' . $token);
-    budget_integration_assert(count($catalogRows) === 1 && $catalogRows[0]['is_available'] === false,
-        'Catalog advertised an offer whose cost exceeds remaining provider budget.');
+    budget_integration_assert(count($catalogRows) === 0,
+        'Catalog exposed an offer whose cost exceeds remaining provider budget.');
 
     $quoteRejected = false;
     try {
