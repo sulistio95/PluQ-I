@@ -892,3 +892,11 @@ Audit of `bin/worker-queue.php` identified a recovery-state conflict: if a stale
 - Code commit `479788514539cd77b214a5bed1d602e71f7f54e9` only recovers supplier success automatically when the paid order is still `QUEUED`, `PROCESSING`, or `RETRYING`; an already-successful order is handled idempotently. Both success-recovery paths resolve the reservation to `SETTLED` in the same transaction as stale queue recovery. An order already in `MANUAL_REVIEW` stays under reconciliation and its reservation is retained as `REVIEW`.
 - Regression coverage in `tests/queue_recovery_integration.sh` was added in commit `442527632c2a4bfa999d47ea5303eace52203ab0`: successful in-flight recovery must end with order `SUCCESS`, reservation `SETTLED`, and queue job `DONE`; payment-conflict `MANUAL_REVIEW` must remain unchanged with reservation `REVIEW` and queue job `FAILED`. The prior ambiguous stale supplier test remains.
 - **Verification pending:** inspect CI for the code, test, and note commits. No live API was called. Shared-hosting staging, MariaDB compatibility, real cron behavior, and Drive permissions are still unverified. Keep payments, supplier ordering, settlement backup, and deployment disabled.
+
+
+## 2026-10-15 — Queue recovery test harness correction
+
+The first CI run for the new stale queue recovery regression assertions failed because the SQL JSON path `'$.order_id'` was placed inside a shell single-quoted `php -r` program. The shell removed the quotes before PHP/MySQL execution, producing `Unknown column '$.order_id'`. The PHP quality and syntax workflows passed; the MySQL job stopped at the affected assertion, so the recovery regression itself was not yet verified.
+
+- Test-harness-only fix: commit `eb7e25fa4dd8540fdba02bc94403980c7d65909f` constructs the JSON path using `CHAR(...)`, avoiding embedded single quotes while preserving the same payload lookup.
+- **Verification pending:** rerun CI on this test fix and the latest notes commit. No production behavior changed in this follow-up. Keep all live integrations and deployment disabled.
