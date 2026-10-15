@@ -813,3 +813,9 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Ditemukan inkonsistensi status pada pemulihan job: order dan supplier dapat masuk `MANUAL_REVIEW`/`REVIEW`, sedangkan reservasi kapasitas terkait tetap `ACTIVE`. Ini tidak melepaskan kapasitas dan karena itu konservatif, tetapi status ledger tidak menjelaskan bahwa reservasi menunggu rekonsiliasi.
 - Perbaikan: `bin/worker-queue.php` dan `app/services/queue_worker.php` sekarang menandai reservasi yang ada sebagai `REVIEW` dalam transaksi yang sama ketika order paid dipindahkan ke manual review. Status `REVIEW` tetap dihitung sebagai komitmen kapasitas; tidak ada saldo yang dilepas otomatis.
 - `tests/queue_recovery_integration.sh` menyiapkan reservasi fixture dan memverifikasi ledger berakhir `REVIEW`. Hasil CI perubahan ini masih menunggu. Pembayaran live, pemesanan supplier, Google Drive backup, dan deployment tetap nonaktif.
+
+
+### Hasil CI perbaikan reservasi REVIEW — 2026-10-15
+
+- Semua workflow pada commit `813f6dea8668162f1a817e00c631d9aeb1249a16` selesai sukses: [fulfillment safety dan MySQL](https://github.com/sulistio95/PluQ-I/actions/runs/38660874079), [syntax PHP/JavaScript](https://github.com/sulistio95/PluQ-I/actions/runs/38660874054), serta [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38660874040).
+- Pengujian queue recovery kini memverifikasi order masuk `MANUAL_REVIEW`, supplier masuk `REVIEW`, job queue menjadi `FAILED`, dan reservasi budget ikut `REVIEW` sehingga kapasitas tidak dilepas saat hasil supplier masih belum pasti.
