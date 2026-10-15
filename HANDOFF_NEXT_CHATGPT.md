@@ -865,3 +865,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Reason: the prior Drive query could find a matching tagged spreadsheet anywhere in the connected Drive and incorrectly mark it as this site's successful backup, even if it was outside the admin-configured folder.
 - This is a source-level safety fix only. CI results for this commit are pending; Google OAuth/Drive calls have not been executed, and no backup integration has been enabled.
 - Next: inspect CI result; then continue review of monthly settlement retry behavior and shared-hosting queue/preflight. Do not enable live payment, supplier orders, Drive backup, or deployment.
+
+
+## Progress update — 2026-10-15: preflight checks reservation schema
+
+- Commit `bb025e0539f63916ad87d29dd3fcd570e30a9156c` updates `bin/preflight.php` to require migration `011_provider_budget_reservations` and table `provider_budget_reservations` for all shared-hosting deployments. Queue/checkout budget safety relies on this table, so a preflight must not pass if it is absent.
+- CI for the source change is pending. This is a code change and static preflight coverage; it has not been run against the user's hosting database.
+- Also in this session, commit `c57c494b398aa6724f99bec028c1c6db476879ff` scoped monthly spreadsheet lookup to the configured Drive folder; syntax and PHP quality checks passed on that code commit, fulfillment safety test was still running at last poll.
