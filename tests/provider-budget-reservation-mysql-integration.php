@@ -121,9 +121,9 @@ try {
         'Capacity should become available after the first reservation is released.');
     $pdo->commit();
 
-    $catalogAfterRelease = catalog_products($pdo, 'budget-test-' . $token);
-    budget_integration_assert(count($catalogAfterRelease) === 1 && $catalogAfterRelease[0]['is_available'] === true,
-        'Catalog did not restore offer availability after the reservation was released.');
+    $catalogWithSecondReservation = catalog_products($pdo, 'budget-test-' . $token);
+    budget_integration_assert(count($catalogWithSecondReservation) === 1 && $catalogWithSecondReservation[0]['is_available'] === false,
+        'Catalog advertised the offer while the second reservation still consumes the remaining capacity.');
 
     // Repeating the same reservation must be idempotent and must not create a second row.
     $pdo->beginTransaction();
@@ -140,6 +140,11 @@ try {
     $pdo->beginTransaction();
     provider_budget_resolve($pdo, $orderIds[1], 'RELEASED', 'Prepare concurrent reservation test');
     $pdo->commit();
+
+    $catalogAfterAllReservationsReleased = catalog_products($pdo, 'budget-test-' . $token);
+    budget_integration_assert(count($catalogAfterAllReservationsReleased) === 1
+        && $catalogAfterAllReservationsReleased[0]['is_available'] === true,
+        'Catalog did not restore offer availability after all reservations were released.');
 
     $barrierPath = sys_get_temp_dir() . '/pluq-budget-barrier-' . $token;
     @unlink($barrierPath);
