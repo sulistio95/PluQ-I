@@ -822,3 +822,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - The first MySQL run after adding catalog assertions correctly rejected the first over-capacity offer, but the test's later expectation was wrong: after releasing the Rp300,000 reservation, it immediately created a Rp200,001 reservation, leaving only Rp299,999 of Rp500,000 usable capacity. The catalog correctly kept the Rp300,000 offer unavailable.
 - Commit `7114ede8965d47fe6f8e600167527102fd0f8002` corrects the integration sequence: assert unavailable while the Rp200,001 reservation remains active, then assert availability returns only after all relevant reservations are released. This is a test expectation correction; catalog and checkout implementation were not relaxed.
 - The new MySQL test must rerun on this commit before its status can be marked green. Syntax and PHP quality workflows had passed for the prior implementation head; the earlier MySQL failure was the test's incorrect expectation, not a runtime SQL error.
+
+
+## Verifikasi lanjutan kapasitas katalog/checkout — 2026-10-15
+
+- Setelah catatan sebelumnya, ketiga workflow pada head dokumentasi `a59d11e242f3c8c9de291b5a53b3c50f1ac5eceb` selesai sukses: syntax [38658731086](https://github.com/sulistio95/PluQ-I/actions/runs/38658731086), PHP quality [38658731054](https://github.com/sulistio95/PluQ-I/actions/runs/38658731054), dan fulfillment safety termasuk integrasi MySQL [38658731101](https://github.com/sulistio95/PluQ-I/actions/runs/38658731101).
+- Ini memverifikasi rangkaian terbaru: reservasi aktif harus mengurangi kapasitas yang ditampilkan katalog dan dipakai checkout quote; penawaran kembali tersedia setelah komitmen terkait dilepas. Koreksi fixture/urutan assertion pada commit `7114ede` kini terlewati oleh workflow fulfillment yang hijau.
+- CI menggunakan PHP 8.2 dan MySQL 8.4; bukan uji pada paket shared hosting yang dipilih, gateway Duitku live, API supplier live, atau Google Drive. Seluruh integrasi eksternal dan deployment tetap nonaktif.
+- Lanjutkan audit sumber pada jalur checkout, pemetaan akun game, dan admin; setiap perubahan substantif wajib dicatat di file ini dan `docs/production-readiness-audit.md`.
