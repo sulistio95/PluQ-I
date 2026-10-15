@@ -103,6 +103,48 @@ if ((int)$q->fetchColumn() !== 1) { fwrite(STDERR, "Expected exactly one fulfill
 echo "Duitku MySQL callback idempotency integration test passed.\\n";
 '
 
+# A contradictory callback after PAID must preserve the payment, stop auto-fulfillment,
+# and move an active provider reservation into REVIEW rather than leave it ACTIVE.
+curl --fail --silent --show-error \
+  --data-urlencode "merchantCode=${merchant}" \
+  --data-urlencode "amount=${amount}" \
+  --data-urlencode "merchantOrderId=${order_id}" \
+  --data-urlencode "resultCode=01" \
+  --data-urlencode "reference=INTEGRATION-CONFLICTING-FAILURE" \
+  --data-urlencode "signature=${signature}" \
+  http://127.0.0.1:8080/duitku-callback.php >/tmp/pluq-callback-paid-conflict.json
+
+php -r '
+$pdo = new PDO(
+    sprintf("mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4", getenv("DB_HOST"), getenv("DB_PORT"), getenv("DB_DATABASE")),
+    getenv("DB_USERNAME"), getenv("DB_PASSWORD"),
+    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+);
+$orderId = "abcdef0123456789abcdef0123";
+$q = $pdo->prepare("SELECT status FROM payment_transactions WHERE merchant_order_id = ?");
+$q->execute([$orderId]);
+if ($q->fetchColumn() !== "PAID") {
+    fwrite(STDERR, "Conflicting callback must preserve terminal PAID payment.\\n"); exit(1);
+}
+$q = $pdo->prepare("SELECT order_status, last_error FROM orders WHERE public_id = ?");
+$q->execute([$orderId]);
+$row = $q->fetch(PDO::FETCH_ASSOC);
+if (!$row || $row["order_status"] !== "MANUAL_REVIEW"
+    || !str_contains((string)$row["last_error"], "Conflicting terminal Duitku callback")) {
+    fwrite(STDERR, "Conflicting callback must move paid order to manual review.\\n"); exit(1);
+}
+$q = $pdo->prepare("SELECT r.status FROM provider_budget_reservations r JOIN orders o ON o.id=r.order_id WHERE o.public_id = ?");
+$q->execute([$orderId]);
+if ($q->fetchColumn() !== "REVIEW") {
+    fwrite(STDERR, "Conflicting callback must retain active provider reservation in REVIEW.\\n"); exit(1);
+}
+$q = $pdo->query("SELECT COUNT(*) FROM job_queue WHERE job_type = " . $pdo->quote("FULFILL_ORDER"));
+if ((int)$q->fetchColumn() !== 1) {
+    fwrite(STDERR, "Conflicting callback must not enqueue a duplicate fulfillment job.\\n"); exit(1);
+}
+echo "Duitku conflicting callback reservation review integration test passed.\\n";
+'
+
 
 # A definitive failure must close both payment and still-pending order states.
 failed_order_id="fedcba9876543210fedcba9876"
