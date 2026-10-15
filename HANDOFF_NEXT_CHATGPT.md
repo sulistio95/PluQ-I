@@ -857,3 +857,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 
 - Ketiga workflow pada commit `813f6dea8668162f1a817e00c631d9aeb1249a16` sukses: [fulfillment safety/MySQL](https://github.com/sulistio95/PluQ-I/actions/runs/38660874079), [syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38660874054), dan [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38660874040).
 - Regresi pemulihan queue memverifikasi reservasi budget yang terkait dengan order stale juga berstatus `REVIEW`; kapasitas tetap dikunci sampai rekonsiliasi.
+
+
+## Progress update — 2026-10-15: monthly settlement Drive scope
+
+- Commit `c57c494b398aa6724f99bec028c1c6db476879ff` updates `bin/settle-monthly.php` so the idempotency lookup for an existing monthly spreadsheet is constrained to the configured destination folder as well as the settlement period/name and non-trashed status.
+- Reason: the prior Drive query could find a matching tagged spreadsheet anywhere in the connected Drive and incorrectly mark it as this site's successful backup, even if it was outside the admin-configured folder.
+- This is a source-level safety fix only. CI results for this commit are pending; Google OAuth/Drive calls have not been executed, and no backup integration has been enabled.
+- Next: inspect CI result; then continue review of monthly settlement retry behavior and shared-hosting queue/preflight. Do not enable live payment, supplier orders, Drive backup, or deployment.
