@@ -900,3 +900,8 @@ The first CI run for the new stale queue recovery regression assertions failed b
 
 - Test-harness-only fix: commit `eb7e25fa4dd8540fdba02bc94403980c7d65909f` constructs the JSON path using `CHAR(...)`, avoiding embedded single quotes while preserving the same payload lookup.
 - **Verification pending:** rerun CI on this test fix and the latest notes commit. No production behavior changed in this follow-up. Keep all live integrations and deployment disabled.
+
+
+## 2026-10-15 — MySQL JSON path charset correction for queue recovery test
+
+After the shell quoting fix, CI reached the queue-recovery assertions but MySQL rejected the generated JSON path because `CHAR(...)` returns a binary string. Test-only commit `53b2af99241193fbaacd3785352f5d457963770a` now casts the path to `CHAR CHARACTER SET utf8mb4`, which should provide the string charset expected by JSON functions. The MySQL integration must be rerun before the new assertions are considered passing; production logic remains unchanged by this harness correction.
