@@ -806,3 +806,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Ketiga workflow pada commit `59297d1a892a491c025f6614aba3fee52095370c` selesai `success`: [syntax PHP/JavaScript](https://github.com/sulistio95/PluQ-I/actions/runs/38660082026), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38660081870), dan [fulfillment safety/MySQL integration](https://github.com/sulistio95/PluQ-I/actions/runs/38660081985).
 - Tes MySQL baru untuk `checkout_quote()` ikut dijalankan: quote harus ditolak jika biaya produk plus komitmen melampaui kapasitas, dan harus kembali berhasil setelah reservasi fixture dilepas. Bukti ini berlaku untuk lingkungan CI PHP 8.2/MySQL 8.4, bukan untuk MariaDB atau hosting target yang belum dipilih.
 - Pembayaran live, supplier ordering, Google Drive backup, dan deployment tetap nonaktif. Tahap audit berikutnya difokuskan pada settlement serta preflight shared hosting.
+
+
+## Konsistensi ledger kapasitas saat queue masuk manual review — 2026-10-15
+
+- Ditemukan inkonsistensi status pada pemulihan job: order dan supplier dapat masuk `MANUAL_REVIEW`/`REVIEW`, sedangkan reservasi kapasitas terkait tetap `ACTIVE`. Ini tidak melepaskan kapasitas dan karena itu konservatif, tetapi status ledger tidak menjelaskan bahwa reservasi menunggu rekonsiliasi.
+- Perbaikan: `bin/worker-queue.php` dan `app/services/queue_worker.php` sekarang menandai reservasi yang ada sebagai `REVIEW` dalam transaksi yang sama ketika order paid dipindahkan ke manual review. Status `REVIEW` tetap dihitung sebagai komitmen kapasitas; tidak ada saldo yang dilepas otomatis.
+- `tests/queue_recovery_integration.sh` menyiapkan reservasi fixture dan memverifikasi ledger berakhir `REVIEW`. Hasil CI perubahan ini masih menunggu. Pembayaran live, pemesanan supplier, Google Drive backup, dan deployment tetap nonaktif.
