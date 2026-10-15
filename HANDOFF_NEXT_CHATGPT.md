@@ -939,3 +939,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - The latest MySQL regression run advanced through the queue recovery setup and found another real state-integrity issue: the order stayed `MANUAL_REVIEW`, but stale-lock recovery replaced its specific `last_error` (the payment callback conflict reason) with a generic queue timeout message. That would obscure the original reason for human reconciliation.
 - Commit `fbc82eb00f14dfa9e2d539a15d25784d552f8f70` adds an `order_status<>'MANUAL_REVIEW'` guard to the stale recovery update, so an existing review state and its reason are preserved. Reservation capacity still moves/remains in `REVIEW`, and the stale queue job remains failed.
 - **Verification pending:** rerun the MySQL integration workflow on this code change and the newest notes. No live APIs were called; production gates remain disabled.
+
+
+## Verification result — stale queue recovery safety regression (2026-10-15)
+
+- The final implementation/test commit `fbc82eb00f14dfa9e2d539a15d25784d552f8f70` passed all three workflows: PHP quality `38671179140`, PHP/JavaScript syntax `38671179042`, and fulfillment/MySQL integration `38671179031`.
+- The latest handoff/audit documentation head `f9c908653cd6c2c177fa528a847e043311ef2e26` also passed syntax `38671219531`, PHP quality `38671219421`, and fulfillment/MySQL integration `38671219437`.
+- The MySQL recovery regression now verifies: ambiguous stale requests become manual review with reservation `REVIEW`; supplier success recovers an in-flight order to `SUCCESS`, reservation `SETTLED`, and job `DONE`; supplier success cannot clear an existing payment-conflict `MANUAL_REVIEW` or its specific error reason, and its reservation remains `REVIEW` while the stale job ends `FAILED`.
+- Evidence is limited to GitHub Actions PHP 8.2/MySQL 8.4 tests. Live supplier/payment APIs, shared-hosting MariaDB/cron, Drive OAuth/permissions, and deployment remain unverified and disabled.
