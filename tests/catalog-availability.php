@@ -4,16 +4,16 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/app/services/catalog.php';
 
 $unavailableVipay = [
-    ['id' => 21, 'name' => '86 Diamonds', 'selling_price' => 15000, 'is_available' => 0, 'provider' => 'VIPAY'],
+    ['id' => 21, 'name' => '86 Diamonds', 'base_price' => 14000, 'selling_price' => 15000, 'is_available' => 0, 'provider' => 'VIPAY'],
 ];
 $availableDigiAndZeroBalanceVipay = [
     ['id' => 21, 'name' => '86 Diamonds', 'selling_price' => 15000, 'is_available' => 0, 'provider' => 'VIPAY'],
-    ['id' => 11, 'name' => '86 Diamonds', 'selling_price' => 16000, 'is_available' => 1, 'provider' => 'DIGI'],
+    ['id' => 11, 'name' => '86 Diamonds', 'base_price' => 15000, 'selling_price' => 16000, 'is_available' => 1, 'provider' => 'DIGI'],
 ];
 $twoAvailableOffers = [
     ['id' => 11, 'name' => '86 Diamonds', 'selling_price' => 16000, 'is_available' => 1, 'provider' => 'DIGI'],
     ['id' => 21, 'name' => '86 Diamonds', 'selling_price' => 15000, 'is_available' => 1, 'provider' => 'VIPAY'],
-    ['id' => 31, 'name' => 'Weekly Pass', 'selling_price' => 28000, 'is_available' => 1, 'provider' => 'DIGI'],
+    ['id' => 31, 'name' => 'Weekly Pass', 'base_price' => 27000, 'selling_price' => 28000, 'is_available' => 1, 'provider' => 'DIGI'],
 ];
 $checks = [
     'hide product whose only supplier offer is unavailable' =>
