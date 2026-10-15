@@ -946,3 +946,13 @@ The previous runbook statement that sandbox checkout could not be isolated was s
 Source review confirms that PluQ-I has no committed or active hosting cron configuration: the schedule is set in the selected provider's control panel after deployment. `config/app.php` defines bounded worker settings, not a cron interval: batch size defaults to 5 (range 1–20) and runtime defaults to 20 seconds (range 5–50). `bin/worker-queue.php` is the queue processor; `bin/worker.php` is read-only diagnostic; `bin/queue-health.php` is read-only and CLI-only. Prefer PHP CLI cron; an HTTP invocation requires `X-Scheduler-Token`.
 
 The README was updated in commit `9c25a7732630897f0a0346b48b40a0749b656ee2` to document a Nimbus-compatible queue example of every 6 minutes (`*/6 * * * *`) and a 15-minute alternative for stricter plans. Catalog sync, balance sync, and monthly Drive settlement are described as separate optional jobs and must not be enabled until provider limits, credentials, migrations, OAuth, and staging checks are confirmed. No PHP code or production defaults changed. No hosting has been purchased, so real cron execution, CLI paths, runtime limits, and non-overlap remain unverified. Payment, supplier orders, Drive backup, and deployment remain disabled.
+
+
+## 2026-10-15 — Customer catalog hides unavailable supplier offers
+
+Source review found that the customer catalog computed provider balance eligibility, but still returned unavailable products as visible cards marked “Tidak tersedia saat ini” when no equivalent available offer existed. That could expose VIPayment-only offers while VIPayment had zero usable balance.
+
+- `app/services/catalog.php` now groups equivalent supplier offers, prefers eligible offers, and removes groups with no eligible offer before returning data to the storefront. Thus a zero-balance/ineligible VIPayment offer is not shown; an eligible Digiflazz offer remains visible. If both are eligible, the existing cheapest-offer selection remains automatic.
+- Added `tests/catalog-availability.php` with regression checks for unavailable-only offers, Digiflazz available + VIPayment unavailable, cheapest offer when both are eligible, and other available products. Added the test to `.github/workflows/php-quality.yml`.
+- `public/assets/catalog.js` now uses a clearer empty-state message when a game has no currently available products.
+- **CI for this change set is pending verification.** This is source-level and unit-test coverage, not a live supplier API or hosting test. Payments, supplier orders, Drive backup, and deployment remain disabled.
