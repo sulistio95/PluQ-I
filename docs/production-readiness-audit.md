@@ -855,3 +855,13 @@ Commit `5de0c6cd837832ceaeb033c46ba7aaadea83b12f` mengubah jalur retry `bin/sett
 - **Alasan:** mencegah status database `UPLOADED` menjadi bukti sukses yang kedaluwarsa setelah file Drive dihapus/dipindahkan.
 - **Verifikasi:** ketiga workflow CI pada commit kode `5de0c6cd837832ceaeb033c46ba7aaadea83b12f` sukses: [syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38665307769), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38665307770), dan [fulfillment safety/MySQL](https://github.com/sulistio95/PluQ-I/actions/runs/38665307764). Pembaruan catatan pada SHA `1d357403` juga melewati ketiga workflow. Belum dilakukan akses OAuth/Drive live maupun uji pada hosting target.
 - **Gate produksi:** backup settlement, pembayaran, supplier ordering, dan deployment tetap nonaktif sampai pengujian staging serta izin Drive diverifikasi.
+
+
+## 2026-10-15 — Audit queue worker, cron, dan preflight
+
+Source review pada `bin/worker-queue.php` mengonfirmasi pemrosesan dibatasi oleh ukuran batch dan batas runtime konfigurasi; job diklaim dalam transaksi dengan `FOR UPDATE` dan finalisasi memeriksa token lock. Lock yang kedaluwarsa tidak diretry otomatis: hasil supplier bisa ambigu, sehingga order paid perlu rekonsiliasi manual dan reservasi kapasitas tetap ditahan sebagai `REVIEW`. Endpoint HTTP memerlukan `X-Scheduler-Token`; worker juga tetap nonaktif saat supplier ordering dimatikan. `bin/queue-health.php` menyediakan pemeriksaan read-only untuk backlog, kegagalan, dan lock basi.
+
+- **Kebutuhan validasi hosting:** pastikan cron provider mendukung custom header untuk endpoint HTTP atau jalankan worker melalui CLI bila paket hosting mengizinkan proses PHP CLI. Uji runtime/timeout dan frekuensi cron pada paket aktual; source review bukan bukti cron hosting berjalan.
+- **Preflight:** memeriksa PHP 8.2+, ekstensi, HTTPS, secret strength tanpa menampilkan nilai, APP_DEBUG, toggle integrasi, DB, tabel dan migrasi inti. Migrasi/tabel settlement hanya diwajibkan saat settlement backup diaktifkan. Belum diuji terhadap database/versi MariaDB target.
+- **CI pemulihan settlement:** seluruh tiga workflow untuk kode commit `5de0c6cd837832ceaeb033c46ba7aaadea83b12f` sukses (runs 38665307769, 38665307770, 38665307764). CI atas pembaruan catatan terbaru masih berjalan saat audit ini ditulis.
+- **Gate produksi:** jangan aktifkan pembayaran, supplier ordering, Drive backup atau deployment sebelum staging, cron, MariaDB, dan akses eksternal diuji.
