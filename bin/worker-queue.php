@@ -65,6 +65,7 @@ try {
                     ->execute(['error'=>$queueMessage,'id'=>$orderId]);
                 $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error=:error WHERE order_id=:id AND status IN ('PENDING','PROCESSING','RETRYING')")
                     ->execute(['error'=>$queueMessage,'id'=>$orderId]);
+                provider_budget_resolve($pdo, $orderId, 'REVIEW', $queueMessage);
             }
         }
 
