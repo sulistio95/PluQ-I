@@ -973,3 +973,12 @@ Login page and rate-limit helper review found that a successful login clears fai
 - No production PHP behavior or environment defaults were changed. Keep payment, supplier ordering, and Drive backup disabled. Current defaults remain batch 5 and max runtime 20 seconds; no reason to increase them before measuring the target host.
 - Before deploying, obtain the host's exact PHP CLI executable path and absolute project path; do not copy placeholder paths. Verify cron runtime limits, non-overlap, output logging, and queue health on the real account. No shared-hosting cron has been run yet.
 - CI should be checked for the README and follow-up note commits; documentation changes are not evidence of live hosting validation.
+
+
+## 2026-10-15 — Sembunyikan produk dari supplier yang tidak tersedia
+
+- Audit katalog menemukan bahwa `catalog_products()` sudah menghitung kelayakan saldo dan memilih penawaran yang tersedia, tetapi jika semua penawaran untuk suatu nominal tidak tersedia, baris itu tetap dikirim ke frontend sebagai kartu “Tidak tersedia saat ini”. Ini bisa membuat produk VIPayment terlihat saat saldo VIPayment Rp0.
+- Perubahan pada `app/services/catalog.php` (commit `3d305880ad76527387ab37dd76b5fa36665ee91e`): penawaran dengan saldo/status yang tidak memenuhi syarat sekarang dikeluarkan dari katalog pelanggan setelah pengelompokan penawaran setara. Jika Digiflazz tersedia dan VIPayment tidak, hanya penawaran Digiflazz yang memenuhi syarat yang dikirim. Jika dua supplier sama-sama tersedia, pemilihan harga termurah tetap otomatis.
+- Tes regresi baru `tests/catalog-availability.php` memeriksa VIPayment saja tidak tersedia, Digiflazz tersedia + VIPayment Rp0, pemilihan termurah ketika keduanya tersedia, dan produk lain yang masih tersedia. Tes ditambahkan ke workflow PHP quality.
+- Frontend `public/assets/catalog.js` sekarang menjelaskan bahwa tidak ada produk yang tersedia saat ini ketika daftar hasil kosong (commit `0bfa998be60aea4dfc270ea48c1470bd84cb08cc`).
+- **Verifikasi CI untuk rangkaian perubahan ini masih harus diperiksa.** Tidak ada panggilan API supplier atau transaksi nyata. Perubahan ini tidak mengaktifkan pembayaran, pemesanan supplier, atau backup Google Drive.
