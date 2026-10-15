@@ -829,3 +829,11 @@ Source review found `settlement_find_drive_file()` searched Drive globally by se
 - **Purpose:** prevent false-positive “already backed up” matches outside the configured destination folder.
 - **Verification:** CI for this commit pending at the time of this note. No live Google Drive/OAuth request was made. This does not certify Drive permissions, shared-drive compatibility, or production hosting.
 - **Production gate remains:** settlement backup stays disabled until configured and tested safely; payment/provider execution and deployment remain disabled.
+
+
+## 2026-10-15 — Preflight requires provider budget schema
+
+The shared-hosting preflight previously did not require migration `011_provider_budget_reservations` or the `provider_budget_reservations` table, despite checkout/catalog/fulfillment safety relying on this reservation ledger. Commit `bb025e0539f63916ad87d29dd3fcd570e30a9156c` adds both to the mandatory checks. This prevents a false “preflight passed” result for a database missing the provider budget reservation schema.
+
+- **Verification:** CI pending for this change. The preflight has not been executed against a real shared-hosting database.
+- **Production blockers remain:** validate all migrations on a clean target MySQL/MariaDB version, test scheduled queue runs and recovery on the actual host, and keep payments, supplier ordering, and Drive settlement disabled until staging checks pass.
