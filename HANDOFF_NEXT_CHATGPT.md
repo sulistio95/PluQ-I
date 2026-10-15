@@ -982,3 +982,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Tes regresi baru `tests/catalog-availability.php` memeriksa VIPayment saja tidak tersedia, Digiflazz tersedia + VIPayment Rp0, pemilihan termurah ketika keduanya tersedia, dan produk lain yang masih tersedia. Tes ditambahkan ke workflow PHP quality.
 - Frontend `public/assets/catalog.js` sekarang menjelaskan bahwa tidak ada produk yang tersedia saat ini ketika daftar hasil kosong (commit `0bfa998be60aea4dfc270ea48c1470bd84cb08cc`).
 - **Verifikasi CI untuk rangkaian perubahan ini masih harus diperiksa.** Tidak ada panggilan API supplier atau transaksi nyata. Perubahan ini tidak mengaktifkan pembayaran, pemesanan supplier, atau backup Google Drive.
+
+
+## 2026-10-15 — Sinkronisasi regresi budget dengan katalog yang menyembunyikan produk tidak tersedia
+
+- CI awal untuk perubahan katalog menemukan assertion lama di `tests/provider-budget-reservation-mysql-integration.php` masih mengharapkan satu kartu produk `is_available=false`. Itu bertentangan dengan perilaku baru yang sengaja menghilangkan produk yang tidak dapat dipesan.
+- Fixture/assertion integrasi diperbarui: jika saldo/kapasitas provider tidak cukup, katalog harus mengembalikan nol produk yang memenuhi syarat; checkout quote juga tetap harus ditolak. Perubahan ada di commit `db02544a740f46e5491bd11c7f3f499c3f554f92`.
+- Fixture unit `tests/catalog-availability.php` dilengkapi `base_price` untuk menghindari peringatan data uji yang tidak lengkap (commit `aaa3b34011a304275af94236b968d5e0ab723850`).
+- **CI untuk commit perbaikan terbaru masih harus diperiksa.** Kegagalan integrasi sebelumnya adalah assertion lama yang belum menyesuaikan perilaku katalog; jangan menyatakan suite terbaru lulus sebelum workflow baru selesai.
