@@ -44,7 +44,16 @@ function checkout_quote(PDO $pdo, array $input): array
     if (!$game) throw new DomainException('Game tidak tersedia.');
 
     $stmt=$pdo->prepare("SELECT p.id,p.game_id,p.provider_id,p.provider_product_code,p.name,p.base_price,p.status,
-        pr.status AS provider_status,pr.balance,pr.reserve_percentage
+        pr.status AS provider_status,pr.balance,pr.reserve_percentage,
+        COALESCE((
+          SELECT SUM(r.amount) FROM provider_budget_reservations r
+          WHERE r.provider_id=pr.id
+            AND (
+              r.status IN ('ACTIVE','REVIEW')
+              OR (r.status='SETTLED' AND
+                (pr.last_balance_check_at IS NULL OR r.updated_at >= pr.last_balance_check_at))
+            )
+        ),0) AS committed_budget
       FROM products p JOIN providers pr ON pr.id=p.provider_id
       LEFT JOIN excluded_services ex ON ex.provider_id=p.provider_id AND ex.service_code=p.provider_product_code
       WHERE p.id=:pid AND p.game_id=:gid AND ex.id IS NULL
@@ -54,7 +63,8 @@ function checkout_quote(PDO $pdo, array $input): array
     $stmt->execute(['pid'=>$productId,'gid'=>$game['id']]); $product=$stmt->fetch();
     if (!$product || $product['status']!=='ACTIVE') throw new DomainException('Produk tidak tersedia.');
     if (!in_array($product['provider_status'],['ACTIVE','LOW_BALANCE'],true) || $product['balance']===null
-      || (float)$product['base_price'] > (float)$product['balance']*(float)$product['reserve_percentage']/100) {
+      || (float)$product['base_price'] + (float)$product['committed_budget']
+        > (float)$product['balance']*(float)$product['reserve_percentage']/100) {
       throw new DomainException('Saldo provider tidak mencukupi.');
     }
 
@@ -73,7 +83,15 @@ function checkout_quote(PDO $pdo, array $input): array
       WHERE p.game_id=:gid AND LOWER(TRIM(p.name))=LOWER(TRIM(:name))
         AND p.status='ACTIVE' AND pr.status IN ('ACTIVE','LOW_BALANCE')
         AND pr.balance IS NOT NULL
-        AND p.base_price <= pr.balance*(pr.reserve_percentage/100)
+        AND p.base_price + COALESCE((
+          SELECT SUM(r.amount) FROM provider_budget_reservations r
+          WHERE r.provider_id=pr.id
+            AND (
+              r.status IN ('ACTIVE','REVIEW')
+              OR (r.status='SETTLED' AND
+                (pr.last_balance_check_at IS NULL OR r.updated_at >= pr.last_balance_check_at))
+            )
+        ),0) <= pr.balance*(pr.reserve_percentage/100)
         AND ex.id IS NULL
         AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%joki%'
         AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%vilog%'
