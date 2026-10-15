@@ -913,3 +913,10 @@ The MySQL queue-recovery regression reached the intended payment-conflict fixtur
 
 - Code commit `fbc82eb00f14dfa9e2d539a15d25784d552f8f70` adds a guard so stale recovery does not overwrite `last_error` for an order already in `MANUAL_REVIEW`. Supplier success cannot clear the review gate; provider capacity stays `REVIEW` and the stale job remains `FAILED`.
 - **Verification pending:** rerun the MySQL workflow after this fix. Prior failures in the newly added integration assertions are being used to tighten test coverage; no live supplier/payment calls were made.
+
+
+## 2026-10-15 — CI passed for stale queue recovery reconciliation guard
+
+All three CI workflows passed for implementation/test commit `fbc82eb00f14dfa9e2d539a15d25784d552f8f70`: PHP quality `38671179140`, syntax `38671179042`, and fulfillment/MySQL integration `38671179031`. The updated notes head `f9c908653cd6c2c177fa528a847e043311ef2e26` also passed syntax `38671219531`, PHP quality `38671219421`, and fulfillment/MySQL integration `38671219437`.
+
+The regression confirms that stale recovery only restores supplier success for orders still in automatic fulfillment states, resolves recovered success capacity to `SETTLED`, and preserves existing payment-conflict `MANUAL_REVIEW` plus its reason while retaining the reservation as `REVIEW`. This evidence is from CI PHP 8.2/MySQL 8.4, not live integration or target-host certification. Keep Duitku payments, supplier ordering, Google Drive settlement, and deployment disabled until staging gates pass.
