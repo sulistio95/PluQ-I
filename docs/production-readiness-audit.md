@@ -785,3 +785,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Run MySQL pertama setelah penambahan assertion katalog berhasil menolak penawaran yang melebihi kapasitas, tetapi ekspektasi tes berikutnya keliru. Setelah reservasi Rp300.000 dilepas, tes langsung membuat reservasi Rp200.001; sisa kapasitas dari Rp500.000 hanya Rp299.999 sehingga produk Rp300.000 memang masih harus tidak tersedia.
 - Commit `7114ede8965d47fe6f8e600167527102fd0f8002` memperbaiki urutan assertion: katalog tetap tidak tersedia selama reservasi Rp200.001 aktif, lalu tersedia kembali setelah seluruh reservasi terkait dilepas. Ini koreksi ekspektasi tes, bukan pelonggaran kode katalog atau checkout.
 - Tes MySQL yang baru harus dijalankan ulang pada commit ini sebelum dinyatakan lulus. Workflow syntax dan PHP quality lulus pada head implementasi sebelumnya; kegagalan MySQL sebelumnya berasal dari ekspektasi tes yang salah, bukan error SQL runtime.
+
+
+## Verifikasi CI kapasitas katalog dan checkout — 2026-10-15
+
+- Ketiga workflow pada head dokumentasi `a59d11e242f3c8c9de291b5a53b3c50f1ac5eceb` telah selesai sukses: syntax [38658731086](https://github.com/sulistio95/PluQ-I/actions/runs/38658731086), PHP quality [38658731054](https://github.com/sulistio95/PluQ-I/actions/runs/38658731054), dan fulfillment safety/MySQL [38658731101](https://github.com/sulistio95/PluQ-I/actions/runs/38658731101).
+- Tes MySQL pada rangkaian ini memverifikasi katalog tetap menandai penawaran tidak tersedia selama total reservasi melebihi kapasitas tersisa, dan ketersediaan pulih setelah seluruh reservasi fixture dilepas. Perubahan query katalog dan checkout quote serta koreksi urutan assertion sekarang lolos workflow tersebut.
+- Lingkup bukti: CI GitHub Actions, PHP 8.2, MySQL 8.4. Belum membuktikan kompatibilitas penuh pada versi MariaDB milik shared host, callback Duitku live, pesanan supplier live, OAuth/penulisan Google Drive, backup/restore hosting, atau cron di hosting target. Jangan mengaktifkan integrasi/deployment produksi sebelum staging checklist selesai.
