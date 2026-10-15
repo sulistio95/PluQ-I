@@ -205,7 +205,7 @@
     }
     const items = Array.isArray(productsResult.value.data) ? productsResult.value.data : [];
     if (!items.length) {
-      productsBox.innerHTML = '<div class="notice">Belum ada produk untuk game ini.</div>';
+      productsBox.innerHTML = '<div class="notice">Belum ada produk yang tersedia untuk game ini saat ini.</div>';
       return;
     }
     productsBox.innerHTML = items.map((product, index) =>
