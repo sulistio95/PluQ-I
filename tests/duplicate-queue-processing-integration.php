@@ -90,6 +90,11 @@ try {
         throw new RuntimeException("Stale supplier PROCESSING was not moved to manual review: order="
             . var_export($staleOrderStatus, true) . ", supplier=" . var_export($staleSupplierStatus, true));
     }
+    $checkBudget = $pdo->prepare('SELECT status FROM provider_budget_reservations WHERE order_id=:id');
+    $checkBudget->execute(['id' => $orderId]);
+    if ($checkBudget->fetchColumn() !== 'REVIEW') {
+        throw new RuntimeException("Stale ambiguous supplier request must move provider reservation to REVIEW.");
+    }
 
     // Even if an active budget reservation remains, a stale duplicate job cannot
     // revive an order that has already entered MANUAL_REVIEW.
