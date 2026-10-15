@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/config/database.php';
 require dirname(__DIR__) . '/app/services/provider_budget.php';
 require dirname(__DIR__) . '/app/services/catalog.php';
+require dirname(__DIR__) . '/app/services/checkout_quote.php';
 
 function budget_integration_assert(bool $condition, string $message): void
 {
@@ -52,6 +53,7 @@ $gameId = null;
 $productId = null;
 $orderIds = [];
 $pricingRuleId = null;
+$gameFieldId = null;
 
 try {
     $pdo->beginTransaction();
@@ -63,6 +65,11 @@ try {
     $stmt = $pdo->prepare("INSERT INTO games (slug,name,status) VALUES (:slug,'Budget integration fixture','ACTIVE')");
     $stmt->execute(['slug' => 'budget-test-' . $token]);
     $gameId = (int)$pdo->lastInsertId();
+
+    $stmt = $pdo->prepare("INSERT INTO game_fields (game_id,field_key,label,field_type,is_required,status)
+        VALUES (:game,'user_id','User ID','text',1,'ACTIVE')");
+    $stmt->execute(['game' => $gameId]);
+    $gameFieldId = (int)$pdo->lastInsertId();
 
     $stmt = $pdo->prepare("INSERT INTO products (game_id,provider_id,provider_product_code,name,base_price,selling_price,status)
         VALUES (:game,:provider,:sku,'Budget integration fixture',300000,350000,'ACTIVE')");
@@ -102,6 +109,16 @@ try {
     $catalogRows = catalog_products($pdo, 'budget-test-' . $token);
     budget_integration_assert(count($catalogRows) === 1 && $catalogRows[0]['is_available'] === false,
         'Catalog advertised an offer whose cost exceeds remaining provider budget.');
+
+    $quoteRejected = false;
+    try {
+        checkout_quote($pdo, ['game_slug' => 'budget-test-' . $token, 'product_id' => $productId,
+            'account' => ['user_id' => '12345']]);
+    } catch (DomainException) {
+        $quoteRejected = true;
+    }
+    budget_integration_assert($quoteRejected,
+        'Checkout quote accepted an offer whose cost exceeds remaining provider budget.');
 
     // A second order must see the first commitment and fail closed at Rp500,001 total.
     $pdo->beginTransaction();
@@ -145,6 +162,11 @@ try {
     budget_integration_assert(count($catalogAfterAllReservationsReleased) === 1
         && $catalogAfterAllReservationsReleased[0]['is_available'] === true,
         'Catalog did not restore offer availability after all reservations were released.');
+
+    $availableQuote = checkout_quote($pdo, ['game_slug' => 'budget-test-' . $token, 'product_id' => $productId,
+        'account' => ['user_id' => '12345']]);
+    budget_integration_assert($availableQuote['product']['id'] === $productId,
+        'Checkout quote did not recover after all provider reservations were released.');
 
     $barrierPath = sys_get_temp_dir() . '/pluq-budget-barrier-' . $token;
     @unlink($barrierPath);
@@ -242,6 +264,7 @@ try {
         $pdo->prepare("DELETE FROM orders WHERE id IN ($marks)")->execute(array_values($orderIds));
     }
     if ($productId !== null) $pdo->prepare('DELETE FROM products WHERE id=?')->execute([$productId]);
+    if ($gameFieldId !== null) $pdo->prepare('DELETE FROM game_fields WHERE id=?')->execute([$gameFieldId]);
     if ($gameId !== null) $pdo->prepare('DELETE FROM games WHERE id=?')->execute([$gameId]);
     if ($providerId !== null) $pdo->prepare('DELETE FROM providers WHERE id=?')->execute([$providerId]);
 }
