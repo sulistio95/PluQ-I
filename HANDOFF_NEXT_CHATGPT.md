@@ -990,3 +990,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Fixture/assertion integrasi diperbarui: jika saldo/kapasitas provider tidak cukup, katalog harus mengembalikan nol produk yang memenuhi syarat; checkout quote juga tetap harus ditolak. Perubahan ada di commit `db02544a740f46e5491bd11c7f3f499c3f554f92`.
 - Fixture unit `tests/catalog-availability.php` dilengkapi `base_price` untuk menghindari peringatan data uji yang tidak lengkap (commit `aaa3b34011a304275af94236b968d5e0ab723850`).
 - **CI untuk commit perbaikan terbaru masih harus diperiksa.** Kegagalan integrasi sebelumnya adalah assertion lama yang belum menyesuaikan perilaku katalog; jangan menyatakan suite terbaru lulus sebelum workflow baru selesai.
+
+
+## Latest work log — 2026-10-15 (catalog availability follow-up)
+
+- Audited the customer catalog for the requested one-supplier startup scenario. app/services/catalog.php already removes unavailable supplier offers, selects an eligible Digiflazz offer when VIPayment has zero usable balance, and automatically chooses the cheapest equivalent offer when both are eligible. public/assets/catalog.js shows an empty-state message if no product is eligible; it does not ask the customer to choose a supplier.
+- CI uncovered a stale MySQL integration assertion that still expected an unavailable product card. Commit f423392aad634c4d3dbde82dd1ffd6e957003cfd corrects the assertion to expect an empty catalog when budget is exhausted; availability restoration after reservations are released remains tested.
+- PHP quality and syntax workflows passed for the prior head, but fulfillment/MySQL integration failed on that stale assertion. Verify all new workflow runs for the test correction before marking it resolved. No live provider API or hosting was used. Keep payment, supplier ordering, Drive backup, and deployment disabled.
