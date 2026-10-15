@@ -964,3 +964,12 @@ The first MySQL CI run after filtering unavailable offers failed because `tests/
 
 - Test corrections: `db02544a740f46e5491bd11c7f3f499c3f554f92` and `aaa3b34011a304275af94236b968d5e0ab723850`.
 - **Verification pending:** rerun/inspect all workflows on the latest commit. No live supplier API or hosting was used. Keep payments, supplier ordering, Drive backup, and deployment disabled.
+
+
+## 2026-10-15 — Corrected MySQL integration expectation for hidden unavailable products
+
+The latest fulfillment workflow (38755995858) exposed one remaining stale assertion in tests/provider-budget-reservation-mysql-integration.php: after a reservation consumes the remaining usable provider capacity, the test still expected one product marked unavailable. The storefront contract is now to omit unavailable products entirely, so this expectation contradicted the catalog filter and caused the MySQL integration job to fail; PHP quality and PHP/JavaScript syntax jobs passed.
+
+- Commit f423392aad634c4d3dbde82dd1ffd6e957003cfd changes that assertion to expect an empty customer-facing catalog while capacity is exhausted.
+- The test still checks that the product returns once all reservations are released.
+- Verification pending: inspect fresh GitHub Actions runs for this commit before treating the full suite as green. This change updates a test expectation only; no live supplier API or hosting test was performed. Payment, supplier ordering, Drive backup, and deployment remain disabled.
