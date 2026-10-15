@@ -837,3 +837,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Memperluas `tests/provider-budget-reservation-mysql-integration.php` agar selain katalog, `checkout_quote()` juga diuji terhadap reservasi kapasitas: quote harus ditolak ketika reservasi aktif membuat kapasitas tidak cukup, lalu kembali berhasil setelah seluruh reservasi fixture dilepas.
 - Fixture sekarang membuat field game `user_id` yang sah agar quote menempuh validasi akun normal. Cleanup menghapus field fixture sebelum game dihapus. Perubahan tes sudah committed, tetapi workflow CI yang dipicu commit ini belum diverifikasi; jangan klaim regresi baru lulus sebelum job fulfillment/MySQL selesai.
 - Kode produksi tidak berubah pada langkah ini. Pembayaran, pemesanan supplier, backup Drive, dan deployment tetap nonaktif.
+
+
+## Hasil CI regresi quote checkout — 2026-10-15 (diperbarui)
+
+- Perubahan tes pada commit `59297d1a892a491c025f6614aba3fee52095370c` telah melewati ketiga workflow: [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38660082026), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38660081870), dan [fulfillment safety termasuk MySQL integration](https://github.com/sulistio95/PluQ-I/actions/runs/38660081985) — semuanya `success`.
+- Dengan demikian assertion baru yang memastikan `checkout_quote()` menolak kapasitas yang tidak cukup dan pulih setelah reservasi dilepas telah dijalankan dalam CI MySQL. Lingkup tetap PHP 8.2/MySQL 8.4; belum sertifikasi MariaDB/hosting target atau integrasi eksternal live.
+- Langkah audit berikutnya: memperluas pengujian settlement dan kesiapan operasional shared hosting tanpa mengaktifkan pembayaran, supplier, backup Drive, atau deployment.
