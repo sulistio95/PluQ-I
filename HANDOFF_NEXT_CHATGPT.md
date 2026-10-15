@@ -844,3 +844,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Perubahan tes pada commit `59297d1a892a491c025f6614aba3fee52095370c` telah melewati ketiga workflow: [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38660082026), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38660081870), dan [fulfillment safety termasuk MySQL integration](https://github.com/sulistio95/PluQ-I/actions/runs/38660081985) — semuanya `success`.
 - Dengan demikian assertion baru yang memastikan `checkout_quote()` menolak kapasitas yang tidak cukup dan pulih setelah reservasi dilepas telah dijalankan dalam CI MySQL. Lingkup tetap PHP 8.2/MySQL 8.4; belum sertifikasi MariaDB/hosting target atau integrasi eksternal live.
 - Langkah audit berikutnya: memperluas pengujian settlement dan kesiapan operasional shared hosting tanpa mengaktifkan pembayaran, supplier, backup Drive, atau deployment.
+
+
+## Pemulihan queue: reservasi kapasitas ikut ditandai REVIEW — 2026-10-15
+
+- Audit jalur pemulihan menemukan bahwa ketika job supplier kedaluwarsa atau worker berakhir dengan error ambigu, pesanan dan transaksi supplier dipindahkan ke `MANUAL_REVIEW`/`REVIEW`, tetapi ledger `provider_budget_reservations` bisa tertinggal berstatus `ACTIVE`. Kapasitas tetap tertahan (aman secara saldo), namun status ledger tidak konsisten dengan kebutuhan rekonsiliasi.
+- `bin/worker-queue.php` dan `app/services/queue_worker.php` sekarang memanggil `provider_budget_resolve(..., 'REVIEW', ...)` pada transisi manual review. Pengujian `tests/queue_recovery_integration.sh` kini membuat reservasi fixture dan menegaskan statusnya berubah ke `REVIEW` tanpa melepaskan kapasitas.
+- Perubahan produksi dan tes sudah committed; workflow CI pada commit terbaru masih harus diverifikasi. Jangan menandai regresi ini lulus sebelum fulfillment/MySQL integration selesai.
