@@ -70,7 +70,7 @@ if ($q->fetchColumn() !== "REVIEW") { fwrite(STDERR, "Stale supplier transaction
 $q = $pdo->prepare("SELECT status FROM provider_budget_reservations WHERE order_id = (SELECT id FROM orders WHERE public_id = ?)");
 $q->execute([$orderId]);
 if ($q->fetchColumn() !== "REVIEW") { fwrite(STDERR, "Stale provider budget reservation was not retained in REVIEW.\\n"); exit(1); }
-$q = $pdo->prepare("SELECT status FROM job_queue WHERE JSON_UNQUOTE(JSON_EXTRACT(payload, CHAR(36,46,111,114,100,101,114,95,105,100))) = (SELECT id FROM orders WHERE public_id = ?)");
+$q = $pdo->prepare("SELECT status FROM job_queue WHERE JSON_UNQUOTE(JSON_EXTRACT(payload, CAST(CHAR(36,46,111,114,100,101,114,95,105,100) AS CHAR CHARACTER SET utf8mb4))) = (SELECT id FROM orders WHERE public_id = ?)");
 $q->execute([$orderId]);
 if ($q->fetchColumn() !== "FAILED") { fwrite(STDERR, "Ambiguous stale queue job was not failed safely.\\n"); exit(1); }
 
@@ -81,7 +81,7 @@ if ($q->fetchColumn() !== "SUCCESS") { fwrite(STDERR, "Durable supplier success 
 $q = $pdo->prepare("SELECT status FROM provider_budget_reservations WHERE order_id = (SELECT id FROM orders WHERE public_id = ?)");
 $q->execute([$successId]);
 if ($q->fetchColumn() !== "SETTLED") { fwrite(STDERR, "Recovered supplier success did not settle provider budget.\\n"); exit(1); }
-$q = $pdo->prepare("SELECT status FROM job_queue WHERE JSON_UNQUOTE(JSON_EXTRACT(payload, CHAR(36,46,111,114,100,101,114,95,105,100))) = (SELECT id FROM orders WHERE public_id = ?)");
+$q = $pdo->prepare("SELECT status FROM job_queue WHERE JSON_UNQUOTE(JSON_EXTRACT(payload, CAST(CHAR(36,46,111,114,100,101,114,95,105,100) AS CHAR CHARACTER SET utf8mb4))) = (SELECT id FROM orders WHERE public_id = ?)");
 $q->execute([$successId]);
 if ($q->fetchColumn() !== "DONE") { fwrite(STDERR, "Recovered supplier success job was not marked DONE.\\n"); exit(1); }
 
@@ -96,7 +96,7 @@ if (!$row || $row["order_status"] !== "MANUAL_REVIEW"
 $q = $pdo->prepare("SELECT status FROM provider_budget_reservations WHERE order_id = (SELECT id FROM orders WHERE public_id = ?)");
 $q->execute([$reviewId]);
 if ($q->fetchColumn() !== "REVIEW") { fwrite(STDERR, "Manual-review order capacity was not retained in REVIEW.\\n"); exit(1); }
-$q = $pdo->prepare("SELECT status FROM job_queue WHERE JSON_UNQUOTE(JSON_EXTRACT(payload, CHAR(36,46,111,114,100,101,114,95,105,100))) = (SELECT id FROM orders WHERE public_id = ?)");
+$q = $pdo->prepare("SELECT status FROM job_queue WHERE JSON_UNQUOTE(JSON_EXTRACT(payload, CAST(CHAR(36,46,111,114,100,101,114,95,105,100) AS CHAR CHARACTER SET utf8mb4))) = (SELECT id FROM orders WHERE public_id = ?)");
 $q->execute([$reviewId]);
 if ($q->fetchColumn() !== "FAILED") { fwrite(STDERR, "Manual-review stale queue job should remain failed for reconciliation.\\n"); exit(1); }
 echo "Stale queue recovery integration test passed.\\n";
