@@ -61,23 +61,37 @@ function catalog_products(PDO $pdo, string $slug): array
         ORDER BY selling_price,p.name,p.id";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['slug' => $slug]);
-    $rows = $stmt->fetchAll();
+    return catalog_select_customer_products($stmt->fetchAll());
+}
+
+/**
+ * Collapse equivalent supplier offers to one customer-facing product.
+ * Prefer any currently eligible offer, then the cheapest offer at that eligibility level.
+ * Offers with no eligible supplier are omitted rather than shown as purchasable choices.
+ * Kept separate from SQL so provider-zero-balance behavior can be regression-tested.
+ */
+function catalog_select_customer_products(array $rows): array
+{
     $chosen = [];
 
     foreach ($rows as $row) {
+        if (!is_array($row) || !array_key_exists('name', $row)) {
+            continue;
+        }
         $key = catalog_lower(trim((string) $row['name']));
         if ($key === '') {
             continue;
         }
         if (!isset($chosen[$key])
-            || (int) $row['is_available'] > (int) $chosen[$key]['is_available']
-            || ((int) $row['is_available'] === (int) $chosen[$key]['is_available']
-                && (float) $row['selling_price'] < (float) $chosen[$key]['selling_price'])) {
+            || (int) ($row['is_available'] ?? 0) > (int) ($chosen[$key]['is_available'] ?? 0)
+            || ((int) ($row['is_available'] ?? 0) === (int) ($chosen[$key]['is_available'] ?? 0)
+                && (float) ($row['selling_price'] ?? PHP_FLOAT_MAX) < (float) ($chosen[$key]['selling_price'] ?? PHP_FLOAT_MAX))) {
             $chosen[$key] = $row;
         }
     }
 
-    $out = array_values($chosen);
+    // Do not reveal an unavailable supplier offer as a product card to customers.
+    $out = array_values(array_filter($chosen, static fn(array $row): bool => (int) ($row['is_available'] ?? 0) === 1));
     foreach ($out as &$row) {
         $row['base_price'] = (float) $row['base_price'];
         $row['selling_price'] = (float) $row['selling_price'];
