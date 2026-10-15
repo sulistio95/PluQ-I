@@ -778,3 +778,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Commit `4c9e4c26e7e316427bb1c6428bb4ac1f27dc915d` menerapkan aturan kapasitas tersisa yang sama pada produk yang diminta dan pemilihan penawaran termurah di `app/services/checkout_quote.php`. Pemeriksaan reservasi transaksional saat pembayaran tetap menjadi otoritas terakhir untuk menangani kondisi race setelah quote.
 - Commit `ac2f9a829d0cda2f6ea6a003b41b44b66d04496a` memperluas tes integrasi MySQL: katalog harus menyembunyikan penawaran saat reservasi sebelumnya membuat kapasitas tidak cukup, lalu memulihkan ketersediaan setelah reservasi dilepas. CI perubahan ini masih menunggu; jangan menyatakan tes baru lulus sebelum workflow selesai.
 - Integrasi pembayaran/supplier/Drive produksi dan deployment tetap nonaktif.
+
+
+## Tindak lanjut tes kapasitas katalog — 2026-10-15
+
+- Run MySQL pertama setelah penambahan assertion katalog berhasil menolak penawaran yang melebihi kapasitas, tetapi ekspektasi tes berikutnya keliru. Setelah reservasi Rp300.000 dilepas, tes langsung membuat reservasi Rp200.001; sisa kapasitas dari Rp500.000 hanya Rp299.999 sehingga produk Rp300.000 memang masih harus tidak tersedia.
+- Commit `7114ede8965d47fe6f8e600167527102fd0f8002` memperbaiki urutan assertion: katalog tetap tidak tersedia selama reservasi Rp200.001 aktif, lalu tersedia kembali setelah seluruh reservasi terkait dilepas. Ini koreksi ekspektasi tes, bukan pelonggaran kode katalog atau checkout.
+- Tes MySQL yang baru harus dijalankan ulang pada commit ini sebelum dinyatakan lulus. Workflow syntax dan PHP quality lulus pada head implementasi sebelumnya; kegagalan MySQL sebelumnya berasal dari ekspektasi tes yang salah, bukan error SQL runtime.
