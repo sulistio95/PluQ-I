@@ -12,6 +12,9 @@ WHERE g.slug='integration-game' AND p.provider_product_code='integration-sku';
 INSERT INTO supplier_transactions (order_id,provider_id,reference_id,status,attempts)
 SELECT o.id,o.provider_id,CONCAT('PQI-',o.public_id),'PROCESSING',1
 FROM orders o WHERE o.public_id='1234567890abcdef1234567890';
+INSERT INTO provider_budget_reservations (order_id,provider_id,amount,status)
+SELECT o.id,o.provider_id,o.base_price,'ACTIVE'
+FROM orders o WHERE o.public_id='1234567890abcdef1234567890';
 INSERT INTO job_queue (job_type,payload,status,attempts,available_at,locked_at,lock_token,last_error)
 SELECT 'FULFILL_ORDER',JSON_OBJECT('order_id',o.id),'PROCESSING',1,NOW(),DATE_SUB(NOW(),INTERVAL 11 MINUTE),REPEAT('a',32),NULL
 FROM orders o WHERE o.public_id='1234567890abcdef1234567890';
@@ -33,6 +36,9 @@ if ($q->fetchColumn() !== "MANUAL_REVIEW") { fwrite(STDERR, "Stale order was not
 $q = $pdo->prepare("SELECT status FROM supplier_transactions WHERE reference_id = ?");
 $q->execute(["PQI-" . $orderId]);
 if ($q->fetchColumn() !== "REVIEW") { fwrite(STDERR, "Stale supplier transaction was not moved to REVIEW.\\n"); exit(1); }
+$q = $pdo->prepare("SELECT status FROM provider_budget_reservations WHERE order_id = (SELECT id FROM orders WHERE public_id = ?)");
+$q->execute([$orderId]);
+if ($q->fetchColumn() !== "REVIEW") { fwrite(STDERR, "Stale provider budget reservation was not retained in REVIEW.\\n"); exit(1); }
 $q = $pdo->query("SELECT status FROM job_queue WHERE id = (SELECT MAX(id) FROM job_queue)");
 $q->execute();
 if ($q->fetchColumn() !== "FAILED") { fwrite(STDERR, "Stale queue job was not failed safely.\\n"); exit(1); }
