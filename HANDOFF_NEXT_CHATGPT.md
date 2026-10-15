@@ -815,3 +815,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Commit `4c9e4c26e7e316427bb1c6428bb4ac1f27dc915d` applies the same remaining-capacity rule to the selected offer and cheapest eligible offer in `app/services/checkout_quote.php`. The authoritative transactional reservation check remains in place to handle races after the quote.
 - Commit `ac2f9a829d0cda2f6ea6a003b41b44b66d04496a` extends the MySQL provider-budget integration test: catalog must hide the offer when a prior reservation leaves insufficient capacity, then restore availability after that reservation is released. CI for these changes is pending; do not claim the new test passed until workflow completion.
 - Production payment/provider/Drive integrations and deployment remain disabled.
+
+
+## Catalog capacity test follow-up — 2026-10-15
+
+- The first MySQL run after adding catalog assertions correctly rejected the first over-capacity offer, but the test's later expectation was wrong: after releasing the Rp300,000 reservation, it immediately created a Rp200,001 reservation, leaving only Rp299,999 of Rp500,000 usable capacity. The catalog correctly kept the Rp300,000 offer unavailable.
+- Commit `7114ede8965d47fe6f8e600167527102fd0f8002` corrects the integration sequence: assert unavailable while the Rp200,001 reservation remains active, then assert availability returns only after all relevant reservations are released. This is a test expectation correction; catalog and checkout implementation were not relaxed.
+- The new MySQL test must rerun on this commit before its status can be marked green. Syntax and PHP quality workflows had passed for the prior implementation head; the earlier MySQL failure was the test's incorrect expectation, not a runtime SQL error.
