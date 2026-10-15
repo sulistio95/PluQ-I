@@ -769,3 +769,12 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Job MySQL fulfillment selesai sukses. Cakupannya meliputi batas kapasitas/idempotensi/konkurensi/stale balance reservasi provider, tiga percobaan konkurensi checkout, klasifikasi deadlock MySQL, admission rekonsiliasi Duitku serentak, klaim antrean dan callback bersamaan, job duplikat ketika supplier aktif, pemulihan lock usang, lease revocation, review hasil supplier ambigu, kegagalan supplier/refund dan pemulihannya, isolasi pembayaran sandbox, serta pemeriksaan rekonsiliasi read-only.
 - Deadlock reservasi diperbaiki dengan serialisasi melalui lock provider sebelum pencarian reservation yang belum ada. Fixture tes supplier ambigu dan kegagalan eksplisit juga dilengkapi reservation ACTIVE yang diwajibkan migrasi 011; tes stdin PHP kini menyiapkan stream STDERR.
 - Ini merupakan verifikasi CI pada PHP 8.2 dan layanan tes MySQL 8.4, bukan sertifikasi hosting produksi atau gateway live. Pembayaran live, supplier ordering, backup Drive, dan deployment tetap nonaktif sampai staging di shared hosting diverifikasi.
+
+
+## Konsistensi kapasitas pada katalog dan checkout — 2026-10-15
+
+- Audit sumber menemukan ketidaksesuaian yang terlihat pengguna: katalog dan quote checkout hanya membandingkan `base_price` dengan `balance × reserve_percentage`, sementara reservasi saat pembayaran juga memperhitungkan komitmen ACTIVE/REVIEW dan SETTLED yang mungkin belum tercermin pada sinkronisasi saldo terakhir. Akibatnya, produk bisa tampil dan memperoleh quote meskipun reservasi setelah pembayaran pasti ditolak karena kapasitas agregat.
+- Commit `4500da6e250f30b8dde7c52a16060af4a9990661` memperbarui `app/services/catalog.php` agar `is_available` menghitung reservasi yang masih mengikat kapasitas.
+- Commit `4c9e4c26e7e316427bb1c6428bb4ac1f27dc915d` menerapkan aturan kapasitas tersisa yang sama pada produk yang diminta dan pemilihan penawaran termurah di `app/services/checkout_quote.php`. Pemeriksaan reservasi transaksional saat pembayaran tetap menjadi otoritas terakhir untuk menangani kondisi race setelah quote.
+- Commit `ac2f9a829d0cda2f6ea6a003b41b44b66d04496a` memperluas tes integrasi MySQL: katalog harus menyembunyikan penawaran saat reservasi sebelumnya membuat kapasitas tidak cukup, lalu memulihkan ketersediaan setelah reservasi dilepas. CI perubahan ini masih menunggu; jangan menyatakan tes baru lulus sebelum workflow selesai.
+- Integrasi pembayaran/supplier/Drive produksi dan deployment tetap nonaktif.
