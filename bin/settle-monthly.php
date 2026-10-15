@@ -68,10 +68,14 @@ function settlement_access_token(): string
     if ($token === '') throw new RuntimeException('Google OAuth response did not contain an access token.');
     return $token;
 }
-function settlement_find_drive_file(string $name, string $period, string $token): ?string
+function settlement_find_drive_file(string $name, string $period, string $folderId, string $token): ?string
 {
-    $q = "appProperties has { key='pluqSettlementPeriod' and value='" .
-        addcslashes($period, "\\'") . "' } and trashed=false";
+    // Restrict idempotency lookup to the configured destination. A matching period/name
+    // elsewhere in Drive must never be mistaken for this site's backup.
+    $safeFolderId = addcslashes($folderId, "\\'");
+    $safePeriod = addcslashes($period, "\\'");
+    $q = "'" . $safeFolderId . "' in parents and appProperties has { key='pluqSettlementPeriod' and value='" .
+        $safePeriod . "' } and trashed=false";
     $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query([
         'q' => $q, 'pageSize' => 20, 'fields' => 'files(id,name,mimeType)',
         'spaces' => 'drive',
@@ -387,7 +391,7 @@ try {
     if ($folderId === '') $folderId = trim((string) getenv('GOOGLE_DRIVE_FOLDER_ID'));
     if ($folderId === '') throw new RuntimeException('Google Drive destination folder is not configured in the admin panel or server environment.');
 
-    $driveFileId = settlement_find_drive_file($fileName, $periodKey, $token);
+    $driveFileId = settlement_find_drive_file($fileName, $periodKey, $folderId, $token);
     if ($driveFileId === null) {
         $driveFileId = settlement_create_sheet($fileName, $periodKey, $summary, $details, $reconciliation, $refundRows, $folderId, $token);
     }
