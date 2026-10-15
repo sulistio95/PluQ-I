@@ -76,16 +76,22 @@ function settlement_find_drive_file(string $name, string $period, string $folder
     $safePeriod = addcslashes($period, "\\'");
     $q = "'" . $safeFolderId . "' in parents and appProperties has { key='pluqSettlementPeriod' and value='" .
         $safePeriod . "' } and trashed=false";
-    $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query([
-        'q' => $q, 'pageSize' => 20, 'fields' => 'files(id,name,mimeType)',
-        'spaces' => 'drive',
-    ]);
-    $data = settlement_curl($url, 'GET', ['Authorization: Bearer ' . $token]);
-    foreach (($data['files'] ?? []) as $file) {
-        if (is_array($file) && ($file['name'] ?? '') === $name &&
-            ($file['mimeType'] ?? '') === 'application/vnd.google-apps.spreadsheet' &&
-            !empty($file['id'])) return (string) $file['id'];
-    }
+    $pageToken = null;
+    do {
+        $params = [
+            'q' => $q, 'pageSize' => 100, 'fields' => 'nextPageToken,files(id,name,mimeType)',
+            'spaces' => 'drive',
+        ];
+        if ($pageToken !== null && $pageToken !== '') $params['pageToken'] = $pageToken;
+        $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
+        $data = settlement_curl($url, 'GET', ['Authorization: Bearer ' . $token]);
+        foreach (($data['files'] ?? []) as $file) {
+            if (is_array($file) && ($file['name'] ?? '') === $name &&
+                ($file['mimeType'] ?? '') === 'application/vnd.google-apps.spreadsheet' &&
+                !empty($file['id'])) return (string) $file['id'];
+        }
+        $pageToken = isset($data['nextPageToken']) ? (string) $data['nextPageToken'] : null;
+    } while ($pageToken !== null && $pageToken !== '');
     return null;
 }
 function settlement_cell_value(mixed $value): array
