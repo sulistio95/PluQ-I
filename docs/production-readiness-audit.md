@@ -846,3 +846,12 @@ Commit `29c4ba614bf3950fbd9bb518033029cf53fbcceb` updates `settlement_find_drive
 - **Verification:** CI pending for this commit; no real Google Drive/OAuth calls performed.
 - **Previously verified:** all three CI workflows passed for preflight schema guard commit `bb025e0539f63916ad87d29dd3fcd570e30a9156c`.
 - **Production gates unchanged:** test on the target hosting environment and validate Google Drive permissions before enabling settlement backup. Payment callbacks and supplier execution remain disabled.
+
+
+## 2026-10-15 — Pemulihan settlement setelah file Drive hilang
+
+Commit `5de0c6cd837832ceaeb033c46ba7aaadea83b12f` mengubah jalur retry `bin/settle-monthly.php`: catatan yang sudah berstatus `UPLOADED` tidak lagi langsung dianggap selesai tanpa memeriksa Drive. Proses masuk kembali ke jalur rekonsiliasi idempotensi berdasarkan periode dan folder tujuan. Jika spreadsheet yang cocok masih berada di folder yang dikonfigurasi, ekspor yang sama dikenali; jika tidak ditemukan (misalnya dihapus atau dipindahkan keluar folder), proses dapat membuat ulang file di folder tujuan.
+
+- **Alasan:** mencegah status database `UPLOADED` menjadi bukti sukses yang kedaluwarsa setelah file Drive dihapus/dipindahkan.
+- **Verifikasi:** CI untuk commit kode ini masih menunggu; belum dilakukan akses OAuth/Drive live maupun uji pada hosting target.
+- **Gate produksi:** backup settlement, pembayaran, supplier ordering, dan deployment tetap nonaktif sampai pengujian staging serta izin Drive diverifikasi.
