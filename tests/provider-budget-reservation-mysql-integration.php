@@ -139,8 +139,8 @@ try {
     $pdo->commit();
 
     $catalogWithSecondReservation = catalog_products($pdo, 'budget-test-' . $token);
-    budget_integration_assert(count($catalogWithSecondReservation) === 1 && $catalogWithSecondReservation[0]['is_available'] === false,
-        'Catalog advertised the offer while the second reservation still consumes the remaining capacity.');
+    budget_integration_assert($catalogWithSecondReservation === [],
+        'Catalog should hide the offer while the second reservation consumes the remaining capacity.');
 
     // Repeating the same reservation must be idempotent and must not create a second row.
     $pdo->beginTransaction();
