@@ -902,3 +902,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Code commit `d348ce67d0842010697f01687842c63ee8891f08` updates `public/duitku-callback.php`: when a signed callback conflicts with a terminal payment state, the order is moved to `MANUAL_REVIEW` while the payment state remains unchanged. Any `ACTIVE` provider budget reservation is now changed to `REVIEW` in the same DB transaction, so manual reconciliation retains capacity accounting and the reservation is not stranded as `ACTIVE`.
 - Test commit `74f61479f83aa5cf9075f675a521dbfde0c38080` extends `tests/duitku_callback_integration.sh` to assert that a contradictory failure callback after `PAID` preserves the payment, moves the order to manual review, marks the reservation `REVIEW`, and does not create a second fulfillment job.
 - CI for these commits must be checked before calling this change verified. The integration test requires its MySQL/HTTP test fixture; it has not been executed against live Duitku. Payment, supplier orders, Drive backup, and deployment remain disabled.
+
+
+## Progress update — 2026-10-15: ambiguous supplier request releases no capacity
+
+- Audit of `app/services/fulfillment.php` found that a stale supplier transaction already in `PROCESSING` was correctly moved to order `MANUAL_REVIEW` and supplier `REVIEW`, but its provider budget reservation could remain `ACTIVE`. This obscured its reconciliation state and depended on later queue finalization to resolve it, which is not guaranteed on every duplicate-job path.
+- Code commit `05c4a126086de77d9760682f4c9fe324e7d36122` now resolves the reservation to `REVIEW` in the same transaction as the order/supplier transition. The capacity remains committed until a human reconciles the uncertain supplier outcome.
+- Test commit `cbd833b1595f77b297b6434e646ffc3d070a9784` extends `tests/duplicate-queue-processing-integration.php` to assert the reservation also becomes `REVIEW` when stale ambiguous processing is detected.
+- CI must be checked on these commits. This is source/CI coverage only; it is not a live supplier API test. Payment, supplier ordering, Drive backup, and deployment remain disabled.
