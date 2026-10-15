@@ -40,6 +40,14 @@ try {
             ],JSON_THROW_ON_ERROR);
             $q=$pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Conflicting terminal Duitku callback; payment state preserved for manual reconciliation' WHERE id=:id AND order_status<>'MANUAL_REVIEW'");
             $q->execute(['id'=>$tx['order_id']]);
+            // A contradictory callback moves the order out of automatic fulfillment.
+            // Keep any active provider capacity reserved for manual reconciliation.
+            provider_budget_resolve(
+                $pdo,
+                (int)$tx['order_id'],
+                'REVIEW',
+                'Conflicting terminal Duitku callback; reservation retained for manual reconciliation'
+            );
             // Gateway retries are expected. Record each distinct stored/incoming status conflict
             // once per order so repeated identical callbacks cannot flood the audit log.
             $q=$pdo->prepare("SELECT id FROM audit_logs
