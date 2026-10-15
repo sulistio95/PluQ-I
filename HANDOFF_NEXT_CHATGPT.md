@@ -4,6 +4,14 @@ Last updated: 2026-10-13 (Asia/Jakarta) — admin checkout hints and timeout CI 
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
+## Latest verified state — 2026-10-15
+
+- CI for audit head `7edd7244c856968ecc4666978c3ee0787074adeb` passed all three workflows: PHP quality `38692917813`, PHP/JavaScript syntax `38692917809`, fulfillment safety/MySQL integration `38692917819`.
+- The runbook head `833bebe1` also passed all three workflows (`38692868185`, `38692868196`, `38692868253`).
+- Recent regression tests verify safe stale queue recovery and preserve an existing payment-conflict `MANUAL_REVIEW` reason; they also verify a sandbox callback cannot enqueue supplier fulfillment when supplier ordering is disabled.
+- CI is not hosting validation and the signed callback test is locally simulated. No real Duitku sandbox transaction or shared-hosting deployment has been performed. Keep live payment, supplier ordering, and Drive backup disabled until staging gates pass.
+- Next: finish the shared-hosting preflight/deployment safety audit, then run staging only after a hosting account/domain and sandbox credentials are available. Continue updating this handoff and `docs/production-readiness-audit.md` after each material change.
+
 ## Instructions for continuing
 
 Read this file first, then read `README.md` and `docs/production-readiness-audit.md`. Continue work directly in **PluQ-I** using the GitHub integration when available. Do not make the user repeat the project background. Audit source before changing it, commit focused changes, update this handoff and the audit document as work progresses, and distinguish code review from tests actually executed.
