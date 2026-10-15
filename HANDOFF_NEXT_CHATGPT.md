@@ -932,3 +932,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - The first shell-quoting correction (`eb7e25fa4dd8540fdba02bc94403980c7d65909f`) advanced the MySQL workflow past the previous shell error, but the test then failed because MySQL `CHAR(...)` produced a binary string for the JSON path (`Cannot create a JSON value from a string with CHARACTER SET 'binary'`).
 - Test-only commit `53b2af99241193fbaacd3785352f5d457963770a` casts the constructed JSON path to `CHAR CHARACTER SET utf8mb4`. Production PHP logic is unchanged.
 - **Verification pending:** rerun the MySQL queue recovery integration and inspect the latest full CI. The new recovery behavior is not considered verified until the integration workflow passes.
+
+
+## Follow-up — preserve the reason for an existing manual review (2026-10-15)
+
+- The latest MySQL regression run advanced through the queue recovery setup and found another real state-integrity issue: the order stayed `MANUAL_REVIEW`, but stale-lock recovery replaced its specific `last_error` (the payment callback conflict reason) with a generic queue timeout message. That would obscure the original reason for human reconciliation.
+- Commit `fbc82eb00f14dfa9e2d539a15d25784d552f8f70` adds an `order_status<>'MANUAL_REVIEW'` guard to the stale recovery update, so an existing review state and its reason are preserved. Reservation capacity still moves/remains in `REVIEW`, and the stale queue job remains failed.
+- **Verification pending:** rerun the MySQL integration workflow on this code change and the newest notes. No live APIs were called; production gates remain disabled.
