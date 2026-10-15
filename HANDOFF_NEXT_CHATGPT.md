@@ -910,3 +910,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Code commit `05c4a126086de77d9760682f4c9fe324e7d36122` now resolves the reservation to `REVIEW` in the same transaction as the order/supplier transition. The capacity remains committed until a human reconciles the uncertain supplier outcome.
 - Test commit `cbd833b1595f77b297b6434e646ffc3d070a9784` extends `tests/duplicate-queue-processing-integration.php` to assert the reservation also becomes `REVIEW` when stale ambiguous processing is detected.
 - CI must be checked on these commits. This is source/CI coverage only; it is not a live supplier API test. Payment, supplier ordering, Drive backup, and deployment remain disabled.
+
+
+## Progress update — 2026-10-15: stale queue recovery respects manual review
+
+- Audit found that stale-lock recovery in `bin/worker-queue.php` could promote any paid order with a supplier transaction marked `SUCCESS` to order `SUCCESS`, even when the order was already `MANUAL_REVIEW` for another reason (including a contradictory signed payment callback). That could clear a human-reconciliation gate without resolving the payment conflict.
+- Commit `479788514539cd77b214a5bed1d602e71f7f54e9` restricts supplier-success recovery to orders still in the automatic fulfillment states `QUEUED`, `PROCESSING`, or `RETRYING`. Already-successful orders remain idempotently successful; their budget reservation is resolved to `SETTLED`. A supplier-success record no longer overrides `MANUAL_REVIEW`.
+- Test commit `442527632c2a4bfa999d47ea5303eace52203ab0` adds MySQL queue-recovery fixtures for both successful in-flight recovery (order `SUCCESS`, reservation `SETTLED`, job `DONE`) and preservation of payment-conflict `MANUAL_REVIEW` (reservation `REVIEW`, job `FAILED`). Existing ambiguous stale-request assertions remain.
+- **Verification pending:** check CI on the code, test, and updated-notes commits. This is CI integration coverage only; no live supplier or payment API was called. Payment, supplier ordering, Drive backup, and deployment remain disabled.
