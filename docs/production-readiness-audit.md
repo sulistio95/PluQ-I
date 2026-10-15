@@ -920,3 +920,15 @@ The MySQL queue-recovery regression reached the intended payment-conflict fixtur
 All three CI workflows passed for implementation/test commit `fbc82eb00f14dfa9e2d539a15d25784d552f8f70`: PHP quality `38671179140`, syntax `38671179042`, and fulfillment/MySQL integration `38671179031`. The updated notes head `f9c908653cd6c2c177fa528a847e043311ef2e26` also passed syntax `38671219531`, PHP quality `38671219421`, and fulfillment/MySQL integration `38671219437`.
 
 The regression confirms that stale recovery only restores supplier success for orders still in automatic fulfillment states, resolves recovered success capacity to `SETTLED`, and preserves existing payment-conflict `MANUAL_REVIEW` plus its reason while retaining the reservation as `REVIEW`. This evidence is from CI PHP 8.2/MySQL 8.4, not live integration or target-host certification. Keep Duitku payments, supplier ordering, Google Drive settlement, and deployment disabled until staging gates pass.
+
+
+## 2026-10-15 — Shared-hosting readiness and isolated sandbox payment test status
+
+**Readiness decision: not yet approved for a live transaction on shared hosting.** Latest CI evidence confirms PHP quality, syntax, and MySQL 8.4 integration tests pass for queue-recovery implementation commit `fbc82eb00f14dfa9e2d539a15d25784d552f8f70` (runs `38671179140`, `38671179042`, `38671179031`) and audit head `f9e611835d28772610dc89c7b4750fccbd1ebc34` (runs `38671358735`, `38671358840`, `38671358999`).
+
+The previous runbook statement that sandbox checkout could not be isolated was stale. Source and tests confirm `checkout_sandbox_only_enabled()` only opens the sandbox gate in `staging`/`test`, with `DUITKU_ENV=sandbox`, `CHECKOUT_PAYMENTS_ENABLED=true`, and `SUPPLIER_ORDERS_ENABLED=false`. The CI MySQL workflow simulates a valid signed callback and asserts payment `PAID`, order `MANUAL_REVIEW`, and no `FULFILL_ORDER` job. It does **not** prove a real external Duitku sandbox transaction works from a shared host.
+
+- Runbook refreshed in commit `833bebe13bdec243f32122599632f464c0b8c690`.
+- Still required before calling the host transaction-ready: verify the selected plan's PHP extensions and MariaDB version, private environment/document-root protections, HTTPS and externally reachable callback, CLI cron and runtime limits, database backup/restore, a real Duitku sandbox create-payment → callback → status-page lifecycle, and no supplier calls during that lifecycle.
+- Supplier execution remains blocked until provider identities/balances, exact game mappings, controlled order/status/timeout behavior, budget reservation under concurrent callbacks, and refund/manual-review ownership are verified. Google Drive export must remain disabled until real OAuth/folder permissions and recovery are tested.
+- No live payment or supplier API was called; no deployment was performed. Keep production payment, supplier ordering, Drive export, and deployment disabled.
