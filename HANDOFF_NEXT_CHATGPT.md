@@ -895,3 +895,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - `bin/preflight.php` memeriksa PHP 8.2+, ekstensi wajib, HTTPS, kekuatan APP_KEY/token scheduler, mode debug, status integrasi tetap nonaktif, koneksi DB, tabel, dan migrasi inti; migrasi/tabel settlement diperiksa jika backup diaktifkan. Belum dijalankan di hosting nyata.
 - CI pada kode pemulihan settlement commit `5de0c6cd837832ceaeb033c46ba7aaadea83b12f` seluruhnya hijau (runs 38665307769, 38665307770, 38665307764). Workflow dari pembaruan catatan terbaru sedang diverifikasi; lihat Actions sebelum menyatakan semua perubahan catatan lolos.
 - Belum ada perubahan konfigurasi produksi. Pembayaran, supplier ordering, settlement Drive, dan deployment tetap nonaktif.
+
+
+## Progress update — 2026-10-15: contradictory Duitku callback reservation safety
+
+- Code commit `d348ce67d0842010697f01687842c63ee8891f08` updates `public/duitku-callback.php`: when a signed callback conflicts with a terminal payment state, the order is moved to `MANUAL_REVIEW` while the payment state remains unchanged. Any `ACTIVE` provider budget reservation is now changed to `REVIEW` in the same DB transaction, so manual reconciliation retains capacity accounting and the reservation is not stranded as `ACTIVE`.
+- Test commit `74f61479f83aa5cf9075f675a521dbfde0c38080` extends `tests/duitku_callback_integration.sh` to assert that a contradictory failure callback after `PAID` preserves the payment, moves the order to manual review, marks the reservation `REVIEW`, and does not create a second fulfillment job.
+- CI for these commits must be checked before calling this change verified. The integration test requires its MySQL/HTTP test fixture; it has not been executed against live Duitku. Payment, supplier orders, Drive backup, and deployment remain disabled.
