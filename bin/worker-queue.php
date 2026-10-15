@@ -54,9 +54,20 @@ try {
             $staleSupplier = $supplierQuery->fetch();
 
             if ($staleOrder && $staleOrder['payment_status'] === 'PAID'
-                && ($staleOrder['order_status'] === 'SUCCESS' || ($staleSupplier && $staleSupplier['status'] === 'SUCCESS'))) {
-                $pdo->prepare("UPDATE orders SET order_status='SUCCESS',fulfilled_at=COALESCE(fulfilled_at,NOW()),last_error=NULL WHERE id=:id")
+                && $staleOrder['order_status'] === 'SUCCESS') {
+                // An already successful order is terminal; reconcile its ledger idempotently.
+                provider_budget_resolve($pdo, $orderId, 'SETTLED', 'Queue recovery confirmed persisted order success');
+                $queueStatus = 'DONE';
+                $queueMessage = null;
+            } elseif ($staleOrder && $staleOrder['payment_status'] === 'PAID'
+                && in_array($staleOrder['order_status'], ['QUEUED','PROCESSING','RETRYING'], true)
+                && $staleSupplier && $staleSupplier['status'] === 'SUCCESS') {
+                // Recover supplier success only from an automatic fulfillment state.
+                // MANUAL_REVIEW can have unrelated causes (for example a payment callback
+                // conflict) and must never be cleared automatically by stale-lock recovery.
+                $pdo->prepare("UPDATE orders SET order_status='SUCCESS',fulfilled_at=COALESCE(fulfilled_at,NOW()),last_error=NULL WHERE id=:id AND payment_status='PAID' AND order_status IN ('QUEUED','PROCESSING','RETRYING')")
                     ->execute(['id'=>$orderId]);
+                provider_budget_resolve($pdo, $orderId, 'SETTLED', 'Queue recovery confirmed supplier success');
                 $queueStatus = 'DONE';
                 $queueMessage = null;
             } elseif ($staleOrder && $staleOrder['payment_status'] === 'PAID'
