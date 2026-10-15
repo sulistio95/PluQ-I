@@ -48,7 +48,7 @@ try {
         'supplier_transactions', 'refunds', 'pricing_rules', 'game_provider_mappings',
         'game_fields', 'game_field_options', 'provider_products', 'product_variants',
         'settings', 'banners', 'excluded_services', 'webhook_events',
-        'account_validations', 'admin_login_attempts',
+        'account_validations', 'admin_login_attempts', 'provider_budget_reservations',
     ];
     $tableQuery = $pdo->prepare(
         'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :name'
@@ -71,6 +71,7 @@ try {
             '008_admin_login_rate_limit',
             '009_refund_order_latest_index',
             '010_checkout_payload_fingerprint',
+            '011_provider_budget_reservations',
         ] as $migration) {
             $ok = in_array($migration, $applied, true);
             $add('Database migration: ' . $migration, $ok, $ok ? 'applied' : 'missing; apply migrations in order');
