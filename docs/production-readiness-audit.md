@@ -883,3 +883,12 @@ Review of `app/services/fulfillment.php` found a gap in the ambiguous prior-requ
 - Regression test commit `cbd833b1595f77b297b6434e646ffc3d070a9784` asserts that the reservation transitions to `REVIEW` together with the order and supplier states.
 - **Verification pending:** check all CI workflows for the code/test commits and the latest notes commit. No live supplier API was called.
 - **Production gates unchanged:** payment, supplier ordering, Drive backup, and deployment remain disabled pending staging and hosting validation.
+
+
+## 2026-10-15 — Stale queue recovery cannot clear manual review
+
+Audit of `bin/worker-queue.php` identified a recovery-state conflict: if a stale job's supplier transaction was `SUCCESS`, the recovery branch could overwrite order `MANUAL_REVIEW` with `SUCCESS`. Manual review can originate from a contradictory signed Duitku callback, so a supplier status alone must not erase that review gate. The same branch also marked recovered success without resolving the provider-budget reservation to `SETTLED`.
+
+- Code commit `479788514539cd77b214a5bed1d602e71f7f54e9` only recovers supplier success automatically when the paid order is still `QUEUED`, `PROCESSING`, or `RETRYING`; an already-successful order is handled idempotently. Both success-recovery paths resolve the reservation to `SETTLED` in the same transaction as stale queue recovery. An order already in `MANUAL_REVIEW` stays under reconciliation and its reservation is retained as `REVIEW`.
+- Regression coverage in `tests/queue_recovery_integration.sh` was added in commit `442527632c2a4bfa999d47ea5303eace52203ab0`: successful in-flight recovery must end with order `SUCCESS`, reservation `SETTLED`, and queue job `DONE`; payment-conflict `MANUAL_REVIEW` must remain unchanged with reservation `REVIEW` and queue job `FAILED`. The prior ambiguous stale supplier test remains.
+- **Verification pending:** inspect CI for the code, test, and note commits. No live API was called. Shared-hosting staging, MariaDB compatibility, real cron behavior, and Drive permissions are still unverified. Keep payments, supplier ordering, settlement backup, and deployment disabled.
