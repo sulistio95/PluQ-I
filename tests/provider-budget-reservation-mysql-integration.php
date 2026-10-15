@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/config/database.php';
 require dirname(__DIR__) . '/app/services/provider_budget.php';
+require dirname(__DIR__) . '/app/services/catalog.php';
 
 function budget_integration_assert(bool $condition, string $message): void
 {
@@ -50,6 +51,7 @@ $providerId = null;
 $gameId = null;
 $productId = null;
 $orderIds = [];
+$pricingRuleId = null;
 
 try {
     $pdo->beginTransaction();
@@ -66,6 +68,11 @@ try {
         VALUES (:game,:provider,:sku,'Budget integration fixture',300000,350000,'ACTIVE')");
     $stmt->execute(['game' => $gameId, 'provider' => $providerId, 'sku' => 'BUDGET_SKU_' . $token]);
     $productId = (int)$pdo->lastInsertId();
+
+    $stmt = $pdo->prepare("INSERT INTO pricing_rules (min_amount,max_amount,profit_amount,status)
+        VALUES (300000,300000,500,'ACTIVE')");
+    $stmt->execute();
+    $pricingRuleId = (int)$pdo->lastInsertId();
 
     foreach ([300000, 200001, 300000, 300000, 300000, 200001] as $index => $cost) {
         $publicId = bin2hex(random_bytes(13));
@@ -90,6 +97,12 @@ try {
     budget_integration_assert($first['reserved'] === true, 'First reservation should be admitted.');
     $pdo->commit();
 
+    // Catalog must hide the offer when its own cost plus existing commitments
+    // exceed usable capacity, rather than showing a product checkout cannot reserve.
+    $catalogRows = catalog_products($pdo, 'budget-test-' . $token);
+    budget_integration_assert(count($catalogRows) === 1 && $catalogRows[0]['is_available'] === false,
+        'Catalog advertised an offer whose cost exceeds remaining provider budget.');
+
     // A second order must see the first commitment and fail closed at Rp500,001 total.
     $pdo->beginTransaction();
     $second = provider_budget_reserve_paid_order($pdo, $orderIds[1]);
@@ -107,6 +120,10 @@ try {
     budget_integration_assert($secondAfterRelease['reserved'] === true,
         'Capacity should become available after the first reservation is released.');
     $pdo->commit();
+
+    $catalogAfterRelease = catalog_products($pdo, 'budget-test-' . $token);
+    budget_integration_assert(count($catalogAfterRelease) === 1 && $catalogAfterRelease[0]['is_available'] === true,
+        'Catalog did not restore offer availability after the reservation was released.');
 
     // Repeating the same reservation must be idempotent and must not create a second row.
     $pdo->beginTransaction();
@@ -211,6 +228,9 @@ try {
         $pdo->rollBack();
     }
     // Clean only the disposable fixture created by this test.
+    if ($pricingRuleId !== null) {
+        $pdo->prepare('DELETE FROM pricing_rules WHERE id=?')->execute([$pricingRuleId]);
+    }
     if ($orderIds) {
         $marks = implode(',', array_fill(0, count($orderIds), '?'));
         $pdo->prepare("DELETE FROM provider_budget_reservations WHERE order_id IN ($marks)")->execute(array_values($orderIds));
