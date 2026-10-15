@@ -865,3 +865,12 @@ Source review pada `bin/worker-queue.php` mengonfirmasi pemrosesan dibatasi oleh
 - **Preflight:** memeriksa PHP 8.2+, ekstensi, HTTPS, secret strength tanpa menampilkan nilai, APP_DEBUG, toggle integrasi, DB, tabel dan migrasi inti. Migrasi/tabel settlement hanya diwajibkan saat settlement backup diaktifkan. Belum diuji terhadap database/versi MariaDB target.
 - **CI pemulihan settlement:** seluruh tiga workflow untuk kode commit `5de0c6cd837832ceaeb033c46ba7aaadea83b12f` sukses (runs 38665307769, 38665307770, 38665307764). CI atas pembaruan catatan terbaru masih berjalan saat audit ini ditulis.
 - **Gate produksi:** jangan aktifkan pembayaran, supplier ordering, Drive backup atau deployment sebelum staging, cron, MariaDB, dan akses eksternal diuji.
+
+
+## 2026-10-15 — Conflicting payment callback keeps provider budget in review
+
+A source audit found that a signed Duitku callback contradicting an already terminal payment would correctly move the order to `MANUAL_REVIEW`, but could leave its provider budget reservation `ACTIVE`. Commit `d348ce67d0842010697f01687842c63ee8891f08` now resolves any active/review reservation to `REVIEW` in the same callback transaction, preserving the reserved capacity while preventing an order from remaining in the automatic fulfillment path. The stored terminal payment state is not overwritten.
+
+- Regression coverage in commit `74f61479f83aa5cf9075f675a521dbfde0c38080` checks contradictory callback after `PAID`, order manual-review status, reservation `REVIEW`, and no duplicate fulfillment job.
+- **Verification pending:** inspect CI on the latest commit; the MySQL/HTTP integration script has not been run against live gateway credentials.
+- **Production gates unchanged:** keep Duitku payments, supplier ordering, Google Drive settlement, and deployment disabled until CI and staging checks are complete.
