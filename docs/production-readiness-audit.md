@@ -874,3 +874,12 @@ A source audit found that a signed Duitku callback contradicting an already term
 - Regression coverage in commit `74f61479f83aa5cf9075f675a521dbfde0c38080` checks contradictory callback after `PAID`, order manual-review status, reservation `REVIEW`, and no duplicate fulfillment job.
 - **Verification pending:** inspect CI on the latest commit; the MySQL/HTTP integration script has not been run against live gateway credentials.
 - **Production gates unchanged:** keep Duitku payments, supplier ordering, Google Drive settlement, and deployment disabled until CI and staging checks are complete.
+
+
+## 2026-10-15 — Keep budget reservation in review for stale supplier requests
+
+Review of `app/services/fulfillment.php` found a gap in the ambiguous prior-request branch: it moved the order to `MANUAL_REVIEW` and supplier transaction to `REVIEW`, but did not resolve an `ACTIVE` provider budget reservation. Commit `05c4a126086de77d9760682f4c9fe324e7d36122` now marks that reservation `REVIEW` in the same database transaction. This intentionally does not free the capacity: the supplier may have accepted the original request, so funds remain committed until reconciliation.
+
+- Regression test commit `cbd833b1595f77b297b6434e646ffc3d070a9784` asserts that the reservation transitions to `REVIEW` together with the order and supplier states.
+- **Verification pending:** check all CI workflows for the code/test commits and the latest notes commit. No live supplier API was called.
+- **Production gates unchanged:** payment, supplier ordering, Drive backup, and deployment remain disabled pending staging and hosting validation.
