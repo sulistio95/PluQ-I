@@ -806,3 +806,12 @@ Login page and rate-limit helper review found that a successful login clears fai
 - The MySQL fulfillment job completed successfully, including provider budget capacity/idempotency/concurrency/stale-balance checks, three concurrent checkout-idempotency attempts, MySQL deadlock classification, concurrent Duitku reconciliation admission, queue-claim/callback concurrency, duplicate active supplier queue, stale queue recovery, lease revocation, ambiguous supplier review, explicit supplier failure/refund recovery, sandbox-payment isolation, and read-only reconciliation checks.
 - The concrete reservation deadlock was fixed by provider-first serialization before the absent reservation lookup; both supplier integration fixtures were corrected to include the mandatory active budget reservation where needed. PHP-from-stdin stderr is now explicitly initialized in the explicit-failure test.
 - This is CI verification against GitHub Actions PHP 8.2 and MySQL 8.4 test services, not a production-host or live gateway certification. Keep live payments, supplier ordering, Drive backup, and deployment disabled pending shared-host staging verification.
+
+
+## Catalog and checkout capacity consistency — 2026-10-15
+
+- Source review found a user-visible mismatch: catalog and checkout quote checked only `product base_price <= provider balance × reserve_percentage`, while payment-time reservation correctly subtracts existing ACTIVE/REVIEW commitments and conservative SETTLED commitments after the last balance sync. This could display an offer and allow a quote even when its budget could not be reserved after payment.
+- Commit `4500da6e250f30b8dde7c52a16060af4a9990661` updates `app/services/catalog.php` to account for outstanding reservations when deriving `is_available`.
+- Commit `4c9e4c26e7e316427bb1c6428bb4ac1f27dc915d` applies the same remaining-capacity rule to the selected offer and cheapest eligible offer in `app/services/checkout_quote.php`. The authoritative transactional reservation check remains in place to handle races after the quote.
+- Commit `ac2f9a829d0cda2f6ea6a003b41b44b66d04496a` extends the MySQL provider-budget integration test: catalog must hide the offer when a prior reservation leaves insufficient capacity, then restore availability after that reservation is released. CI for these changes is pending; do not claim the new test passed until workflow completion.
+- Production payment/provider/Drive integrations and deployment remain disabled.
