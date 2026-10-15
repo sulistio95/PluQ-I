@@ -830,3 +830,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Ini memverifikasi rangkaian terbaru: reservasi aktif harus mengurangi kapasitas yang ditampilkan katalog dan dipakai checkout quote; penawaran kembali tersedia setelah komitmen terkait dilepas. Koreksi fixture/urutan assertion pada commit `7114ede` kini terlewati oleh workflow fulfillment yang hijau.
 - CI menggunakan PHP 8.2 dan MySQL 8.4; bukan uji pada paket shared hosting yang dipilih, gateway Duitku live, API supplier live, atau Google Drive. Seluruh integrasi eksternal dan deployment tetap nonaktif.
 - Lanjutkan audit sumber pada jalur checkout, pemetaan akun game, dan admin; setiap perubahan substantif wajib dicatat di file ini dan `docs/production-readiness-audit.md`.
+
+
+## Regresi quote checkout untuk kapasitas supplier — 2026-10-15
+
+- Memperluas `tests/provider-budget-reservation-mysql-integration.php` agar selain katalog, `checkout_quote()` juga diuji terhadap reservasi kapasitas: quote harus ditolak ketika reservasi aktif membuat kapasitas tidak cukup, lalu kembali berhasil setelah seluruh reservasi fixture dilepas.
+- Fixture sekarang membuat field game `user_id` yang sah agar quote menempuh validasi akun normal. Cleanup menghapus field fixture sebelum game dihapus. Perubahan tes sudah committed, tetapi workflow CI yang dipicu commit ini belum diverifikasi; jangan klaim regresi baru lulus sebelum job fulfillment/MySQL selesai.
+- Kode produksi tidak berubah pada langkah ini. Pembayaran, pemesanan supplier, backup Drive, dan deployment tetap nonaktif.
