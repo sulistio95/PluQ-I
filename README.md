@@ -83,27 +83,27 @@ PHP extensions: `pdo_mysql`, `curl`, `openssl`, `json`, `mbstring`, and `fileinf
 
 ## Scheduled work
 
-The following is an example only. Adapt the PHP executable and absolute paths to the hosting control panel, and confirm that CLI cron is included in the selected plan:
+**The cron schedule is configured in the hosting control panel, not in GitHub.** The repository does not currently have a live cron job because no hosting account has been deployed yet. The examples below must be adapted to the PHP CLI path and absolute project path supplied by the host.
+
+For **DomaiNesia Nimbus (minimum interval 6 minutes)**, use this as the initial queue-worker schedule:
 
 ```cron
-* * * * * /usr/bin/php /absolute/path/PluQ-I/bin/worker-queue.php
-15 2 1 * * /usr/bin/php /absolute/path/PluQ-I/bin/settle-monthly.php
+*/6 * * * * /absolute/path/to/php /absolute/path/to/PluQ-I/bin/worker-queue.php
 ```
 
-Catalog sync is scheduled every 15 minutes in this example; Digiflazz's full price list is rate-limited, so do not run it every minute. Before the first sync, add active rows to `game_provider_mappings` so each provider's exact brand/game code points to the correct local `games.id`. For VIPayment, `VIPAYMENT_PRICE_TIER` selects `basic`, `premium`, or `special` (default `basic`). Balance sync runs every minute in this example and requires supplier credentials. Review cron output and provider records after a controlled test.\n\nMonthly settlement backup is disabled by default. It requires Google OAuth configuration, the intended destination folder, migrations 006–007, and a controlled upload/recovery test before enabling `SETTLEMENT_BACKUP_ENABLED=true`. See `docs/admin-transactions-and-settlement.md`.
+Replace both paths with the actual PHP CLI executable and project path from the hosting provider. Do not copy a guessed path. If using a provider that permits cron only every 15 minutes, change the schedule to `*/15 * * * *` and account for the longer queue delay.
 
-`bin/worker.php` is a read-only queue diagnostic; it never changes job state. `bin/worker-queue.php` is the queue processor, but supplier execution remains disabled unless `SUPPLIER_ORDERS_ENABLED=true`. Do not enable it until provider sandbox behavior and manual reconciliation have been verified. Do not interpret the cron example as evidence that supplier fulfillment is ready.
+Optional scheduled tasks must be added separately, only after their feature and credentials have been tested:
 
-### Queue capacity, monitoring, and recovery
+- Catalog synchronization: `bin/sync-catalog.php`. A 15-minute interval is an initial example only; confirm supplier rate limits and mapping configuration first.
+- Supplier balance synchronization: `bin/sync-balances.php`. Do not enable an aggressive interval until supplier API limits and expected request volume are confirmed.
+- Monthly settlement/Google Drive export: `15 2 1 * * /absolute/path/to/php /absolute/path/to/PluQ-I/bin/settle-monthly.php`. Add this only after Google OAuth, destination folder, migrations 006–007, and backup/recovery tests are complete. Settlement backup is disabled by default.
 
-- The queue is persistent in MySQL, not held in PHP memory. Callback requests only record the verified payment and enqueue a job; supplier API calls happen in the separate worker.
-- The worker is bounded per invocation: default 5 jobs and 20 seconds, with environment limits of at most 20 jobs and 50 seconds. A busy queue should build a backlog rather than make one worker run without a bound. This protects memory/runtime, but it does **not** guarantee immediate fulfillment during a traffic spike.
-- Start with one cron invocation per minute. Monitor it with `php bin/queue-health.php`; the read-only report shows ready backlog, oldest ready-job age, stale locks, and recent failures. A warning exit code means the report should be investigated, not that jobs were changed.
-- Increase `SCHEDULER_BATCH_SIZE` gradually (for example 5 to 10, then at most 20) only after measuring PHP runtime, database load, and each supplier's rate limits. `SCHEDULER_MAX_RUNTIME_SECONDS` is capped at 50 seconds. Do not schedule overlapping workers or add parallel workers until concurrency and provider rate-limit behavior have been tested on the target MySQL/MariaDB version.
-- If backlog repeatedly grows faster than the worker drains it, a once-per-minute shared-hosting cron is not enough. Use hosting-supported more frequent cron if permitted, or move the worker to a dedicated process/queue service on suitable hosting. Do not try to solve a sustained capacity problem by increasing PHP memory or retrying supplier requests blindly.
-- Stale `PROCESSING` jobs older than 10 minutes are moved to manual review, not automatically resubmitted. This is intentionally conservative because a supplier may have accepted an order just before a PHP process crashed.
-- For larger traffic, the next architecture step is a tested worker with concurrent job claiming (for example `SKIP LOCKED` after verifying server-version support), provider-specific rate limiting, and load tests. Those features are not yet claimed as implemented.
+The queue worker processes a bounded batch (default `SCHEDULER_BATCH_SIZE=5`) and stops after a bounded runtime (default `SCHEDULER_MAX_RUNTIME_SECONDS=20`; hard maximum 50 seconds). These settings are in the private environment configuration, not the cron schedule. Keep the defaults initially; only tune after measuring queue backlog, PHP runtime, database load, and provider rate limits.
 
+`bin/worker.php` is a read-only queue diagnostic; it never changes job state. `bin/worker-queue.php` is the actual queue processor. It remains disabled while supplier ordering is disabled, and supplier orders must stay disabled during the initial Duitku Sandbox payment test. Use `php bin/queue-health.php` through CLI to inspect ready backlog, oldest ready-job age, stale locks, and recent failures.
+
+Do not schedule overlapping worker invocations or add parallel workers before concurrency and provider rate-limit behavior have been tested on the target MySQL/MariaDB version. A six-minute cron does not guarantee a job completes within six minutes; if the backlog repeatedly grows faster than it drains, the plan may be too limited for the actual load. Never solve an ambiguous supplier result by blindly retrying a purchase.
 
 ## Feature parity target
 
