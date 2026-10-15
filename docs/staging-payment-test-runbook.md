@@ -7,9 +7,11 @@ This is an operational checklist, not a production approval. No live payment or 
 ## Current hard blockers confirmed from source
 
 - `app/services/duitku.php` explicitly accepts only `DUITKU_ENV=sandbox`. Setting it to `production` currently throws an exception. **Real Duitku payment mode is not implemented/enabled in this build.**
-- `checkout_payments_enabled()` in `app/services/checkout_quote.php` returns true only when both `CHECKOUT_PAYMENTS_ENABLED=true` and `SUPPLIER_ORDERS_ENABLED=true`. Therefore, payment sandbox testing cannot currently be isolated from supplier fulfillment through the normal checkout flow.
-- GitHub Actions runs are failing before runner allocation/step recording (`runner_id=0`, empty `steps`, no usable logs). This does not prove an application test failed, but it means the current CI status is not verified.
-- Do not solve these blockers by turning on supplier ordering or changing Duitku to production blindly.
+- **Updated status (2026-10-15):** `checkout_sandbox_only_enabled()` in `app/services/checkout_quote.php` now permits a tightly gated non-production sandbox path only when `APP_ENV=staging` (or `test`), `DUITKU_ENV=sandbox`, `CHECKOUT_PAYMENTS_ENABLED=true`, and `SUPPLIER_ORDERS_ENABLED=false`. The checkout gate unit test covers these combinations.
+- The fulfillment/MySQL workflow now runs `tests/duitku_sandbox_no_fulfillment_integration.sh`; CI verifies a valid signed sandbox callback records payment as paid, moves the order to `MANUAL_REVIEW`, and creates no `FULFILL_ORDER` job when supplier ordering is disabled.
+- **CI verified on 2026-10-15:** implementation/test commit `fbc82eb00f14dfa9e2d539a15d25784d552f8f70` passed PHP quality, syntax, and MySQL fulfillment integration workflows (runs `38671179140`, `38671179042`, `38671179031`). Documentation head `f9e611835d28772610dc89c7b4750fccbd1ebc34` also passed all three workflows (runs `38671358735`, `38671358840`, `38671358999`).
+- **Still unverified:** no real Duitku sandbox payment request/callback was run against a hosting domain; the CI callback is locally simulated with test credentials. Provider APIs, target-host cron, MariaDB compatibility, Drive OAuth, and production payment mode remain unverified.
+- Do not solve remaining blockers by enabling supplier ordering during sandbox-only payment testing or changing Duitku to production blindly.
 
 ## Stage A — prepare hosting without taking payments
 
@@ -34,7 +36,7 @@ This is an operational checklist, not a production approval. No live payment or 
 
 ## Stage C — enable an isolated Duitku sandbox test
 
-**Blocked pending a code change and regression tests:** the current checkout gate requires supplier ordering enabled at the same time as checkout payments. Before testing the real Duitku sandbox through the public checkout, implement and test an explicit sandbox-only payment path that cannot call supplier order APIs. Do not use a production flag or a public bypass to work around this.
+**Code-level sandbox isolation is implemented and CI-tested; external staging test remains pending.** Before testing the Duitku sandbox through the public checkout, deploy to a private staging domain and verify the actual gateway request/callback while supplier ordering remains disabled. Do not use a production flag or a public bypass to work around this.
 
 Required acceptance criteria for that change:
 - Sandbox-only mode is explicit and rejects any non-sandbox Duitku endpoint.
@@ -66,7 +68,8 @@ Production payment mode must be implemented deliberately and separately from san
 ## Evidence log
 
 - 2026-10-14: source review confirmed the sandbox-only Duitku guard and combined checkout/supplier feature gate.
-- 2026-10-14: recent GitHub Actions runs failed before runner allocation or step recording; cause remains unknown and application tests are not claimed as passed.
+- 2026-10-15: GitHub Actions now records and passes PHP quality, syntax, and MySQL 8.4 integration steps for the latest queue-recovery change and current audit documentation.
+- 2026-10-15: isolated sandbox-only callback test passed in CI; it used a local PHP server and test HMAC credentials, not the external Duitku gateway or a shared-hosting deployment.
 - 2026-10-14: no live payment, supplier purchase, or deployment was performed.
 
 ## Additional gate — provider balance concurrency
