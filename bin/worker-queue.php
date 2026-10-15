@@ -72,7 +72,7 @@ try {
                 $queueMessage = null;
             } elseif ($staleOrder && $staleOrder['payment_status'] === 'PAID'
                 && !in_array($staleOrder['order_status'], ['SUCCESS','REFUNDED'], true)) {
-                $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error=:error WHERE id=:id")
+                $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error=:error WHERE id=:id AND order_status<>'MANUAL_REVIEW'")
                     ->execute(['error'=>$queueMessage,'id'=>$orderId]);
                 $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error=:error WHERE order_id=:id AND status IN ('PENDING','PROCESSING','RETRYING')")
                     ->execute(['error'=>$queueMessage,'id'=>$orderId]);
