@@ -879,3 +879,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Commit `29c4ba614bf3950fbd9bb518033029cf53fbcceb` changes `settlement_find_drive_file()` to walk Google Drive list pages (100 items per page) until it finds the matching spreadsheet or exhausts the results. The lookup remains scoped to the configured destination folder and settlement period.
 - Reason: a one-page lookup could incorrectly report “not found” when matching period-tagged files were beyond the first page, causing an unnecessary duplicate spreadsheet to be created.
 - Verification pending for this commit. No live Drive requests were made. The earlier preflight-schema commit `bb025e0539f63916ad87d29dd3fcd570e30a9156c` has all three CI workflows green.
+
+
+## Pemulihan settlement jika file Drive hilang — 2026-10-15
+
+- Commit `5de0c6cd837832ceaeb033c46ba7aaadea83b12f` menghapus penghentian dini untuk catatan settlement berstatus `UPLOADED`. Saat dijalankan ulang secara terkontrol, proses kini memeriksa lagi spreadsheet dengan metadata periode di folder tujuan; jika file tidak lagi ada di folder tersebut, ekspor dapat dibuat ulang alih-alih melaporkan sukses berdasarkan ID lama saja.
+- Proses tetap memakai reservasi periode dan pemeriksaan status `PROCESSING`; file yang ditemukan melalui metadata idempotensi tidak dibuat ulang.
+- CI untuk commit kode ini masih perlu diverifikasi. Belum ada panggilan Google Drive/OAuth live. Backup settlement, pembayaran, pemesanan supplier, dan deployment tetap nonaktif.
