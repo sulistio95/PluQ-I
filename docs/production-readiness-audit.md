@@ -819,3 +819,13 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 
 - Semua workflow pada commit `813f6dea8668162f1a817e00c631d9aeb1249a16` selesai sukses: [fulfillment safety dan MySQL](https://github.com/sulistio95/PluQ-I/actions/runs/38660874079), [syntax PHP/JavaScript](https://github.com/sulistio95/PluQ-I/actions/runs/38660874054), serta [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38660874040).
 - Pengujian queue recovery kini memverifikasi order masuk `MANUAL_REVIEW`, supplier masuk `REVIEW`, job queue menjadi `FAILED`, dan reservasi budget ikut `REVIEW` sehingga kapasitas tidak dilepas saat hasil supplier masih belum pasti.
+
+
+## 2026-10-15 — Settlement destination isolation
+
+Source review found `settlement_find_drive_file()` searched Drive globally by settlement metadata and filename, while the admin-configured destination folder was only applied when creating/moving a new spreadsheet. A pre-existing tagged spreadsheet outside that folder could therefore be treated as the current backup. Commit `c57c494b398aa6724f99bec028c1c6db476879ff` now includes the configured folder as a parent constraint in the Drive lookup and passes the resolved folder ID to that function.
+
+- **Code changed:** `bin/settle-monthly.php` only.
+- **Purpose:** prevent false-positive “already backed up” matches outside the configured destination folder.
+- **Verification:** CI for this commit pending at the time of this note. No live Google Drive/OAuth request was made. This does not certify Drive permissions, shared-drive compatibility, or production hosting.
+- **Production gate remains:** settlement backup stays disabled until configured and tested safely; payment/provider execution and deployment remain disabled.
