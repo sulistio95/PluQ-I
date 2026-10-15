@@ -956,3 +956,11 @@ Source review found that the customer catalog computed provider balance eligibil
 - Added `tests/catalog-availability.php` with regression checks for unavailable-only offers, Digiflazz available + VIPayment unavailable, cheapest offer when both are eligible, and other available products. Added the test to `.github/workflows/php-quality.yml`.
 - `public/assets/catalog.js` now uses a clearer empty-state message when a game has no currently available products.
 - **CI for this change set is pending verification.** This is source-level and unit-test coverage, not a live supplier API or hosting test. Payments, supplier orders, Drive backup, and deployment remain disabled.
+
+
+## 2026-10-15 — Catalog availability regression test aligned with budget safety
+
+The first MySQL CI run after filtering unavailable offers failed because `tests/provider-budget-reservation-mysql-integration.php` still expected one unavailable product card. That assertion represented the previous storefront behavior, not a production-code regression. It now expects zero customer-facing products when provider commitments make the offer ineligible; the checkout quote must still reject the same product. Unit-test fixtures were also completed with base prices.
+
+- Test corrections: `db02544a740f46e5491bd11c7f3f499c3f554f92` and `aaa3b34011a304275af94236b968d5e0ab723850`.
+- **Verification pending:** rerun/inspect all workflows on the latest commit. No live supplier API or hosting was used. Keep payments, supplier ordering, Drive backup, and deployment disabled.
