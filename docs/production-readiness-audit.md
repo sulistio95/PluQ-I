@@ -799,3 +799,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - `tests/provider-budget-reservation-mysql-integration.php` kini menguji perilaku `checkout_quote()` langsung: saat komitmen reservasi menyebabkan kapasitas tersisa kurang dari harga pokok produk, quote harus melempar `DomainException`; setelah semua reservasi fixture dilepas, quote harus berhasil kembali. Ini melengkapi assertion katalog dari perubahan sebelumnya.
 - Fixture menambahkan field game `user_id` yang valid sehingga tes quote juga melewati validasi akun yang digunakan jalur checkout. Perubahan hanya pada tes; kode produksi tidak diubah.
 - Status runtime untuk regresi baru ini masih menunggu workflow CI pada commit terbaru. Sampai workflow fulfillment/MySQL selesai sukses, jangan menyatakan pengujian baru lolos. Integrasi produksi dan deployment tetap nonaktif.
+
+
+## Hasil CI regresi quote checkout — 2026-10-15 (diperbarui)
+
+- Ketiga workflow pada commit `59297d1a892a491c025f6614aba3fee52095370c` selesai `success`: [syntax PHP/JavaScript](https://github.com/sulistio95/PluQ-I/actions/runs/38660082026), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38660081870), dan [fulfillment safety/MySQL integration](https://github.com/sulistio95/PluQ-I/actions/runs/38660081985).
+- Tes MySQL baru untuk `checkout_quote()` ikut dijalankan: quote harus ditolak jika biaya produk plus komitmen melampaui kapasitas, dan harus kembali berhasil setelah reservasi fixture dilepas. Bukti ini berlaku untuk lingkungan CI PHP 8.2/MySQL 8.4, bukan untuk MariaDB atau hosting target yang belum dipilih.
+- Pembayaran live, supplier ordering, Google Drive backup, dan deployment tetap nonaktif. Tahap audit berikutnya difokuskan pada settlement serta preflight shared hosting.
