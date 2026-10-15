@@ -250,6 +250,9 @@ function fulfillment_process(PDO $pdo, int $orderId): string
             // are not verified here, so neither ambiguous state is safe for automatic resubmission.
             $pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Supplier request outcome is ambiguous; manual reconciliation required' WHERE id=:id AND payment_status='PAID'")->execute(['id'=>$orderId]);
             $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error='Ambiguous prior request; automatic resubmission blocked' WHERE order_id=:id")->execute(['id'=>$orderId]);
+            // The prior supplier request may already have been accepted. Retain its capacity
+            // reservation for reconciliation instead of leaving it indistinguishably ACTIVE.
+            provider_budget_resolve($pdo, $orderId, 'REVIEW', 'Ambiguous prior supplier request; automatic resubmission blocked');
             $pdo->commit();
             return 'REVIEW';
         } elseif ($supplier['status']==='SUCCESS') {
