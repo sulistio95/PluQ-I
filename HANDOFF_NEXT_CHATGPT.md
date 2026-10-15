@@ -925,3 +925,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - CI on the first regression-test commit `442527632c2a4bfa999d47ea5303eace52203ab0` caught a test-harness issue, not a production PHP failure: the SQL JSON path `'$.order_id'` was embedded inside a shell single-quoted `php -r` script, so the shell removed the SQL quotes and MySQL reported `Unknown column '$.order_id'`.
 - Commit `eb7e25fa4dd8540fdba02bc94403980c7d65909f` avoids shell quoting collisions by constructing the JSON path with SQL `CHAR(...)`. The assertions still target each job by its payload order ID; production logic is unchanged in this follow-up.
 - **Verification pending:** rerun the MySQL integration workflow on this test fix and the current notes head. Do not mark the new recovery regression tests green until that run completes successfully.
+
+
+## Follow-up — MySQL JSON path charset in queue recovery test (2026-10-15)
+
+- The first shell-quoting correction (`eb7e25fa4dd8540fdba02bc94403980c7d65909f`) advanced the MySQL workflow past the previous shell error, but the test then failed because MySQL `CHAR(...)` produced a binary string for the JSON path (`Cannot create a JSON value from a string with CHARACTER SET 'binary'`).
+- Test-only commit `53b2af99241193fbaacd3785352f5d457963770a` casts the constructed JSON path to `CHAR CHARACTER SET utf8mb4`. Production PHP logic is unchanged.
+- **Verification pending:** rerun the MySQL queue recovery integration and inspect the latest full CI. The new recovery behavior is not considered verified until the integration workflow passes.
