@@ -872,3 +872,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Commit `bb025e0539f63916ad87d29dd3fcd570e30a9156c` updates `bin/preflight.php` to require migration `011_provider_budget_reservations` and table `provider_budget_reservations` for all shared-hosting deployments. Queue/checkout budget safety relies on this table, so a preflight must not pass if it is absent.
 - CI for the source change is pending. This is a code change and static preflight coverage; it has not been run against the user's hosting database.
 - Also in this session, commit `c57c494b398aa6724f99bec028c1c6db476879ff` scoped monthly spreadsheet lookup to the configured Drive folder; syntax and PHP quality checks passed on that code commit, fulfillment safety test was still running at last poll.
+
+
+## Progress update — 2026-10-15: paginated settlement Drive lookup
+
+- Commit `29c4ba614bf3950fbd9bb518033029cf53fbcceb` changes `settlement_find_drive_file()` to walk Google Drive list pages (100 items per page) until it finds the matching spreadsheet or exhausts the results. The lookup remains scoped to the configured destination folder and settlement period.
+- Reason: a one-page lookup could incorrectly report “not found” when matching period-tagged files were beyond the first page, causing an unnecessary duplicate spreadsheet to be created.
+- Verification pending for this commit. No live Drive requests were made. The earlier preflight-schema commit `bb025e0539f63916ad87d29dd3fcd570e30a9156c` has all three CI workflows green.
