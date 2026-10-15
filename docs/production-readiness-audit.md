@@ -905,3 +905,11 @@ The first CI run for the new stale queue recovery regression assertions failed b
 ## 2026-10-15 — MySQL JSON path charset correction for queue recovery test
 
 After the shell quoting fix, CI reached the queue-recovery assertions but MySQL rejected the generated JSON path because `CHAR(...)` returns a binary string. Test-only commit `53b2af99241193fbaacd3785352f5d457963770a` now casts the path to `CHAR CHARACTER SET utf8mb4`, which should provide the string charset expected by JSON functions. The MySQL integration must be rerun before the new assertions are considered passing; production logic remains unchanged by this harness correction.
+
+
+## 2026-10-15 — Preserve existing manual-review reason in queue recovery
+
+The MySQL queue-recovery regression reached the intended payment-conflict fixture and showed that the order status remained `MANUAL_REVIEW`, but its specific `last_error` was overwritten with the generic stale-lock message. This did not auto-clear review, but it degraded the audit trail needed for reconciliation.
+
+- Code commit `fbc82eb00f14dfa9e2d539a15d25784d552f8f70` adds a guard so stale recovery does not overwrite `last_error` for an order already in `MANUAL_REVIEW`. Supplier success cannot clear the review gate; provider capacity stays `REVIEW` and the stale job remains `FAILED`.
+- **Verification pending:** rerun the MySQL workflow after this fix. Prior failures in the newly added integration assertions are being used to tighten test coverage; no live supplier/payment calls were made.
