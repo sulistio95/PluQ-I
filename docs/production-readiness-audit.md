@@ -972,4 +972,4 @@ The latest fulfillment workflow (38755995858) exposed one remaining stale assert
 
 - Commit f423392aad634c4d3dbde82dd1ffd6e957003cfd changes that assertion to expect an empty customer-facing catalog while capacity is exhausted.
 - The test still checks that the product returns once all reservations are released.
-- Verification pending: inspect fresh GitHub Actions runs for this commit before treating the full suite as green. This change updates a test expectation only; no live supplier API or hosting test was performed. Payment, supplier ordering, Drive backup, and deployment remain disabled.
+- Verification: all three GitHub Actions workflows passed for code/test commit f423392aad634c4d3dbde82dd1ffd6e957003cfd — PHP quality 38758104195, PHP/JavaScript syntax 38758104376, and fulfillment/MySQL integration 38758105058. This validates the test suite in CI's MySQL 8.4 environment only; no live supplier API or hosting test was performed. Payment, supplier ordering, Drive backup, and deployment remain disabled.
