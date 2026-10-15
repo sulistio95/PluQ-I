@@ -851,3 +851,9 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Audit jalur pemulihan menemukan bahwa ketika job supplier kedaluwarsa atau worker berakhir dengan error ambigu, pesanan dan transaksi supplier dipindahkan ke `MANUAL_REVIEW`/`REVIEW`, tetapi ledger `provider_budget_reservations` bisa tertinggal berstatus `ACTIVE`. Kapasitas tetap tertahan (aman secara saldo), namun status ledger tidak konsisten dengan kebutuhan rekonsiliasi.
 - `bin/worker-queue.php` dan `app/services/queue_worker.php` sekarang memanggil `provider_budget_resolve(..., 'REVIEW', ...)` pada transisi manual review. Pengujian `tests/queue_recovery_integration.sh` kini membuat reservasi fixture dan menegaskan statusnya berubah ke `REVIEW` tanpa melepaskan kapasitas.
 - Perubahan produksi dan tes sudah committed; workflow CI pada commit terbaru masih harus diverifikasi. Jangan menandai regresi ini lulus sebelum fulfillment/MySQL integration selesai.
+
+
+### Hasil CI perbaikan reservasi REVIEW — 2026-10-15
+
+- Ketiga workflow pada commit `813f6dea8668162f1a817e00c631d9aeb1249a16` sukses: [fulfillment safety/MySQL](https://github.com/sulistio95/PluQ-I/actions/runs/38660874079), [syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38660874054), dan [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/38660874040).
+- Regresi pemulihan queue memverifikasi reservasi budget yang terkait dengan order stale juga berstatus `REVIEW`; kapasitas tetap dikunci sampai rekonsiliasi.
