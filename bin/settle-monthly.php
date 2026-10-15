@@ -232,11 +232,8 @@ try {
     $stmt = $pdo->prepare('SELECT * FROM monthly_settlement_exports WHERE period_start=:start AND period_end=:end FOR UPDATE');
     $stmt->execute(['start' => $start, 'end' => $endDate]);
     $existing = $stmt->fetch();
-    if ($existing && $existing['status'] === 'UPLOADED') {
-        $pdo->commit();
-        fwrite(STDOUT, 'Already uploaded: ' . $fileName . ' (Google Sheets ID ' . (string) $existing['drive_file_id'] . ')' . PHP_EOL);
-        exit(0);
-    }
+    // Even a previously UPLOADED record must re-check Drive idempotency. The file may
+    // have been deleted or moved out of the configured folder since the last run.
     if ($existing && $existing['status'] === 'PROCESSING' && strtotime((string) $existing['updated_at']) > time() - 1800) {
         $pdo->commit();
         settlement_fail('This settlement period is already being processed. Wait 30 minutes before controlled recovery.');
