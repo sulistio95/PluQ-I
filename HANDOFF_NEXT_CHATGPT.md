@@ -918,3 +918,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Commit `479788514539cd77b214a5bed1d602e71f7f54e9` restricts supplier-success recovery to orders still in the automatic fulfillment states `QUEUED`, `PROCESSING`, or `RETRYING`. Already-successful orders remain idempotently successful; their budget reservation is resolved to `SETTLED`. A supplier-success record no longer overrides `MANUAL_REVIEW`.
 - Test commit `442527632c2a4bfa999d47ea5303eace52203ab0` adds MySQL queue-recovery fixtures for both successful in-flight recovery (order `SUCCESS`, reservation `SETTLED`, job `DONE`) and preservation of payment-conflict `MANUAL_REVIEW` (reservation `REVIEW`, job `FAILED`). Existing ambiguous stale-request assertions remain.
 - **Verification pending:** check CI on the code, test, and updated-notes commits. This is CI integration coverage only; no live supplier or payment API was called. Payment, supplier ordering, Drive backup, and deployment remain disabled.
+
+
+## Follow-up — queue recovery test harness quoting correction (2026-10-15)
+
+- CI on the first regression-test commit `442527632c2a4bfa999d47ea5303eace52203ab0` caught a test-harness issue, not a production PHP failure: the SQL JSON path `'$.order_id'` was embedded inside a shell single-quoted `php -r` script, so the shell removed the SQL quotes and MySQL reported `Unknown column '$.order_id'`.
+- Commit `eb7e25fa4dd8540fdba02bc94403980c7d65909f` avoids shell quoting collisions by constructing the JSON path with SQL `CHAR(...)`. The assertions still target each job by its payload order ID; production logic is unchanged in this follow-up.
+- **Verification pending:** rerun the MySQL integration workflow on this test fix and the current notes head. Do not mark the new recovery regression tests green until that run completes successfully.
