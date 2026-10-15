@@ -792,3 +792,10 @@ Reviewed admin login and database-backed rate limiting. A successful login curre
 - Ketiga workflow pada head dokumentasi `a59d11e242f3c8c9de291b5a53b3c50f1ac5eceb` telah selesai sukses: syntax [38658731086](https://github.com/sulistio95/PluQ-I/actions/runs/38658731086), PHP quality [38658731054](https://github.com/sulistio95/PluQ-I/actions/runs/38658731054), dan fulfillment safety/MySQL [38658731101](https://github.com/sulistio95/PluQ-I/actions/runs/38658731101).
 - Tes MySQL pada rangkaian ini memverifikasi katalog tetap menandai penawaran tidak tersedia selama total reservasi melebihi kapasitas tersisa, dan ketersediaan pulih setelah seluruh reservasi fixture dilepas. Perubahan query katalog dan checkout quote serta koreksi urutan assertion sekarang lolos workflow tersebut.
 - Lingkup bukti: CI GitHub Actions, PHP 8.2, MySQL 8.4. Belum membuktikan kompatibilitas penuh pada versi MariaDB milik shared host, callback Duitku live, pesanan supplier live, OAuth/penulisan Google Drive, backup/restore hosting, atau cron di hosting target. Jangan mengaktifkan integrasi/deployment produksi sebelum staging checklist selesai.
+
+
+## Regresi MySQL untuk quote checkout dan kapasitas tersisa — 2026-10-15
+
+- `tests/provider-budget-reservation-mysql-integration.php` kini menguji perilaku `checkout_quote()` langsung: saat komitmen reservasi menyebabkan kapasitas tersisa kurang dari harga pokok produk, quote harus melempar `DomainException`; setelah semua reservasi fixture dilepas, quote harus berhasil kembali. Ini melengkapi assertion katalog dari perubahan sebelumnya.
+- Fixture menambahkan field game `user_id` yang valid sehingga tes quote juga melewati validasi akun yang digunakan jalur checkout. Perubahan hanya pada tes; kode produksi tidak diubah.
+- Status runtime untuk regresi baru ini masih menunggu workflow CI pada commit terbaru. Sampai workflow fulfillment/MySQL selesai sukses, jangan menyatakan pengujian baru lolos. Integrasi produksi dan deployment tetap nonaktif.
