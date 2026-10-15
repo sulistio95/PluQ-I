@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/provider_budget.php';
+
 /**
  * Finalize a claimed queue job only while the same worker still owns its lease.
  * Lock order is queue -> order -> supplier, matching stale-lock recovery.
@@ -50,6 +52,7 @@ function queue_finalize_job(PDO $pdo, array $job, string $token, string $outcome
                             $pdo->prepare("UPDATE supplier_transactions SET status='REVIEW',last_error=:error WHERE order_id=:id AND status IN ('PENDING','PROCESSING','RETRYING')")
                                 ->execute(['error' => $message, 'id' => $reviewOrderId]);
                         }
+                        provider_budget_resolve($pdo, $reviewOrderId, 'REVIEW', $message);
                     }
                 }
             }
