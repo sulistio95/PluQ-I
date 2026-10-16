@@ -1092,3 +1092,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - PHP syntax passed. Preflight reported **45/47 checks passed**. PHP version/extensions, `APP_KEY` and `SCHEDULER_TOKEN` length checks, disabled checkout/supplier/settlement flags, database connection, all 24 required base tables, and required migration records passed.
 - Two expected environment-specific failures: `APP_URL uses HTTPS` (local URL is not HTTPS) and `APP_DEBUG disabled` (local debug is enabled). Do not change local development settings solely to make this production preflight pass; use an HTTPS staging URL and `APP_DEBUG=false` in staging/production.
 - This result is local configuration verification, not proof of hosting readiness. Keep checkout payments, supplier ordering, settlement/Drive backup, and deployment disabled until staging gates are satisfied.
+
+
+## 2026-10-16 — Environment-file tracking check and queue-test guard
+
+- User pulled the latest main; git check-ignore -v .env returned .gitignore:1:.env .env, git status --short was empty, and git ls-files --error-unmatch .env reported that .env is not tracked. This verifies the current Git index; it does not scan old history for previously committed secrets. Never put secrets in Git or chat.
+- Source review confirmed .github/workflows/fulfillment-tests.yml runs tests/queue_recovery_integration.sh. That legacy test marks all pending/retry jobs DONE and invokes the worker with SUPPLIER_ORDERS_ENABLED=true, so accidental execution against a non-disposable database could alter jobs or trigger fulfillment.
+- Added a fail-closed guard to the script: it refuses to run unless DB_DATABASE=pluq_test and the explicit PLUQI_ALLOW_DESTRUCTIVE_QUEUE_RECOVERY_TEST=1 opt-in are both present. GitHub Actions sets that opt-in only on the stale-recovery test step, using its disposable pluq_test database. This is a guardrail, not a redesign of the legacy test; do not run it manually against local or hosting databases.
+- CI verification for this guard and documentation update is pending. No local queue test was run, and no payment, supplier, or Drive request was made. Keep checkout payments, supplier ordering, settlement backup, and deployment disabled.
