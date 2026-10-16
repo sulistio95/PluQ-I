@@ -1107,3 +1107,18 @@ Login page and rate-limit helper review found that a successful login clears fai
 - After the queue-recovery invocation guard was added, GitHub Actions for commit `75603cd14db79d27fbf5dca4998285eb5f82905a` completed successfully: PHP quality `38851169829`, fulfillment safety tests `38851169810`, and PHP/JavaScript syntax `38851169695`.
 - The guard is now present on main and the user pulled it locally; `git status --short` was empty. CI success verifies the workflow as run against its disposable MySQL service, not shared hosting or live payment/provider behavior.
 - Continue reviewing operational entry points and cron safety. Keep live checkout, supplier fulfillment, settlement/Drive backup, and deployment disabled pending staging validation.
+
+
+## 2026-10-16 — Shared-hosting worker, supplier-sync, and settlement audit
+
+Read-only source review completed for queue worker, supplier balance/catalog sync, customer catalog eligibility, provider HTTP transport, and monthly settlement.
+
+- `bin/worker-queue.php`: CLI or authenticated HTTP via `X-Scheduler-Token`; use CLI cron and keep `bin/` outside the public document root. It remains disabled unless `SUPPLIER_ORDERS_ENABLED=true`.
+- Worker defaults to 5 jobs and 20 seconds, clamped to 1–20 jobs and 5–50 seconds. Runtime is checked between jobs, not as a hard process kill; a provider HTTP call can last up to 30 seconds, so a single invocation may exceed the worker target. Avoid overlapping cron runs; hosting runtime/cron behavior is untested.
+- Stale locks older than 10 minutes are reviewed in batches of 50. Ambiguous supplier outcomes go to manual review instead of automatic re-submission. More than 50 stale locks require subsequent invocations.
+- `bin/sync-balances.php` and `bin/sync-catalog.php` are CLI-only, skip missing credentials, and skip providers marked `DISABLED`. Balance sync updates provider status from supplier responses; catalog sync can refresh cached offers for `LOW_BALANCE`, but public catalog eligibility applies provider state, known balance, reserve capacity, and pricing-rule checks.
+- A provider with balance 0 cannot sell positive-cost offers under the reserve-capacity calculation. The existing `tests/catalog-availability.php` covers hiding unavailable offers, preferring an available provider, and selecting the cheapest available offer. This was code review; no supplier API call was made.
+- `bin/settle-monthly.php` is CLI-only and refuses to proceed unless `SETTLEMENT_BACKUP_ENABLED=true`. It supports a normal first-of-month run and controlled recovery for a completed month; a recent PROCESSING reservation blocks duplicate work for 30 minutes. When enabled it performs Google OAuth/Drive/Sheets network operations and creates or updates a spreadsheet, so keep it disabled until OAuth, folder access, migrations 006–007, and recovery/restore checks are verified.
+- No live API, Google, or hosting calls/tests occurred. Checkout payments, supplier ordering, settlement backup, and deployment remain disabled.
+
+Next: run safe local regression tests only after confirming the local `.env` targets the disposable test DB, then review hosting-specific PHP CLI path, cron availability, document-root isolation, and backup/restore requirements. Do not manually run destructive queue-recovery scripts against a developer or hosting database.
