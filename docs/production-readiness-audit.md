@@ -980,3 +980,12 @@ The latest fulfillment workflow (38755995858) exposed one remaining stale assert
 - Commit f423392aad634c4d3dbde82dd1ffd6e957003cfd changes that assertion to expect an empty customer-facing catalog while capacity is exhausted.
 - The test still checks that the product returns once all reservations are released.
 - Verification: all three GitHub Actions workflows passed for code/test commit f423392aad634c4d3dbde82dd1ffd6e957003cfd — PHP quality 38758104195, PHP/JavaScript syntax 38758104376, and fulfillment/MySQL integration 38758105058. This validates the test suite in CI's MySQL 8.4 environment only; no live supplier API or hosting test was performed. Payment, supplier ordering, Drive backup, and deployment remain disabled.
+
+
+## 2026-10-16 — Local MySQL deadlock classification test passed
+
+- Local verification reported by the user: PHP lint passed for `tests/checkout-deadlock-classification-integration.php`.
+- The MySQL integration test passed with output: `Real MySQL deadlock classification test passed (one victim classified for idempotency winner recovery).`
+- Scope: verifies one real local MySQL deadlock victim is classified for idempotency-winner recovery. No Duitku/payment gateway or supplier API was called, and no hosting environment was tested.
+- Safety note: do not execute `tests/queue_recovery_integration.sh` as currently written because it can update unrelated PENDING/RETRY jobs and starts a worker with supplier ordering enabled. Review and isolate `tests/duplicate-queue-processing-integration.php` before running it because it sets `SUPPLIER_ORDERS_ENABLED=true` and depends on a catalog fixture.
+- Payment checkout, supplier ordering, settlement backup, and deployment remain disabled pending controlled staging verification.
