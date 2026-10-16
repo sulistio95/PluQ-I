@@ -110,7 +110,7 @@ try {
     echo "Revoked worker lease cannot finalize protected state; queue errors preserve terminal, refund, and review order states.\\n";
 } finally {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    if ($jobId !== null || $orderId !== null) {
+    if ($jobId !== null || $orderId !== null || $productId !== null || $gameId !== null) {
         $pdo->beginTransaction();
         try {
             if ($jobId !== null) $pdo->prepare("DELETE FROM job_queue WHERE id=:id")->execute(['id'=>$jobId]);
