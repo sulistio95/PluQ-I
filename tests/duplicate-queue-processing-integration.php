@@ -1,28 +1,54 @@
 <?php
 declare(strict_types=1);
 
-// This integration test exercises the duplicate-job path only; a fresh PROCESSING
-// supplier transaction must not trigger another supplier HTTP request.
+// This integration test exercises the duplicate-job guard against an isolated
+// MySQL fixture. If a regression reaches the supplier client, its URL is loopback
+// port 1, never a real supplier endpoint.
 putenv('SUPPLIER_ORDERS_ENABLED=true');
+putenv('DIGIFLAZZ_USERNAME=pluqi-test');
+putenv('DIGIFLAZZ_API_KEY=not-a-real-key');
+putenv('DIGIFLAZZ_API_URL=http://127.0.0.1:1');
+putenv('VIPAYMENT_API_ID=pluqi-test');
+putenv('VIPAYMENT_API_KEY=not-a-real-key');
+putenv('VIPAYMENT_API_URL=https://127.0.0.1:1');
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once PLUQI_ROOT . '/config/database.php';
 require_once PLUQI_ROOT . '/app/services/fulfillment.php';
 
 $pdo = database();
-$game = $pdo->prepare("SELECT g.id AS game_id, p.id AS product_id, p.provider_id
-    FROM games g
-    JOIN products p ON p.game_id = g.id
-    JOIN providers pr ON pr.id = p.provider_id
-    WHERE g.slug = 'integration-game'
-      AND p.provider_product_code = 'integration-sku'
-      AND pr.code = 'DIGI'
-    LIMIT 1");
-$game->execute();
-$fixture = $game->fetch();
-if (!$fixture) {
-    fwrite(STDERR, "Missing integration-game/integration-sku fixture.\n");
+$providerQuery = $pdo->prepare("SELECT id FROM providers WHERE code='DIGI' LIMIT 1");
+$providerQuery->execute();
+$providerId = (int)$providerQuery->fetchColumn();
+if ($providerId <= 0) {
+    fwrite(STDERR, "Missing DIGI provider row; apply the schema and migrations first.\n");
     exit(1);
+}
+
+$token = bin2hex(random_bytes(8));
+$gameId = null;
+$productId = null;
+$fixture = null;
+$pdo->beginTransaction();
+try {
+    $q = $pdo->prepare("INSERT INTO games (slug,name,status) VALUES (:slug,'Duplicate queue integration','ACTIVE')");
+    $q->execute(['slug' => 'dup-queue-' . $token]);
+    $gameId = (int)$pdo->lastInsertId();
+
+    $q = $pdo->prepare("INSERT INTO products
+        (game_id,provider_id,provider_product_code,name,base_price,selling_price,status)
+        VALUES (:game_id,:provider_id,:sku,'Duplicate queue integration product',1000,1500,'ACTIVE')");
+    $q->execute([
+        'game_id' => $gameId,
+        'provider_id' => $providerId,
+        'sku' => 'dup-queue-' . $token,
+    ]);
+    $productId = (int)$pdo->lastInsertId();
+    $fixture = ['game_id' => $gameId, 'product_id' => $productId, 'provider_id' => $providerId];
+    $pdo->commit();
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    throw $e;
 }
 
 $publicId = 'dupjob' . bin2hex(random_bytes(10));
@@ -146,6 +172,8 @@ try {
             $pdo->prepare('DELETE FROM supplier_transactions WHERE order_id=:id')->execute(['id' => $orderId]);
             $pdo->prepare('DELETE FROM provider_budget_reservations WHERE order_id=:id')->execute(['id' => $orderId]);
             $pdo->prepare('DELETE FROM orders WHERE id=:id')->execute(['id' => $orderId]);
+            if ($productId !== null) $pdo->prepare('DELETE FROM products WHERE id=:id')->execute(['id' => $productId]);
+            if ($gameId !== null) $pdo->prepare('DELETE FROM games WHERE id=:id')->execute(['id' => $gameId]);
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
