@@ -1058,3 +1058,13 @@ Login page and rate-limit helper review found that a successful login clears fai
 - The test checks payment/order row-lock and cooldown source ordering, STARTED audit commit before network I/O, CSRF and role guards, and that the reconciliation route does not mutate payment/order state or invoke checkout/fulfillment.
 - This is structural source coverage only, not an authenticated HTTP request or real Duitku status lookup.
 - Next planned check: `tests/reconcile-admin-http-integration.php` against a local PHP development server at `127.0.0.1:8080` and the disposable local MySQL database. It creates uniquely named temporary ADMIN/OPERATOR rows and deletes them in a `finally` block. Start no live gateway; the test uses an invalid order ID and expects no gateway request. Run only with the local test database configured in `.env`.
+
+
+## 2026-10-16 — Admin rekonsiliasi HTTP lulus secara lokal
+
+- Pengguna menjalankan server PHP lokal pada `127.0.0.1:8080`; log menunjukkan permintaan anonim ke `/admin/reconcile.php` mendapat `302`, akses operator dan CSRF invalid mendapat `403`, POST tanpa aksi yang dikenali mendapat `400`, dan halaman admin berwenang mendapat `200`.
+- Pengguna menjalankan `php tests/reconcile-admin-http-integration.php`; hasil: `Admin reconciliation HTTP boundary tests passed: anonymous redirect, operator forbidden, invalid CSRF forbidden, unknown POST rejected, authorized admin form rendered; no gateway request was made.`
+- Ini memverifikasi batas akses HTTP untuk skenario yang diuji pada server/database lokal. Tidak ada request gateway Duitku, supplier, atau Google Drive. Ini bukan pengujian shared hosting atau transaksi sandbox nyata.
+- Server pengembangan PHP hanya untuk lokal; hentikan dengan `Ctrl+C setelah selesai. Pastikan `.env` tetap menunjuk ke database tes lokal.
+- Langkah berikutnya: lanjutkan audit preflight dan keamanan deployment secara read-only, lalu pilih tes berikutnya setelah meninjau fixture dan efek sampingnya. Jangan jalankan `tests/queue_recovery_integration.sh` tanpa perbaikan isolasi karena skrip itu dapat mengubah job lain dan mengaktifkan supplier worker.
+- Pembayaran, supplier ordering, backup Google Drive, dan deployment tetap nonaktif.
