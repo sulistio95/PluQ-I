@@ -166,12 +166,15 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    if ($orderId !== null) {
+    if ($orderId !== null || $productId !== null || $gameId !== null) {
         $pdo->beginTransaction();
         try {
-            $pdo->prepare('DELETE FROM supplier_transactions WHERE order_id=:id')->execute(['id' => $orderId]);
-            $pdo->prepare('DELETE FROM provider_budget_reservations WHERE order_id=:id')->execute(['id' => $orderId]);
-            $pdo->prepare('DELETE FROM orders WHERE id=:id')->execute(['id' => $orderId]);
+            if ($orderId !== null) {
+                $pdo->prepare('DELETE FROM supplier_transactions WHERE order_id=:id')->execute(['id' => $orderId]);
+                $pdo->prepare('DELETE FROM provider_budget_reservations WHERE order_id=:id')->execute(['id' => $orderId]);
+                $pdo->prepare('DELETE FROM refunds WHERE order_id=:id')->execute(['id' => $orderId]);
+                $pdo->prepare('DELETE FROM orders WHERE id=:id')->execute(['id' => $orderId]);
+            }
             if ($productId !== null) $pdo->prepare('DELETE FROM products WHERE id=:id')->execute(['id' => $productId]);
             if ($gameId !== null) $pdo->prepare('DELETE FROM games WHERE id=:id')->execute(['id' => $gameId]);
             $pdo->commit();
