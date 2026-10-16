@@ -9,6 +9,13 @@ Audit baseline: GitHub default branch at the time this file was added. This is a
 - **Runtime verification pending**: behavior has not been executed against a configured MySQL/MariaDB instance, provider sandbox, or hosting account.
 - **Blocked for production**: do not enable live payments or supplier execution.
 
+## Latest verification update — 2026-10-16
+
+- Local MySQL/PHP checks reported in the active session passed for provider budget reservation boundaries/idempotency/concurrency, checkout idempotency and deadlock recovery using a mocked gateway creator, and concurrent queue claiming; the listed PHP regression test groups also passed.
+- The worker lease-revocation integration test did not execute because the local database had no game/product rows. Commit `93de6ee` removes that hidden fixture dependency by creating a unique temporary game and product for the test and deleting them in cleanup. It is committed; local rerun and CI verification are still pending.
+- Safety finding: `tests/queue_recovery_integration.sh` must not be run as-is because it broadly marks all pending/retry jobs DONE and forces `SUPPLIER_ORDERS_ENABLED=true` for the queue worker. Keep payment, supplier execution, and Drive backup disabled.
+- The results above are local test evidence only. Hosting compatibility, a public HTTPS callback, a real Duitku sandbox transaction, supplier API execution, cron scheduling on the target host, and Google Drive permissions remain unverified.
+
 ## Latest verification update — 2026-10-15
 
 - GitHub Actions on audit head `7edd7244c856968ecc4666978c3ee0787074adeb` completed successfully: PHP quality run `38692917813`, PHP/JavaScript syntax run `38692917809`, and fulfillment safety/MySQL integration run `38692917819`.
