@@ -1084,3 +1084,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Preflight checks PHP 8.2+, required extensions, HTTPS `APP_URL`, minimum lengths for `APP_KEY` and `SCHEDULER_TOKEN`, `APP_DEBUG=false`, disabled payment/supplier/settlement flags, database connection, required tables, and recorded migrations. It deliberately does not echo secrets.
 - Deployment finding: the repository has no root-level `.htaccess`; `public/.htaccess` only applies if the web server's document root is the `public/` directory. It adds directory listing protection and security headers, but it cannot protect private directories if the hosting document root is set to the repository root. Configure the document root to `public/` or verify explicit server rules deny access to `.env`, `app/`, `config/`, `database/`, `bin/`, and other private files before deployment.
 - This was a source/documentation review only. No hosting account, web-server configuration, or production request was tested. Keep payment, supplier ordering, Drive backup, and deployment disabled.
+
+
+## 2026-10-16 — Local deployment preflight result
+
+- User ran `git pull origin main`, `php -l bin/preflight.php`, and `php bin/preflight.php` on Puppy Bookworm64 with PHP 8.2.34.
+- PHP syntax passed. Preflight reported **45/47 checks passed**. PHP version/extensions, `APP_KEY` and `SCHEDULER_TOKEN` length checks, disabled checkout/supplier/settlement flags, database connection, all 24 required base tables, and required migration records passed.
+- Two expected environment-specific failures: `APP_URL uses HTTPS` (local URL is not HTTPS) and `APP_DEBUG disabled` (local debug is enabled). Do not change local development settings solely to make this production preflight pass; use an HTTPS staging URL and `APP_DEBUG=false` in staging/production.
+- This result is local configuration verification, not proof of hosting readiness. Keep checkout payments, supplier ordering, settlement/Drive backup, and deployment disabled until staging gates are satisfied.
