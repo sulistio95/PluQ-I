@@ -4,6 +4,14 @@ Last updated: 2026-10-13 (Asia/Jakarta) — admin checkout hints and timeout CI 
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
+## Latest verified state — 2026-10-16
+
+- Local Puppy Bookworm64 verification: PHP syntax checks and the catalog, payment gate, provider-balance validation, callback signature/state, account mapping, supplier retry, pricing, response mapping, checkout idempotency/deadlock recovery, provider budget reservation, and concurrent queue-claim test groups passed as reported in the active conversation.
+- Local MySQL integration checks passed for provider budget reservation capacity/idempotency/release/concurrency, checkout gateway-failure idempotency plus deadlock recovery with a mocked Duitku creator, and two workers claiming distinct queue jobs.
+- The worker lease revocation test initially stopped before execution because the local catalog had no `integration-game/integration-sku` fixture. The query of existing game/product rows returned no rows. Commit `93de6ee` changes `tests/worker-lease-revocation-integration.php` to create a unique temporary game/product against the existing DIGI provider and clean those fixtures up afterward; it no longer depends on pre-seeded catalog rows. This change is committed but has not yet been run locally or verified by CI in this note.
+- Do not run `tests/queue_recovery_integration.sh` as-is: source review found it updates all PENDING/RETRY queue rows and runs the worker with supplier ordering forced on. Supplier ordering, live payments, and Drive backup must remain disabled during local testing.
+- These local tests are not proof of a real Duitku sandbox payment or shared-hosting deployment. Continue with isolated DB tests and update this handoff/audit after verification.
+
 ## Latest verified state — 2026-10-15
 
 - CI for audit head `7edd7244c856968ecc4666978c3ee0787074adeb` passed all three workflows: PHP quality `38692917813`, PHP/JavaScript syntax `38692917809`, fulfillment safety/MySQL integration `38692917819`.
