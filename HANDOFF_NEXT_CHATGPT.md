@@ -1100,3 +1100,10 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Source review confirmed .github/workflows/fulfillment-tests.yml runs tests/queue_recovery_integration.sh. That legacy test marks all pending/retry jobs DONE and invokes the worker with SUPPLIER_ORDERS_ENABLED=true, so accidental execution against a non-disposable database could alter jobs or trigger fulfillment.
 - Added a fail-closed guard to the script: it refuses to run unless DB_DATABASE=pluq_test and the explicit PLUQI_ALLOW_DESTRUCTIVE_QUEUE_RECOVERY_TEST=1 opt-in are both present. GitHub Actions sets that opt-in only on the stale-recovery test step, using its disposable pluq_test database. This is a guardrail, not a redesign of the legacy test; do not run it manually against local or hosting databases.
 - CI verification for this guard and documentation update is pending. No local queue test was run, and no payment, supplier, or Drive request was made. Keep checkout payments, supplier ordering, settlement backup, and deployment disabled.
+
+
+## 2026-10-16 — Queue-test guard CI verification
+
+- After the queue-recovery invocation guard was added, GitHub Actions for commit `75603cd14db79d27fbf5dca4998285eb5f82905a` completed successfully: PHP quality `38851169829`, fulfillment safety tests `38851169810`, and PHP/JavaScript syntax `38851169695`.
+- The guard is now present on main and the user pulled it locally; `git status --short` was empty. CI success verifies the workflow as run against its disposable MySQL service, not shared hosting or live payment/provider behavior.
+- Continue reviewing operational entry points and cron safety. Keep live checkout, supplier fulfillment, settlement/Drive backup, and deployment disabled pending staging validation.
