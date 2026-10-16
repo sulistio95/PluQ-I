@@ -1122,3 +1122,12 @@ Read-only source review completed for queue worker, supplier balance/catalog syn
 - No live API, Google, or hosting calls/tests occurred. Checkout payments, supplier ordering, settlement backup, and deployment remain disabled.
 
 Next: run safe local regression tests only after confirming the local `.env` targets the disposable test DB, then review hosting-specific PHP CLI path, cron availability, document-root isolation, and backup/restore requirements. Do not manually run destructive queue-recovery scripts against a developer or hosting database.
+
+
+## 2026-10-16 — CI evidence and shared-hosting gate update
+
+- Inspected the job/step records on commit `ca719f2442b1e5ade88358c7970473303d28e6ac`: all three latest workflows passed, including MySQL 8.4 concurrency, checkout deadlock/idempotency, callback boundary, queue claim/recovery, and sandbox no-fulfillment tests. Links: [fulfillment](https://github.com/sulistio95/PluQ-I/actions/runs/38851721983), [quality](https://github.com/sulistio95/PluQ-I/actions/runs/38851722224), [syntax](https://github.com/sulistio95/PluQ-I/actions/runs/38851721990).
+- Updated `docs/staging-payment-test-runbook.md` (commit `eb3773166795a9608270619baf202b56470a76e3`) with current CI evidence, hosting checklist, and a no-go-live gate.
+- Repository has only `public/.htaccess`, not a root-level one. Point the web document root to `public/`; never expose the repository root directly.
+- No real external Duitku/supplier/Google API or hosting test was performed. Keep all transaction/fulfillment/settlement flags off. Production Duitku mode is not implemented.
+- Next: review staging domain and hosting capabilities only when provided/available; then run preflight against a dedicated staging DB, verify cron and document-root isolation, and conduct controlled sandbox testing. Never run queue recovery tests against a non-disposable DB.
