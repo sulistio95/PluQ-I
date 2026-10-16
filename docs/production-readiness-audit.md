@@ -989,3 +989,11 @@ The latest fulfillment workflow (38755995858) exposed one remaining stale assert
 - Scope: verifies one real local MySQL deadlock victim is classified for idempotency-winner recovery. No Duitku/payment gateway or supplier API was called, and no hosting environment was tested.
 - Safety note: do not execute `tests/queue_recovery_integration.sh` as currently written because it can update unrelated PENDING/RETRY jobs and starts a worker with supplier ordering enabled. Review and isolate `tests/duplicate-queue-processing-integration.php` before running it because it sets `SUPPLIER_ORDERS_ENABLED=true` and depends on a catalog fixture.
 - Payment checkout, supplier ordering, settlement backup, and deployment remain disabled pending controlled staging verification.
+
+
+## 2026-10-16 — Duplicate-queue test made self-contained and network-contained
+
+- `tests/duplicate-queue-processing-integration.php` no longer requires a pre-seeded `integration-game/integration-sku` catalog row. It creates unique temporary game/product rows using the seeded DIGI provider and cleans them up, including partial-order setup failures.
+- Test-only supplier API endpoints are set to loopback port 1 with fake credentials. The test enables supplier processing only inside its own PHP process to exercise the duplicate guard; if a regression tries to call a supplier client, it cannot reach the real Digiflazz or VIPayment endpoint.
+- Changes: `91d68b83eedd996bf02d7321330e35206ca8ffe2`, `c688130ea340afa2e9b3f9dfe04e8197d05b0302`.
+- **Verification pending:** the user must pull the latest commit and run lint plus the test through `app/bootstrap.php` against the disposable local MySQL database. No supplier API, payment gateway, or hosting test is claimed. Production payment, supplier ordering, Drive backup, and deployment remain disabled.
