@@ -1066,3 +1066,10 @@ Passed checks include PHP version and required extensions, minimum lengths for `
 - User verified git check-ignore -v .env output .gitignore:1:.env, empty git status --short, and git ls-files --error-unmatch .env reported that .env is not tracked in the current Git index. This is a current-index check, not a full historical secret scan.
 - The fulfillment workflow calls tests/queue_recovery_integration.sh. The script broadly changes PENDING/RETRY queue jobs and temporarily enables supplier fulfillment. Added a fail-closed invocation guard requiring both DB_DATABASE=pluq_test and PLUQI_ALLOW_DESTRUCTIVE_QUEUE_RECOVERY_TEST=1; only the matching disposable GitHub Actions step sets the opt-in.
 - This limits accidental execution but does not make the legacy test safe for a user's local or production database; do not run it manually. CI for the guard is pending. No gateway, supplier, or Google Drive calls were made. Live payments, supplier ordering, settlement backup, and deployment remain disabled.
+
+
+## 2026-10-16 — Queue-test guard CI verification
+
+- GitHub Actions on commit `75603cd14db79d27fbf5dca4998285eb5f82905a` succeeded: PHP quality `38851169829`, fulfillment safety/MySQL integration `38851169810`, and PHP/JavaScript syntax `38851169695`.
+- This verifies the current CI run after adding an explicit guard to the legacy queue-recovery test. The test is still unsuitable for manual execution against local or production databases; its intended run is the isolated CI `pluq_test` service.
+- CI success is not hosting or real Duitku/provider certification. Live payments, supplier ordering, settlement backup, and deployment remain blocked pending staging checks.
