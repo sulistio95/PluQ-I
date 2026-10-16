@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# This legacy integration test mutates queue rows and temporarily enables the
+# fulfillment worker. Permit it only in the isolated GitHub Actions database.
+if [[ "${DB_DATABASE:-}" != "pluq_test" || "${PLUQI_ALLOW_DESTRUCTIVE_QUEUE_RECOVERY_TEST:-}" != "1" ]]; then
+  echo "Refusing queue-recovery integration test: requires isolated DB_DATABASE=pluq_test and explicit PLUQI_ALLOW_DESTRUCTIVE_QUEUE_RECOVERY_TEST=1." >&2
+  exit 2
+fi
+
 # Isolate this test from the callback test's newly queued fulfillment job.
 mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" <<'SQL'
 UPDATE job_queue SET status='DONE', locked_at=NULL, lock_token=NULL WHERE status IN ('PENDING','RETRY');
