@@ -1076,3 +1076,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Preflight checks PHP 8.2+, required extensions, HTTPS `APP_URL`, minimum lengths for `APP_KEY` and `SCHEDULER_TOKEN`, `APP_DEBUG=false`, disabled payment/supplier/settlement flags, database connection, required tables, and recorded migrations. It deliberately does not echo secrets.
 - Deployment finding: the repository has no root-level `.htaccess`; `public/.htaccess` only applies if the web server's document root is the `public/` directory. It adds directory listing protection and security headers, but it cannot protect private directories if the hosting document root is set to the repository root. Configure the document root to `public/` or verify explicit server rules deny access to `.env`, `app/`, `config/`, `database/`, `bin/`, and other private files before deployment.
 - This was a source/documentation review only. No hosting account, web-server configuration, or production request was tested. Keep payment, supplier ordering, Drive backup, and deployment disabled.
+
+
+## 2026-10-16 — Read-only deployment document-root review
+
+- Reviewed `bin/preflight.php`, `config/app.php`, `public/.htaccess`, and the hosting checklist in `README.md`.
+- Preflight checks PHP 8.2+, required extensions, HTTPS `APP_URL`, minimum lengths for `APP_KEY` and `SCHEDULER_TOKEN`, `APP_DEBUG=false`, disabled payment/supplier/settlement flags, database connection, required tables, and recorded migrations. It deliberately does not echo secrets.
+- Deployment finding: the repository has no root-level `.htaccess`; `public/.htaccess` only applies if the web server's document root is the `public/` directory. It adds directory listing protection and security headers, but it cannot protect private directories if the hosting document root is set to the repository root. Configure the document root to `public/` or verify explicit server rules deny access to `.env`, `app/`, `config/`, `database/`, `bin/`, and other private files before deployment.
+- This was a source/documentation review only. No hosting account, web-server configuration, or production request was tested. Keep payment, supplier ordering, Drive backup, and deployment disabled.
