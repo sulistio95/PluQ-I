@@ -1040,3 +1040,12 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Coverage includes HMAC signature validation, status mapping/unknown-status rejection, order/reference/amount validation, and rejection of the injected transport in production mode.
 - This helper test uses an injected mock transport and did not contact Duitku. It is not proof of a real sandbox payment or shared-hosting callback.
 - Next safe test: `tests/reconcile-cooldown-regression.php`, a structural regression test; inspect/run it without starting a web server or using gateway credentials. Keep payments, supplier ordering, Drive backup, and deployment disabled.
+
+
+## 2026-10-16 — Admin Duitku reconciliation structural test passed locally
+
+- User ran `php -l tests/reconcile-cooldown-regression.php`: no syntax errors.
+- User ran `php tests/reconcile-cooldown-regression.php`; output: `Admin Duitku cooldown structural regression checks passed.`
+- The structural guards check payment/order row locking, the 60-second cooldown, persistence of the STARTED audit marker before network I/O, CSRF validation, privileged-role enforcement, and that the route does not mutate payment/order state or initiate checkout/fulfillment.
+- This is source-structure regression coverage only; it does not exercise an authenticated HTTP request, concurrent cooldown requests, a real Duitku status lookup, or shared hosting.
+- Next: inspect and, if its setup is safe, run the isolated admin reconciliation HTTP integration test against localhost. Keep payment, supplier ordering, Drive backup, and deployment disabled.
