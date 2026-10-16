@@ -1049,3 +1049,12 @@ Login page and rate-limit helper review found that a successful login clears fai
 - The structural guards check payment/order row locking, the 60-second cooldown, persistence of the STARTED audit marker before network I/O, CSRF validation, privileged-role enforcement, and that the route does not mutate payment/order state or initiate checkout/fulfillment.
 - This is source-structure regression coverage only; it does not exercise an authenticated HTTP request, concurrent cooldown requests, a real Duitku status lookup, or shared hosting.
 - Next: inspect and, if its setup is safe, run the isolated admin reconciliation HTTP integration test against localhost. Keep payment, supplier ordering, Drive backup, and deployment disabled.
+
+
+## 2026-10-16 — Admin Duitku cooldown structural test passed locally
+
+- User ran `php -l tests/reconcile-cooldown-regression.php`: no syntax errors.
+- User ran `php tests/reconcile-cooldown-regression.php`; output: `Admin Duitku cooldown structural regression checks passed.`
+- The test checks payment/order row-lock and cooldown source ordering, STARTED audit commit before network I/O, CSRF and role guards, and that the reconciliation route does not mutate payment/order state or invoke checkout/fulfillment.
+- This is structural source coverage only, not an authenticated HTTP request or real Duitku status lookup.
+- Next planned check: `tests/reconcile-admin-http-integration.php` against a local PHP development server at `127.0.0.1:8080` and the disposable local MySQL database. It creates uniquely named temporary ADMIN/OPERATOR rows and deletes them in a `finally` block. Start no live gateway; the test uses an invalid order ID and expects no gateway request. Run only with the local test database configured in `.env`.
