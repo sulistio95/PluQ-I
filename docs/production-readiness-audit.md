@@ -1025,3 +1025,10 @@ The latest fulfillment workflow (38755995858) exposed one remaining stale assert
 - Cakupan ini hanya pemeriksaan struktur kode. Ini belum menguji request HTTP dengan sesi admin, dua request cooldown bersamaan, lookup status Duitku nyata, maupun shared hosting.
 - Langkah berikutnya: periksa setup `tests/reconcile-admin-http-integration.php` sebelum menjalankannya di localhost, pastikan fixture dan pembersihan aman.
 - Pembayaran, supplier ordering, backup Google Drive, dan deployment tetap nonaktif.
+
+
+## 2026-10-16 — Uji struktural cooldown rekonsiliasi lulus
+
+Pengguna melaporkan `php -l tests/reconcile-cooldown-regression.php` tanpa kesalahan sintaks dan `php tests/reconcile-cooldown-regression.php` menghasilkan `Admin Duitku cooldown structural regression checks passed.` Tes memeriksa urutan penguncian dan cooldown, commit audit `STARTED` sebelum I/O jaringan, CSRF, hak akses, serta sifat read-only rute. Ini belum membuktikan request HTTP terautentikasi atau lookup Duitku nyata.
+
+**Uji berikutnya yang direncanakan:** `tests/reconcile-admin-http-integration.php` menggunakan server pengembangan PHP lokal pada `127.0.0.1:8080` dan database tes lokal. Tes membuat akun ADMIN/OPERATOR sementara dengan nama unik dan menghapusnya pada blok `finally`; jalankan hanya jika `.env` menunjuk ke database lokal khusus pengujian. Tes mengharapkan redirect anonim, larangan untuk OPERATOR, penolakan CSRF invalid, penolakan POST tanpa aksi eksplisit, dan halaman admin untuk ADMIN. Order ID yang dikirim tidak valid sehingga tidak seharusnya memicu request gateway. Jangan masukkan kredensial gateway dan jangan mengaktifkan supplier ordering.
