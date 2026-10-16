@@ -1032,3 +1032,14 @@ The latest fulfillment workflow (38755995858) exposed one remaining stale assert
 Pengguna melaporkan `php -l tests/reconcile-cooldown-regression.php` tanpa kesalahan sintaks dan `php tests/reconcile-cooldown-regression.php` menghasilkan `Admin Duitku cooldown structural regression checks passed.` Tes memeriksa urutan penguncian dan cooldown, commit audit `STARTED` sebelum I/O jaringan, CSRF, hak akses, serta sifat read-only rute. Ini belum membuktikan request HTTP terautentikasi atau lookup Duitku nyata.
 
 **Uji berikutnya yang direncanakan:** `tests/reconcile-admin-http-integration.php` menggunakan server pengembangan PHP lokal pada `127.0.0.1:8080` dan database tes lokal. Tes membuat akun ADMIN/OPERATOR sementara dengan nama unik dan menghapusnya pada blok `finally`; jalankan hanya jika `.env` menunjuk ke database lokal khusus pengujian. Tes mengharapkan redirect anonim, larangan untuk OPERATOR, penolakan CSRF invalid, penolakan POST tanpa aksi eksplisit, dan halaman admin untuk ADMIN. Order ID yang dikirim tidak valid sehingga tidak seharusnya memicu request gateway. Jangan masukkan kredensial gateway dan jangan mengaktifkan supplier ordering.
+
+
+## 2026-10-16 — Admin reconciliation HTTP boundary test passed locally
+
+The user ran the local PHP development server at `127.0.0.1:8080` and executed `php tests/reconcile-admin-http-integration.php`. Reported result: `Admin reconciliation HTTP boundary tests passed: anonymous redirect, operator forbidden, invalid CSRF forbidden, unknown POST rejected, authorized admin form rendered; no gateway request was made.`
+
+- Server log confirmed anonymous GET redirect (`302`), operator GET and invalid-CSRF POST forbidden (`403`), unknown POST rejected (`400`), and authorized admin GET rendered (`200`).
+- Scope is the tested HTTP authorization/CSRF boundary against local server and test database. No Duitku, supplier, or Google Drive network request was made. This is not a real gateway sandbox test or shared-hosting validation.
+- Keep the local development server local-only and stop it with `Ctrl+C` when finished. Ensure `.env` points to the disposable local test database.
+- Next: continue read-only preflight/deployment-security review and select the next test only after inspecting its fixture and side effects. Do not run `tests/queue_recovery_integration.sh` as-is: it can modify unrelated PENDING/RETRY jobs and starts a worker with supplier ordering enabled.
+- Production checkout, supplier ordering, settlement/Google Drive backup, and deployment remain disabled.
