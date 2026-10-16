@@ -167,6 +167,8 @@ jobs:
           SUPPLIER_ORDERS_ENABLED: 'false'
         run: bash tests/duitku_sandbox_no_fulfillment_integration.sh
       - name: Test stale queue recovery against MySQL
+        env:
+          PLUQI_ALLOW_DESTRUCTIVE_QUEUE_RECOVERY_TEST: '1'
         run: bash tests/queue_recovery_integration.sh
       - name: Test worker finalization after lease revocation
         run: php tests/worker-lease-revocation-integration.php
