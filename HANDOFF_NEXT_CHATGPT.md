@@ -1065,6 +1065,14 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Pengguna menjalankan server PHP lokal pada `127.0.0.1:8080`; log menunjukkan permintaan anonim ke `/admin/reconcile.php` mendapat `302`, akses operator dan CSRF invalid mendapat `403`, POST tanpa aksi yang dikenali mendapat `400`, dan halaman admin berwenang mendapat `200`.
 - Pengguna menjalankan `php tests/reconcile-admin-http-integration.php`; hasil: `Admin reconciliation HTTP boundary tests passed: anonymous redirect, operator forbidden, invalid CSRF forbidden, unknown POST rejected, authorized admin form rendered; no gateway request was made.`
 - Ini memverifikasi batas akses HTTP untuk skenario yang diuji pada server/database lokal. Tidak ada request gateway Duitku, supplier, atau Google Drive. Ini bukan pengujian shared hosting atau transaksi sandbox nyata.
-- Server pengembangan PHP hanya untuk lokal; hentikan dengan `Ctrl+C setelah selesai. Pastikan `.env` tetap menunjuk ke database tes lokal.
+- Server pengembangan PHP hanya untuk lokal; hentikan dengan `Ctrl+C` setelah selesai. Pastikan `.env` tetap menunjuk ke database tes lokal.
 - Langkah berikutnya: lanjutkan audit preflight dan keamanan deployment secara read-only, lalu pilih tes berikutnya setelah meninjau fixture dan efek sampingnya. Jangan jalankan `tests/queue_recovery_integration.sh` tanpa perbaikan isolasi karena skrip itu dapat mengubah job lain dan mengaktifkan supplier worker.
 - Pembayaran, supplier ordering, backup Google Drive, dan deployment tetap nonaktif.
+
+
+## 2026-10-16 — Read-only deployment document-root review
+
+- Reviewed `bin/preflight.php`, `config/app.php`, `public/.htaccess`, and the hosting checklist in `README.md`.
+- Preflight checks PHP 8.2+, required extensions, HTTPS `APP_URL`, minimum lengths for `APP_KEY` and `SCHEDULER_TOKEN`, `APP_DEBUG=false`, disabled payment/supplier/settlement flags, database connection, required tables, and recorded migrations. It deliberately does not echo secrets.
+- Deployment finding: the repository has no root-level `.htaccess`; `public/.htaccess` only applies if the web server's document root is the `public/` directory. It adds directory listing protection and security headers, but it cannot protect private directories if the hosting document root is set to the repository root. Configure the document root to `public/` or verify explicit server rules deny access to `.env`, `app/`, `config/`, `database/`, `bin/`, and other private files before deployment.
+- This was a source/documentation review only. No hosting account, web-server configuration, or production request was tested. Keep payment, supplier ordering, Drive backup, and deployment disabled.
