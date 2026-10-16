@@ -1043,3 +1043,12 @@ The user ran the local PHP development server at `127.0.0.1:8080` and executed `
 - Keep the local development server local-only and stop it with `Ctrl+C` when finished. Ensure `.env` points to the disposable local test database.
 - Next: continue read-only preflight/deployment-security review and select the next test only after inspecting its fixture and side effects. Do not run `tests/queue_recovery_integration.sh` as-is: it can modify unrelated PENDING/RETRY jobs and starts a worker with supplier ordering enabled.
 - Production checkout, supplier ordering, settlement/Google Drive backup, and deployment remain disabled.
+
+
+## 2026-10-16 — Read-only document-root and preflight review
+
+Reviewed `bin/preflight.php`, `config/app.php`, `public/.htaccess`, and the hosting checklist in `README.md`.
+
+- Preflight includes checks for PHP version/extensions, HTTPS `APP_URL`, minimum `APP_KEY` and scheduler-token lengths, disabled production debug, payment/supplier/settlement flags, database connectivity, required tables, and migration records. Secret values are not printed.
+- **Deployment condition:** there is no root-level `.htaccess` in the repository. The existing `public/.htaccess` applies only when the web document root is set to `public/`; it provides `Options -Indexes`, front-controller rewrites, and several response headers, not protection for private project directories if the repository root is web-accessible. Before deployment, point the document root at `public/` or verify explicit server rules block web access to `.env`, `app/`, `config/`, `database/`, `bin/`, and other private files.
+- This is source/documentation review only; no hosting configuration or public request was tested. Preflight success alone is not a production certification. Keep payment, supplier ordering, Drive backup, and deployment disabled.
