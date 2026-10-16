@@ -1031,3 +1031,12 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Reported output: `No syntax errors detected in tests/duplicate-queue-processing-integration.php` and `Duplicate queue job preserves fresh PROCESSING state; stale ambiguous requests enter manual review; reviewed and terminal orders cannot be revived.`
 - The test is now verified against the user's local MySQL database. It uses a temporary catalog fixture and fake supplier credentials pointed at loopback port 1; this is not a live supplier test.
 - Next safe check: `tests/duitku-transaction-status.php`, which uses a test transport callback and does not need real Duitku credentials or make a network request.
+
+
+## 2026-10-16 — Duitku transaction-status helper test passed locally
+
+- User ran `php -l tests/duitku-transaction-status.php`: no syntax errors.
+- User ran `php tests/duitku-transaction-status.php`; output: `Duitku transaction-status signature, status mapping, and response validation tests passed.`
+- Coverage includes HMAC signature validation, status mapping/unknown-status rejection, order/reference/amount validation, and rejection of the injected transport in production mode.
+- This helper test uses an injected mock transport and did not contact Duitku. It is not proof of a real sandbox payment or shared-hosting callback.
+- Next safe test: `tests/reconcile-cooldown-regression.php`, a structural regression test; inspect/run it without starting a web server or using gateway credentials. Keep payments, supplier ordering, Drive backup, and deployment disabled.
