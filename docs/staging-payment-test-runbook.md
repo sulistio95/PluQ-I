@@ -1,6 +1,6 @@
 # PluQ-I staging and payment-test runbook
 
-Last reviewed: 2026-10-14
+Last reviewed: 2026-10-16
 
 This is an operational checklist, not a production approval. No live payment or supplier API request has been made from this review.
 
@@ -136,3 +136,28 @@ Production payment mode must be implemented deliberately and separately from san
 - New guard [dd980d6](https://github.com/sulistio95/PluQ-I/commit/dd980d6b6d80f2ff82e598f6794e2ec2892178e1) blocks paid orders already in MANUAL_REVIEW from being revived by a duplicate queue job. An in-flight order missing its durable supplier transaction now goes to manual review rather than creating a new supplier request.
 - Regression coverage added to tests/duplicate-queue-processing-integration.php in [43b1bf5](https://github.com/sulistio95/PluQ-I/commit/43b1bf5e14434e39094af6926d632dbce46ea145). Add this test to the required verification evidence once the workflow actually runs and passes.
 - GitHub Actions execution is currently unverified; the user's observation is that it may be usage-limited until the next day. No tests are marked passed based on this code change alone. Keep all production payment and supplier flags disabled.
+
+
+## Current status update — 2026-10-16
+
+This section supersedes older dated notes below that describe GitHub Actions as blocked or not yet executed. The latest GitHub Actions runs on commit `ca719f2442b1e5ade88358c7970473303d28e6ac` completed successfully with recorded steps:
+- [Fulfillment safety tests](https://github.com/sulistio95/PluQ-I/actions/runs/38851721983): PHP lint and unit tests passed; MySQL 8.4 integration job passed, including provider-budget concurrency, checkout idempotency/deadlock handling, callback security, queue worker concurrency, sandbox no-fulfillment, stale-lock recovery, and supplier ambiguity handling.
+- [PHP quality checks](https://github.com/sulistio95/PluQ-I/actions/runs/38851722224): lint and all listed quality/regression tests passed.
+- [PHP and JavaScript syntax checks](https://github.com/sulistio95/PluQ-I/actions/runs/38851721990): PHP lint, catalog JavaScript syntax, and pricing fee checks passed.
+
+These are GitHub-hosted CI tests using disposable MySQL and mocked/simulated Duitku behavior; they are **not** evidence of a real Duitku sandbox transaction, supplier API transaction, shared-hosting compatibility, or Google Drive upload.
+
+## Stage C — shared-hosting execution safety
+
+- [ ] Confirm the host permits PHP CLI and cron jobs, and obtain the actual PHP CLI binary path from the provider.
+- [ ] Keep the Git repository root outside the web document root and point the domain's document root specifically to `public/`. The repository currently has `public/.htaccess`, but no root-level `.htaccess`; do not expose the repository root directly over HTTP.
+- [ ] Verify the host's Apache/LiteSpeed rewrite and security-header support; if the host does not allow `public/` as document root, configure explicit deny rules for `.env`, `app/`, `config/`, `database/`, `bin/`, `tests/`, `docs/`, and private storage instead of assuming `.htaccess` in `public/` protects parent directories.
+- [ ] Start with a read-only CLI diagnostic such as `php bin/queue-health.php` only after a staging database is configured; it reads queue state and never changes jobs. Do not expose this CLI-only script via HTTP.
+- [ ] Do not schedule `bin/worker-queue.php` until the staging sandbox flow and supplier safety tests are approved. If the host requires HTTP cron, use HTTPS, a long random scheduler token, and a host facility that keeps the token private; prefer CLI cron where possible.
+- [ ] Measure cron overlap behavior and the host's process/time limits. Worker runtime is checked between jobs; a supplier HTTP request may last up to 30 seconds, so the configured runtime is not a hard kill switch.
+- [ ] Test database backup and restore using a disposable database, then document retention and recovery ownership before storing customer/order records.
+- [ ] Keep all three flags disabled until an explicit staging test plan is approved: `CHECKOUT_PAYMENTS_ENABLED=false`, `SUPPLIER_ORDERS_ENABLED=false`, `SETTLEMENT_BACKUP_ENABLED=false`.
+
+## Go-live gate
+
+No go-live approval until a real sandbox checkout/callback is tested on the intended HTTPS staging domain, supplier calls are validated separately with controlled low-value tests, the hosting cron and database behavior are observed, backup/restore is demonstrated, and all production secrets and flags are reviewed. Production Duitku mode is not supported by the current implementation; do not switch `DUITKU_ENV` to `production`.
