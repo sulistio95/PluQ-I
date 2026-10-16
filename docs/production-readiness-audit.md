@@ -1052,3 +1052,10 @@ Reviewed `bin/preflight.php`, `config/app.php`, `public/.htaccess`, and the host
 - Preflight includes checks for PHP version/extensions, HTTPS `APP_URL`, minimum `APP_KEY` and scheduler-token lengths, disabled production debug, payment/supplier/settlement flags, database connectivity, required tables, and migration records. Secret values are not printed.
 - **Deployment condition:** there is no root-level `.htaccess` in the repository. The existing `public/.htaccess` applies only when the web document root is set to `public/`; it provides `Options -Indexes`, front-controller rewrites, and several response headers, not protection for private project directories if the repository root is web-accessible. Before deployment, point the document root at `public/` or verify explicit server rules block web access to `.env`, `app/`, `config/`, `database/`, `bin/`, and other private files.
 - This is source/documentation review only; no hosting configuration or public request was tested. Preflight success alone is not a production certification. Keep payment, supplier ordering, Drive backup, and deployment disabled.
+
+
+## 2026-10-16 — Local deployment preflight: 45/47 checks passed
+
+The user ran `php -l bin/preflight.php` and `php bin/preflight.php` locally on PHP 8.2.34. Syntax passed. Preflight reported 45/47 checks passed.
+
+Passed checks include PHP version and required extensions, minimum lengths for `APP_KEY` and `SCHEDULER_TOKEN`, disabled checkout/supplier/settlement flags, database connectivity, all 24 required base tables, and the migration records required while settlement backup is disabled. The two failures are environment-specific: `APP_URL uses HTTPS` and `APP_DEBUG disabled` (local development debug is enabled). Preserve local developer settings if needed; staging/production must use an HTTPS URL and `APP_DEBUG=false`. Do not interpret this local preflight as deployment approval or live integration verification. Checkout payments, supplier ordering, Drive backup, and deployment remain disabled.
