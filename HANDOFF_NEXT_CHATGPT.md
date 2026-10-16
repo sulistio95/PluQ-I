@@ -1023,3 +1023,11 @@ Login page and rate-limit helper review found that a successful login clears fai
 - To make the enabled fulfillment path fail closed if a regression attempts an HTTP request, test-only Digiflazz and VIPayment URLs are pointed at loopback port 1 and use fake credentials. No real supplier endpoint should be reachable from this test.
 - The test still temporarily sets `SUPPLIER_ORDERS_ENABLED=true` inside the test process to exercise `fulfillment_process()`; do not copy that setting into the local `.env` or production. All real payment/supplier/Drive flags remain disabled.
 - **Not yet locally executed or CI-verified in this note.** Next, pull latest `main`, run PHP lint, then run through bootstrap against the disposable local MySQL database. Inspect exact output before marking passed.
+
+
+## 2026-10-16 — Duplicate-queue integration test passed locally
+
+- User pulled through commit `c25d005d5620a165c7d93b77222431814c90962b` and ran PHP lint plus the test through `app/bootstrap.php`.
+- Reported output: `No syntax errors detected in tests/duplicate-queue-processing-integration.php` and `Duplicate queue job preserves fresh PROCESSING state; stale ambiguous requests enter manual review; reviewed and terminal orders cannot be revived.`
+- The test is now verified against the user's local MySQL database. It uses a temporary catalog fixture and fake supplier credentials pointed at loopback port 1; this is not a live supplier test.
+- Next safe check: `tests/duitku-transaction-status.php`, which uses a test transport callback and does not need real Duitku credentials or make a network request.
