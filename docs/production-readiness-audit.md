@@ -997,3 +997,11 @@ The latest fulfillment workflow (38755995858) exposed one remaining stale assert
 - Test-only supplier API endpoints are set to loopback port 1 with fake credentials. The test enables supplier processing only inside its own PHP process to exercise the duplicate guard; if a regression tries to call a supplier client, it cannot reach the real Digiflazz or VIPayment endpoint.
 - Changes: `91d68b83eedd996bf02d7321330e35206ca8ffe2`, `c688130ea340afa2e9b3f9dfe04e8197d05b0302`.
 - **Verification pending:** the user must pull the latest commit and run lint plus the test through `app/bootstrap.php` against the disposable local MySQL database. No supplier API, payment gateway, or hosting test is claimed. Production payment, supplier ordering, Drive backup, and deployment remain disabled.
+
+
+## 2026-10-16 — Duplicate-queue integration test verified locally
+
+- User-reported local lint passed for `tests/duplicate-queue-processing-integration.php`.
+- User-reported test result: `Duplicate queue job preserves fresh PROCESSING state; stale ambiguous requests enter manual review; reviewed and terminal orders cannot be revived.`
+- This verifies the duplicate-job state guard against local MySQL fixtures only. Test-only supplier endpoints are loopback port 1; no real supplier request or gateway request was made.
+- Next planned check is the isolated Duitku transaction-status helper test using its injected test transport; it does not require credentials or contact Duitku.
