@@ -1015,3 +1015,13 @@ The latest fulfillment workflow (38755995858) exposed one remaining stale assert
 - Pengujian menggunakan transport tiruan yang diinjeksi dan **tidak menghubungi Duitku**. Ini bukan bukti transaksi sandbox nyata atau callback pada shared hosting telah berhasil.
 - Langkah aman berikutnya: tinjau lalu jalankan `tests/reconcile-cooldown-regression.php`, yang merupakan uji regresi struktural. Jangan memulai server web atau menggunakan kredensial gateway untuk tes ini.
 - Pembayaran, pemesanan supplier, backup Google Drive, dan deployment tetap nonaktif sampai pengujian staging dan hosting target selesai.
+
+
+## 2026-10-16 — Uji struktural rekonsiliasi Duitku lulus secara lokal
+
+- Pengguna menjalankan `php -l tests/reconcile-cooldown-regression.php`; hasil: tidak ada kesalahan sintaks.
+- Pengguna menjalankan `php tests/reconcile-cooldown-regression.php`; hasil: `Admin Duitku cooldown structural regression checks passed.`
+- Pemeriksaan struktural memastikan penguncian baris pembayaran/pesanan, cooldown 60 detik, pencatatan audit `STARTED` dan commit sebelum I/O jaringan, validasi CSRF, pemeriksaan hak akses admin, serta larangan mutasi status pembayaran/pesanan atau memulai checkout/fulfillment pada rute rekonsiliasi.
+- Cakupan ini hanya pemeriksaan struktur kode. Ini belum menguji request HTTP dengan sesi admin, dua request cooldown bersamaan, lookup status Duitku nyata, maupun shared hosting.
+- Langkah berikutnya: periksa setup `tests/reconcile-admin-http-integration.php` sebelum menjalankannya di localhost, pastikan fixture dan pembersihan aman.
+- Pembayaran, supplier ordering, backup Google Drive, dan deployment tetap nonaktif.
