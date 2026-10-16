@@ -1005,3 +1005,12 @@ Login page and rate-limit helper review found that a successful login clears fai
 - Audited the customer catalog for the requested one-supplier startup scenario. app/services/catalog.php already removes unavailable supplier offers, selects an eligible Digiflazz offer when VIPayment has zero usable balance, and automatically chooses the cheapest equivalent offer when both are eligible. public/assets/catalog.js shows an empty-state message if no product is eligible; it does not ask the customer to choose a supplier.
 - CI uncovered a stale MySQL integration assertion that still expected an unavailable product card. Commit f423392aad634c4d3dbde82dd1ffd6e957003cfd corrects the assertion to expect an empty catalog when budget is exhausted; availability restoration after reservations are released remains tested.
 - All three GitHub Actions workflows passed for correction commit f423392aad634c4d3dbde82dd1ffd6e957003cfd: PHP quality 38758104195, PHP/JavaScript syntax 38758104376, and fulfillment/MySQL integration 38758105058. The integration ran in CI MySQL 8.4; this is not a live provider API or hosting test. No live provider API or hosting was used. Keep payment, supplier ordering, Drive backup, and deployment disabled.
+
+
+## 2026-10-16 — Local MySQL deadlock classification verified
+
+- User ran `php -l tests/checkout-deadlock-classification-integration.php`: no syntax errors.
+- User ran the test through `php -r 'require "app/bootstrap.php"; require "tests/checkout-deadlock-classification-integration.php";'`; it passed with: `Real MySQL deadlock classification test passed (one victim classified for idempotency winner recovery).`
+- This confirms the local MySQL deadlock classification scenario only. It is not evidence of a live Duitku request, real supplier order, or hosting deployment.
+- Do not run `tests/queue_recovery_integration.sh` as-is. Also review/fix `tests/duplicate-queue-processing-integration.php` before local execution: it sets `SUPPLIER_ORDERS_ENABLED=true` and currently expects a pre-seeded catalog fixture, so keep supplier ordering disabled outside an isolated test database.
+- Keep payment checkout, supplier orders, and settlement/Google Drive backup disabled. Update this handoff and the production-readiness audit after the next verified test/change.
