@@ -6,15 +6,16 @@ require_once PLUQI_ROOT . '/config/database.php';
 require_once PLUQI_ROOT . '/app/services/queue_worker.php';
 
 $pdo = database();
-$fixtureQuery = $pdo->query("SELECT g.id AS game_id,p.id AS product_id,p.provider_id
-    FROM games g JOIN products p ON p.game_id=g.id JOIN providers pr ON pr.id=p.provider_id
-    WHERE g.slug='integration-game' AND p.provider_product_code='integration-sku' AND pr.code='DIGI' LIMIT 1");
-$fixture = $fixtureQuery->fetch();
-if (!$fixture) {
-    fwrite(STDERR, "Missing integration-game/integration-sku fixture.\n");
+$providerQuery = $pdo->query("SELECT id FROM providers WHERE code='DIGI' LIMIT 1");
+$providerId = $providerQuery->fetchColumn();
+if (!$providerId) {
+    fwrite(STDERR, "Missing DIGI provider row; apply the base schema and migrations first.\n");
     exit(1);
 }
 
+$token = bin2hex(random_bytes(8));
+$gameId = null;
+$productId = null;
 $publicId = 'leaseguard' . bin2hex(random_bytes(8));
 $reference = 'PQI-' . $publicId;
 $orderId = null;
@@ -22,19 +23,30 @@ $jobId = null;
 $oldToken = bin2hex(random_bytes(16));
 
 try {
+    // Create an isolated fixture so this integration test does not depend on a
+    // pre-seeded catalog or mutate shared catalog data.
     $pdo->beginTransaction();
+    $q = $pdo->prepare("INSERT INTO games (slug,name,status) VALUES (:slug,'Lease revocation integration','ACTIVE')");
+    $q->execute(['slug' => 'lease-guard-' . $token]);
+    $gameId = (int)$pdo->lastInsertId();
+
+    $q = $pdo->prepare("INSERT INTO products
+        (game_id,provider_id,provider_product_code,name,base_price,selling_price,status)
+        VALUES (:game_id,:provider_id,:sku,'Lease revocation integration product',1000,1500,'ACTIVE')");
+    $q->execute(['game_id' => $gameId, 'provider_id' => (int)$providerId, 'sku' => 'lease-guard-' . $token]);
+    $productId = (int)$pdo->lastInsertId();
     $q = $pdo->prepare("INSERT INTO orders
         (public_id,game_id,product_id,provider_id,customer_game_data,base_price,selling_price,admin_fee,payment_status,order_status)
         VALUES (:public_id,:game_id,:product_id,:provider_id,:account,1000,1500,1000,'PAID','PROCESSING')");
     $q->execute([
-        'public_id'=>$publicId,'game_id'=>$fixture['game_id'],'product_id'=>$fixture['product_id'],
-        'provider_id'=>$fixture['provider_id'],'account'=>json_encode(['user_id'=>'123'],JSON_THROW_ON_ERROR),
+        'public_id'=>$publicId,'game_id'=>$gameId,'product_id'=>$productId,
+        'provider_id'=>(int)$providerId,'account'=>json_encode(['user_id'=>'123'],JSON_THROW_ON_ERROR),
     ]);
     $orderId = (int)$pdo->lastInsertId();
 
     $q = $pdo->prepare("INSERT INTO supplier_transactions (order_id,provider_id,reference_id,status,attempts)
         VALUES (:order_id,:provider_id,:reference,'PROCESSING',1)");
-    $q->execute(['order_id'=>$orderId,'provider_id'=>$fixture['provider_id'],'reference'=>$reference]);
+    $q->execute(['order_id'=>$orderId,'provider_id'=>(int)$providerId,'reference'=>$reference]);
 
     $q = $pdo->prepare("INSERT INTO job_queue (job_type,payload,status,attempts,available_at,locked_at,lock_token)
         VALUES ('FULFILL_ORDER',:payload,'PROCESSING',1,NOW(),NOW(),:token)");
@@ -107,6 +119,8 @@ try {
                 $pdo->prepare("DELETE FROM refunds WHERE order_id=:id")->execute(['id'=>$orderId]);
                 $pdo->prepare("DELETE FROM orders WHERE id=:id")->execute(['id'=>$orderId]);
             }
+            if ($productId !== null) $pdo->prepare("DELETE FROM products WHERE id=:id")->execute(['id'=>$productId]);
+            if ($gameId !== null) $pdo->prepare("DELETE FROM games WHERE id=:id")->execute(['id'=>$gameId]);
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
