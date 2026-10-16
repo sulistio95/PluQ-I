@@ -1059,3 +1059,10 @@ Reviewed `bin/preflight.php`, `config/app.php`, `public/.htaccess`, and the host
 The user ran `php -l bin/preflight.php` and `php bin/preflight.php` locally on PHP 8.2.34. Syntax passed. Preflight reported 45/47 checks passed.
 
 Passed checks include PHP version and required extensions, minimum lengths for `APP_KEY` and `SCHEDULER_TOKEN`, disabled checkout/supplier/settlement flags, database connectivity, all 24 required base tables, and the migration records required while settlement backup is disabled. The two failures are environment-specific: `APP_URL uses HTTPS` and `APP_DEBUG disabled` (local development debug is enabled). Preserve local developer settings if needed; staging/production must use an HTTPS URL and `APP_DEBUG=false`. Do not interpret this local preflight as deployment approval or live integration verification. Checkout payments, supplier ordering, Drive backup, and deployment remain disabled.
+
+
+## 2026-10-16 — Environment-file tracking check and queue-test guard
+
+- User verified git check-ignore -v .env output .gitignore:1:.env, empty git status --short, and git ls-files --error-unmatch .env reported that .env is not tracked in the current Git index. This is a current-index check, not a full historical secret scan.
+- The fulfillment workflow calls tests/queue_recovery_integration.sh. The script broadly changes PENDING/RETRY queue jobs and temporarily enables supplier fulfillment. Added a fail-closed invocation guard requiring both DB_DATABASE=pluq_test and PLUQI_ALLOW_DESTRUCTIVE_QUEUE_RECOVERY_TEST=1; only the matching disposable GitHub Actions step sets the opt-in.
+- This limits accidental execution but does not make the legacy test safe for a user's local or production database; do not run it manually. CI for the guard is pending. No gateway, supplier, or Google Drive calls were made. Live payments, supplier ordering, settlement backup, and deployment remain disabled.
