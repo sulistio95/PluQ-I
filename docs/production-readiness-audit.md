@@ -1005,3 +1005,13 @@ The latest fulfillment workflow (38755995858) exposed one remaining stale assert
 - User-reported test result: `Duplicate queue job preserves fresh PROCESSING state; stale ambiguous requests enter manual review; reviewed and terminal orders cannot be revived.`
 - This verifies the duplicate-job state guard against local MySQL fixtures only. Test-only supplier endpoints are loopback port 1; no real supplier request or gateway request was made.
 - Next planned check is the isolated Duitku transaction-status helper test using its injected test transport; it does not require credentials or contact Duitku.
+
+
+## 2026-10-16 — Uji helper status transaksi Duitku lulus secara lokal
+
+- Pengguna menjalankan `php -l tests/duitku-transaction-status.php`; hasil: tidak ada kesalahan sintaks.
+- Pengguna menjalankan `php tests/duitku-transaction-status.php`; hasil: `Duitku transaction-status signature, status mapping, and response validation tests passed.`
+- Cakupan meliputi validasi HMAC, pemetaan status dan penolakan status tak dikenal, pemeriksaan referensi pesanan/nominal, serta penolakan transport tiruan pada mode produksi.
+- Pengujian menggunakan transport tiruan yang diinjeksi dan **tidak menghubungi Duitku**. Ini bukan bukti transaksi sandbox nyata atau callback pada shared hosting telah berhasil.
+- Langkah aman berikutnya: tinjau lalu jalankan `tests/reconcile-cooldown-regression.php`, yang merupakan uji regresi struktural. Jangan memulai server web atau menggunakan kredensial gateway untuk tes ini.
+- Pembayaran, pemesanan supplier, backup Google Drive, dan deployment tetap nonaktif sampai pengujian staging dan hosting target selesai.
