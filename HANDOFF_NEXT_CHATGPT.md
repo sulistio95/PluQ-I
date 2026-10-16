@@ -1014,3 +1014,12 @@ Login page and rate-limit helper review found that a successful login clears fai
 - This confirms the local MySQL deadlock classification scenario only. It is not evidence of a live Duitku request, real supplier order, or hosting deployment.
 - Do not run `tests/queue_recovery_integration.sh` as-is. Also review/fix `tests/duplicate-queue-processing-integration.php` before local execution: it sets `SUPPLIER_ORDERS_ENABLED=true` and currently expects a pre-seeded catalog fixture, so keep supplier ordering disabled outside an isolated test database.
 - Keep payment checkout, supplier orders, and settlement/Google Drive backup disabled. Update this handoff and the production-readiness audit after the next verified test/change.
+
+
+## 2026-10-16 — Duplicate-queue integration fixture isolated
+
+- Updated `tests/duplicate-queue-processing-integration.php` in commits `91d68b83eedd996bf02d7321330e35206ca8ffe2` and `c688130ea340afa2e9b3f9dfe04e8197d05b0302`.
+- The test now creates its own unique game/product fixture against the seeded DIGI provider and removes the temporary catalog rows during cleanup, rather than requiring a pre-existing `integration-game/integration-sku` row.
+- To make the enabled fulfillment path fail closed if a regression attempts an HTTP request, test-only Digiflazz and VIPayment URLs are pointed at loopback port 1 and use fake credentials. No real supplier endpoint should be reachable from this test.
+- The test still temporarily sets `SUPPLIER_ORDERS_ENABLED=true` inside the test process to exercise `fulfillment_process()`; do not copy that setting into the local `.env` or production. All real payment/supplier/Drive flags remain disabled.
+- **Not yet locally executed or CI-verified in this note.** Next, pull latest `main`, run PHP lint, then run through bootstrap against the disposable local MySQL database. Inspect exact output before marking passed.
