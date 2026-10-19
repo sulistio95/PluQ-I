@@ -1403,3 +1403,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Dokumentasi VIPayment: https://vip-reseller.co.id/page/api/game-feature — mencantumkan parameter `get-nickname`, tetapi tidak mengidentifikasi kode lookup Free Fire yang valid.
 - Tes schema ditambah untuk guard Free Fire. Belum menjalankan lint, tes lokal, CI, browser, atau panggilan API live pada branch ini.
 - Setelah perubahan di-merge ke `main`, di Puppy Linux jalankan `git pull origin main`, `php -l app/services/game_fields.php`, `php tests/game-account-schema.php`, dan `php -l public/index.php`; lalu uji halaman Free Fire. Jangan aktifkan pembayaran, supplier ordering, atau backup Drive.
+
+## 2026-10-20 — Koreksi label Username
+
+- Pengguna mengklarifikasi bahwa yang harus dihapus hanya teks penjelas/helper tentang pengecekan username otomatis, bukan label/kolom **Username** itu sendiri.
+- Perubahan UI pada branch `fix/restore-username-label` mengembalikan label `Username` di area hasil pemeriksaan pada `public/index.php`, tanpa memulihkan teks helper. Field User ID dan schema akun otomatis tetap dipertahankan; lookup Free Fire tetap opsional sampai kode VIPayment yang valid diketahui.
+- Verifikasi browser dan lint lokal belum dilakukan. Setelah merge, tarik `main`, jalankan `php -l public/index.php`, lalu buka Free Fire untuk memastikan label Username dan kolom ID tampil sementara area hasil username tetap kosong tanpa teks penjelas.
+- Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
