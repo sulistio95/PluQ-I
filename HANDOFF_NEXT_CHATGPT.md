@@ -1186,3 +1186,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - The visible UI no longer asks for supplier game codes or supplier game names. Codes are retained internally for catalog matching.
 - Same-named selected games across suppliers are attached to one canonical web game; storefront visibility follows active mappings from either supplier.
 - CI passed for the code commit: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/39204606529), [MySQL callback integration](https://github.com/sulistio95/PluQ-I/actions/runs/39204606531), and [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/39204606555). CI does not prove live provider API responses or browser/database save-and-reload behavior. Duplicate-name merging and customer-facing server/region choices still need local integration verification. Keep checkout, supplier orders, and Drive backup disabled.
+
+
+## Default keuntungan awal dan panel yang dapat diedit — 2026-10-19
+
+- Aturan keuntungan default yang telah disepakati tetap dipasang pada migration awal `database/migrations/002_catalog_and_operations.sql`: modal Rp0–Rp10.000 mendapat laba Rp500; di atas Rp10.000 sampai Rp100.000 mendapat Rp1.000; di atas Rp100.000 sampai Rp500.000 mendapat Rp2.000; dan di atas Rp500.000 mendapat Rp3.500.
+- Migration `012_pricing_rules_hybrid.sql` mempertahankan aturan lama dengan menyalin `profit_amount` menjadi `profit_value` bertipe `FIXED`; jadi perubahan ke model nominal/persentase tidak mengganti laba nominal default yang sudah disepakati.
+- Panel `/admin/pricing-settings.php` memungkinkan ADMIN/SUPER_ADMIN mengubah rentang modal, nominal atau persentase, dan status aturan. Harga katalog dan kutipan checkout membaca aturan aktif dari database yang sama. Biaya admin invoice tetap terpisah dari laba.
+- Verifikasi GitHub Actions pada commit `a3740fe717da2da54ac11b619172dd07c6f253ee` berhasil: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/39209913651), [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/39209913521), dan [fulfillment/MySQL integration](https://github.com/sulistio95/PluQ-I/actions/runs/39209913435).
+- Ini bukti CI pada database MySQL pengujian, bukan uji browser/shared hosting atau transaksi Duitku/provider nyata. Untuk menggunakan panel, tarik perubahan dan jalankan migration 012 setelah migration 011. Jangan menimpa aturan yang sudah disesuaikan admin saat deployment; migration mempertahankan data lama.
