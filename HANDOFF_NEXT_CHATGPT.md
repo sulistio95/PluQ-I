@@ -1,3 +1,11 @@
+## Update — 2026-10-19: Homepage layout
+
+- Preserved the existing PluQ brand/title at the top-left exactly in place; do not change its positioning or appearance.
+- Reordered the remaining homepage content to: banner → game search → game list.
+- Updated `public/index.php` and `public/assets/catalog.css`; the existing catalog search event and 3-second banner rotation logic remain in use.
+- Commits: homepage markup `3fac5a148b383e962cdf6f6296dcf32fb82ec75a`; CSS `7c7e73019485a28df667ca10989249521b115aeb`; audit notes `b140c620e211f88fd76d9759d3126fc3a8114f63`.
+- Not yet verified in a browser or by CI. Next: run PHP lint and JS syntax/regression workflows; visually confirm desktop/mobile layout. Keep checkout, supplier ordering, and Drive backup disabled.
+
 
 ## Update — 2026-10-19: Admin template settings
 
