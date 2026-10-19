@@ -30,7 +30,7 @@ Do not assume every shared-hosting plan supports cron, the needed PHP extensions
 ## Current implementation status
 
 - Foundation: PHP bootstrap, environment configuration, PDO connection, MySQL schema and operational tables.
-- Public catalog: game, banner, product and dynamic game-input endpoints plus a responsive dark storefront with search and a 3-second banner rotation.
+- Public catalog: game, banner, product and automatically generated game-input endpoints plus a responsive dark storefront with search and a 3-second banner rotation. Manual per-game account-field editing has been removed; see `docs/automatic-game-account-form.md` for current rules and limits.
 - Server-side price quotes validate the game, product, account fields, provider reserve and excluded services; the server recalculates selling price and admin fee.
 - Admin transaction inspection is available at `/admin/` after an administrator account is provisioned. It filters by provider API, gateway, date/time range, payment status, order status, and the latest refund status (`PENDING`, `PROCESSING`, `SUCCESS`, `FAILED`). Refund filtering is based on the newest refund record per order; access is session-authenticated.
 - Monthly settlement backup creates a formatted four-tab Google Sheets workbook in Google Drive after migrations 006–007 and OAuth/folder configuration. It is disabled by default and has not been tested against a real Google account from the hosting environment.
@@ -116,3 +116,13 @@ Each feature must be implemented and tested before being marked complete.
 - Default Duitku invoice expiry is 30 minutes and can be set by an admin in **Pengaturan API → Duitku → Masa berlaku invoice** (5–1440 minutes). The same setting drives the gateway request and local deadline.
 - After the deadline, use the CLI script `php bin/reconcile-expired-payments.php` from cron. It queries Duitku sandbox status and only marks a pending invoice expired when the gateway confirms failed/expired; it never triggers supplier fulfillment. Keep it out of the public web root/URL and use a protected CLI cron job.
 - Runtime verification is pending. Keep checkout, supplier ordering, and Drive backup disabled while testing.
+
+
+## Account form automation (2026-10-19)
+
+- Work is on branch `feature/automatic-game-account-form`; it has not been merged to `main`.
+- Removed the manual **Konfigurasi Form Akun** admin link and deleted `public/admin/game-fields.php`; old database tables are left untouched for backwards compatibility and audit history.
+- Account inputs are generated from synchronized game name/slug rules: all games receive User ID; known zone-based games receive Zone ID; names explicitly identifying server/region receive a Server field when no Zone ID rule applies.
+- The VIPayment services list does not publish a formal per-game form schema. The current mapping is therefore a conservative fallback, not proof that every game/provider uses these exact fields. Unknown games receive User ID only. Review and expand the automated rules using provider documentation before enabling production checkout.
+- The storefront attempts VIPayment `get-nickname` automatically after required inputs are complete, but only when an active VIPAY product code exists for the game. A missing code, unsupported game, API error, or invalid ID is shown as a status; the website does not invent a username. When checking is unavailable, a warning is shown and local input validation may continue.
+- Checkout quote validation now uses the generated schema instead of `game_fields`. No supplier orders, real payments, or Google Drive backups were run. PHP/browser/runtime tests and the post-change GitHub Actions run are pending.
