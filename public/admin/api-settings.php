@@ -41,6 +41,7 @@ foreach ($optionalFields as $fieldName => $fieldLabel) { $allFields[$fieldName] 
 $message = '';
 $error = '';
 $catalogPreview = null;
+$catalogSyncResult = null;
 $csrf = admin_csrf_token();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -91,6 +92,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   } catch (Throwable $e) {
    if ($pdo->inTransaction()) $pdo->rollBack();
    $error = 'Penghapusan konfigurasi gagal: ' . $e->getMessage();
+  }
+ } elseif (isset($_POST['sync_provider_catalog'])) {
+  try {
+   $providerCode = strtoupper(trim((string)($_POST['sync_provider_catalog'] ?? '')));
+   if (!in_array($providerCode, ['DIGI', 'VIPAY'], true)) throw new RuntimeException('Pilihan supplier tidak valid.');
+   require_once PLUQI_ROOT . '/app/services/catalog_sync.php';
+   $catalogSyncResult = $providerCode === 'DIGI' ? sync_digiflazz_catalog($pdo) : sync_vipayment_catalog($pdo);
+   if (!empty($catalogSyncResult['skipped'])) {
+    $message = $providerCode . ' dilewati karena supplier dinonaktifkan.';
+   } elseif ((int)($catalogSyncResult['mapped'] ?? 0) === 0) {
+    $error = 'Sinkronisasi dibatalkan karena tidak ada layanan yang cocok dengan pemetaan game aktif. Periksa Game List dan simpan pemetaan sebelum mencoba lagi.';
+    $catalogSyncResult = null;
+   } else {
+    $message = sprintf('Sinkronisasi %s selesai: %d layanan dibaca, %d layanan dipetakan ke game PluQ-I. Tidak ada pesanan dibuat.', $providerCode, (int)$catalogSyncResult['seen'], (int)$catalogSyncResult['mapped']);
+   }
+  } catch (Throwable $e) {
+   $error = 'Sinkronisasi katalog gagal: ' . $e->getMessage();
   }
  } elseif (isset($_POST['preview_vipayment_catalog'])) {
   try {
@@ -166,6 +184,13 @@ function api_settings_escape(mixed $value): string { return htmlspecialchars((st
 </section>
 <section class="panel"><h2>Pemeriksaan koneksi (manual)</h2><p class="muted">Duitku: validasi konfigurasi lokal saja. Tombol supplier mengirim permintaan baca-saldo ke API nyata; gunakan hanya setelah kredensial benar. Tidak ada tombol yang membuat pesanan top-up.</p>
 <form method="post" class="actions"><input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>"><button type="submit" name="check_duitku" value="1">Validasi konfigurasi Duitku</button><button type="submit" name="check_digiflazz" value="1">Periksa saldo Digiflazz</button><button type="submit" name="check_vipayment" value="1">Periksa saldo VIPayment</button></form>
+</section>
+<section class="panel"><h2>Sinkronisasi katalog ke database</h2>
+<p class="muted">Langkah ini berbeda dari pratinjau: sistem mengambil daftar harga supplier dan menyimpan produk yang cocok dengan pemetaan aktif pada menu Game List. Simpan pemetaan game terlebih dahulu. Permintaan ini hanya membaca katalog supplier; tidak membuat pesanan atau pembayaran.</p>
+<form method="post" class="actions"><input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>"><button type="submit" name="sync_provider_catalog" value="VIPAY">Sinkronkan katalog VIPayment</button><button type="submit" name="sync_provider_catalog" value="DIGI">Sinkronkan katalog Digiflazz</button></form>
+<?php if (is_array($catalogSyncResult) && empty($catalogSyncResult['skipped'])): ?>
+<p><strong>Hasil:</strong> <?=api_settings_escape($catalogSyncResult['provider'] ?? '')?> — <?= (int)($catalogSyncResult['seen'] ?? 0) ?> layanan diproses, <?= (int)($catalogSyncResult['mapped'] ?? 0) ?> dipetakan ke game.</p>
+<?php endif; ?>
 </section>
 <section class="panel"><h2>Pratinjau katalog VIPayment</h2>
 <p class="muted">Mengambil daftar layanan API secara langsung. Fitur ini hanya menampilkan data; tidak menyimpan/mengubah katalog dan tidak mengirim pesanan.</p>
