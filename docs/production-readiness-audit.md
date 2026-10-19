@@ -2,6 +2,14 @@
 
 Audit baseline: GitHub default branch at the time this file was added. This is a source-code review, not a live-hosting or payment certification.
 
+## Admin API settings UI — 2026-10-19
+
+- Added `public/admin/api-settings.php` and an admin navigation link for Duitku, Digiflazz, and VIPayment credentials.
+- Credentials entered through the UI are encrypted with PHP Sodium secretbox and stored in `app_settings`; `APP_KEY` must be a stable, private random secret (at least 32 characters). Keep a secure copy of APP_KEY; changing it makes stored values unreadable.
+- Provider service configuration now checks encrypted admin settings before falling back to environment values. Empty form fields preserve saved values. The UI does not display stored secrets.
+- Duitku button validates local sandbox configuration only. Digiflazz/VIPayment balance buttons make explicit read-only balance/profile requests; they do not create top-up orders. Checkout, supplier fulfillment, and Drive backup flags remain unchanged and disabled by default.
+- **Verification pending:** PHP lint, browser/login flow, encrypted save/reload, and supplier read-only requests have not yet been run against the user's local laptop or CI. Do not enter real credentials until those checks are completed. Use staging/sandbox credentials first.
+
 ## Status legend
 
 - **Implemented in repository**: corresponding code or documentation exists.
