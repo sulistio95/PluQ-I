@@ -1,3 +1,12 @@
+## Update — 2026-10-19: Pengaturan keuntungan
+
+- Added `public/admin/pricing-settings.php`, linked as **Pengaturan Keuntungan** in admin navigation.
+- Supports per-modal range rules with either fixed rupiah profit or percentage of supplier base price, active/inactive status, and audit logging. Active ranges may not overlap; at least one active rule must remain.
+- Migration `012_pricing_rules_hybrid.sql` adds `profit_type` and `profit_value` while preserving old fixed `profit_amount` values. Apply after migration 011.
+- Updated pricing service, public catalog calculation, checkout quote's cheapest-offer validation, and preflight migration checks. Added `tests/pricing-hybrid.php` to PHP quality CI.
+- Key commits: migration `9aad765bf710aa9716861c66df58dbe39c947a73`; page `81b5ee4a05eae463e8f836c33c401d50b9bf6fac`; pricing service `66ddc234ea0b01ef1d4ff0d99d57f6b674d3da0b`; catalog `86d67429412405f73751ab8aee5f2a86d6f19c82`; checkout quote `8ca22bfa5bff9f6edf65c740a0cc002ad6cdca8f`; nav `b113a9ef8aa96e77c02baab016d1222c236b00b3`; preflight `e5e8aea7204213d8e53e5f6f54bf2eb949f11b9f`; test `cd0e0145a8728cd61fd4a50fa2984093f77a45da`; workflow `53c004b0d9589b9439c1b229444c27c398a3a0bd`.
+- CI/browser/database verification is pending. Pull latest main, apply migration 012 after 011, then verify admin save/validation, catalog prices, checkout quote, and the workflow result. Keep payment, supplier ordering, and Drive backup disabled.
+
 ## Update — 2026-10-19: Homepage layout
 
 - Preserved the existing PluQ brand/title at the top-left exactly in place; do not change its positioning or appearance.
