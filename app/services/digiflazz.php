@@ -1,18 +1,19 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/provider_http.php';
+require_once __DIR__ . '/api_secret_crypto.php';
 
 function digiflazz_config(): array
 {
-    $username = trim((string) getenv('DIGIFLAZZ_USERNAME'));
-    $apiKey = trim((string) getenv('DIGIFLAZZ_API_KEY'));
+    $username = trim((string) pluqi_api_config_value('DIGIFLAZZ_USERNAME'));
+    $apiKey = trim((string) pluqi_api_config_value('DIGIFLAZZ_API_KEY'));
     if ($username === '' || $apiKey === '') {
         throw new RuntimeException('Digiflazz credentials are not configured.');
     }
     return [
         'username' => $username,
         'api_key' => $apiKey,
-        'base_url' => rtrim((string) (getenv('DIGIFLAZZ_API_URL') ?: 'https://api.digiflazz.com/v1'), '/'),
+        'base_url' => rtrim((string) (pluqi_api_config_value('DIGIFLAZZ_API_URL') ?: 'https://api.digiflazz.com/v1'), '/'),
     ];
 }
 
