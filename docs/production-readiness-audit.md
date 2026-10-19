@@ -1321,3 +1321,10 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Menambahkan tes schema untuk memastikan pengecekan nickname Free Fire tetap opsional. PHP lint, tes lokal, CI, browser, dan panggilan VIPayment live setelah perubahan belum dijalankan.
 - Langkah verifikasi setelah checkout perubahan: `git pull origin main` hanya setelah branch di-merge; jalankan `php -l app/services/game_fields.php`, `php tests/game-account-schema.php`, dan `php -l public/index.php`. Buka Free Fire dan pastikan tidak muncul error pengecekan nickname serta form/nominal tetap dapat digunakan.
 - Jangan aktifkan pembayaran, pesanan supplier, atau backup Google Drive.
+
+## Koreksi tampilan form Username — 2026-10-20
+
+- Mengembalikan label **Username** pada area hasil pemeriksaan di `public/index.php`; teks helper yang menjelaskan pengecekan otomatis tetap dihapus sesuai permintaan pengguna.
+- Perubahan hanya menyentuh label UI. Field akun yang dihasilkan dari `game_account_fields_for_game()` (termasuk User ID Free Fire) tidak dihapus dan aturan pengecekan nickname opsional untuk Free Fire/HOK tetap berlaku.
+- Hasil nickname Free Fire dapat kosong sampai kode lookup VIPayment yang valid dikonfirmasi. Tidak ada teks helper yang dipulihkan, dan tidak ada perubahan pembayaran, supplier ordering, atau backup Drive.
+- Status verifikasi: perubahan HTML dikirim melalui branch `fix/restore-username-label`; PHP lint, tes schema, dan pemeriksaan browser lokal masih menunggu.
