@@ -22,7 +22,7 @@ function game_account_fields_for_game(string $slug, string $name): array
         'validation_regex' => '^[^\\s]{1,190}$',
     ]];
 
-    $needsZone = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|genshin|honkai[\\s_-]*star[\\s_-]*rail|honkai[\\s_-]*impact|punishing[\\s_-]*gray[\\s_-]*raven|tower[\\s_-]*of[\\s_-]*fantasy|life[\\s_-]*after|identity[\\s_-]*v/i', $identity) === 1;
+    $needsZone = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b/i', $identity) === 1;
     $needsServer = !$needsZone && preg_match('/\\b(server|region)\\b/i', $identity) === 1;
 
     if ($needsZone) {
@@ -58,7 +58,10 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
         throw new DomainException('Game tidak tersedia.');
     }
 
+    $identity = strtolower(trim((string)$game['slug'] . ' ' . (string)$game['name']));
+    $knownGame = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|honor[\\s_-]*of[\\s_-]*kings?|\\bhok\\b|free[\\s_-]*fire|pubg[\\s_-]*mobile|genshin|honkai[\\s_-]*(star[\\s_-]*rail|impact)|call[\\s_-]*of[\\s_-]*duty|\\bcod\\b|valorant|arena[\\s_-]*of[\\s_-]*valor|wild[\\s_-]*rift|blood[\\s_-]*strike|farlight[\\s_-]*84|sausage[\\s_-]*man|super[\\s_-]*sus/i', $identity) === 1;
     $fields = game_account_fields_for_game((string)$game['slug'], (string)$game['name']);
+    $hasUnmappedServer = count($fields) > 1 && $fields[1]['field_key'] === 'server';
     $check = $pdo->prepare("SELECT 1
         FROM products p
         INNER JOIN providers pr ON pr.id=p.provider_id
@@ -73,6 +76,7 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
     return [
         'game' => ['slug' => (string)$game['slug'], 'name' => (string)$game['name']],
         'fields' => $fields,
+        'checkout_supported' => $knownGame && !$hasUnmappedServer,
         'username_check_available' => (bool)$check->fetchColumn(),
     ];
 }
