@@ -55,7 +55,8 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
   $recent = array_filter($recent, static fn($stamp) => is_int($stamp) && $stamp > $now-600);
   if (isset($recent[$fingerprint]) && $now-(int)$recent[$fingerprint] < 5) json_response(['error'=>'username_check_throttled','message'=>'Tunggu beberapa detik sebelum memeriksa ID yang sama lagi.'],429);
   if (count($recent) >= 20) json_response(['error'=>'username_check_throttled','message'=>'Batas pemeriksaan akun sementara tercapai. Coba lagi beberapa menit.'],429);
-  $_SESSION['pluqi_username_checks'] = $recent + [$fingerprint=>$now];
+  $recent[$fingerprint] = $now;
+  $_SESSION['pluqi_username_checks'] = $recent;
   $codeStmt = $pdo->prepare("SELECT p.provider_product_code
    FROM products p JOIN providers pr ON pr.id=p.provider_id
    JOIN games g ON g.id=p.game_id
