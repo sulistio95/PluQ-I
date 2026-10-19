@@ -4,6 +4,14 @@ Last updated: 2026-10-13 (Asia/Jakarta) — admin checkout hints and timeout CI 
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
+## Update — 2026-10-19: Admin API settings UI
+
+- Added `public/admin/api-settings.php` and the panel navigation link for Duitku, Digiflazz, and VIPayment.
+- Added `app/services/api_secret_crypto.php`; entered credentials are encrypted using Sodium secretbox and `APP_KEY`, stored in existing `app_settings`, and loaded by the provider service config helpers. The secret values are never re-rendered in the form.
+- Duitku is still sandbox-only. Its button validates local configuration; Digiflazz/VIPayment balance buttons perform explicit read-only API requests only. No order is created by these buttons.
+- The page requires the admin settings role and CSRF validation. Blank fields preserve current saved values. The user must keep `APP_KEY` stable and private.
+- **Not yet runtime-verified:** lint/CI, save-and-reload encryption, and real supplier read-only checks. Next action: inspect the new page for PHP compatibility, run PHP lint and focused tests, verify navigation/login locally, and keep payment/order/Drive flags disabled. Do not claim the feature is tested until actual results are recorded.
+
 ## Latest verified state — 2026-10-16
 
 - Local Puppy Bookworm64 verification: PHP syntax checks and the catalog, payment gate, provider-balance validation, callback signature/state, account mapping, supplier retry, pricing, response mapping, checkout idempotency/deadlock recovery, provider budget reservation, and concurrent queue-claim test groups passed as reported in the active conversation.
