@@ -1,3 +1,10 @@
+## 2026-10-19 — Koreksi tes integrasi setelah keputusan label Habis
+
+- Run CI awal pada commit `d1fabb7dee45f9ad2e5526606312c8408bfcdd14`: PHP quality lulus, PHP/JavaScript syntax lulus, tetapi fulfillment safety gagal karena tes integrasi MySQL masih mengharapkan katalog kosong untuk penawaran yang melewati kapasitas saldo.
+- Assertion tersebut tidak sesuai perilaku baru. Tes `tests/provider-budget-reservation-mysql-integration.php` diperbarui agar mengharapkan satu nominal dengan `is_available=false`, sambil tetap menguji bahwa `checkout_quote()` menolak pembelian.
+- Commit koreksi: `0437cc493ca2ec3cd07203355938f3a4f76a082a`. Hasil CI untuk commit ini harus diverifikasi sebelum menyatakan pengujian selesai.
+- Tidak ada transaksi Duitku, pesanan supplier, atau backup Google Drive yang dijalankan.
+
 ## 2026-10-19 — Nominal tetap terlihat saat semua supplier tidak tersedia
 
 - Keputusan produk diperbarui atas persetujuan pengguna: jika beberapa supplier menawarkan nominal yang sama, pilih supplier termurah yang memenuhi syarat. Jika tidak ada supplier yang dapat melayani, nominal tetap terlihat sebagai **Habis**.
