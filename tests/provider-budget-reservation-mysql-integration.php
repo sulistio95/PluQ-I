@@ -105,11 +105,12 @@ try {
     budget_integration_assert($first['reserved'] === true, 'First reservation should be admitted.');
     $pdo->commit();
 
-    // Catalog must omit the offer when its own cost plus existing commitments
-    // exceed usable capacity, rather than showing a product checkout cannot reserve.
+    // Keep the denomination visible as unavailable when its cost plus commitments
+    // exceed usable capacity; checkout must still reject it server-side.
     $catalogRows = catalog_products($pdo, 'budget-test-' . $token);
-    budget_integration_assert(count($catalogRows) === 0,
-        'Catalog exposed an offer whose cost exceeds remaining provider budget.');
+    budget_integration_assert(count($catalogRows) === 1
+        && $catalogRows[0]['is_available'] === false,
+        'Catalog should show an unavailable denomination as out of stock when budget is insufficient.');
 
     $quoteRejected = false;
     try {
