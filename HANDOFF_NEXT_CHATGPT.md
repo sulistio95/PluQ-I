@@ -1,3 +1,12 @@
+## Update — 2026-10-19: Sinkronisasi katalog dari panel admin
+
+- Menambahkan tombol **Sinkronkan katalog VIPayment** dan **Sinkronkan katalog Digiflazz** pada Pengaturan API. Berbeda dari tombol pratinjau VIPayment, tombol sinkronisasi memanggil service katalog dan menyimpan produk/harga yang cocok dengan pemetaan game aktif ke database.
+- Jika tidak ada produk yang cocok dengan pemetaan aktif, sinkronisasi sekarang melempar error di dalam transaksi sehingga perubahan status stale di-rollback dan katalog yang ada tidak ikut dikosongkan.
+- Kode diubah pada `public/admin/api-settings.php` (commit `3f4cb21f692a8409c21eac177bd249f7b228f71b`) dan `app/services/catalog_sync.php` (commit `21715ee41013345af21789641b9b9b9a8ffe9110`).
+- Langkah admin: simpan kredensial supplier; buka **Game List**, pilih dan simpan game yang dipetakan untuk supplier; kembali ke **Pengaturan API**, jalankan sinkronisasi supplier yang digunakan; lalu buka game di halaman customer dan periksa endpoint `/api/games/{slug}/products`.
+- Sinkronisasi hanya membaca katalog harga supplier dan menulis katalog lokal; tidak membuat order supplier maupun transaksi pembayaran. Pastikan gunakan hanya supplier yang memang dikonfigurasi dan ingin digunakan.
+- Belum menjalankan lint, CI, atau pengujian browser/database lokal untuk perubahan ini. Hasil CI terbaru harus diperiksa, lalu pengguna akan melakukan tes lokal. Pembayaran, pemesanan supplier, dan backup Drive tetap nonaktif.
+
 ## Follow-up verifikasi katalog Habis — 2026-10-19
 
 - Run MySQL berikutnya menemukan assertion katalog kedua yang masih mengharapkan hasil kosong setelah reservasi kedua memakai kapasitas supplier. Assertion itu juga sudah diperbarui agar mengharapkan satu nominal `is_available=false`; penolakan reservasi/checkout tetap diuji terpisah.
