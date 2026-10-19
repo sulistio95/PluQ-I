@@ -59,18 +59,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->beginTransaction();
                 try {
                     if ($id > 0) {
-                        $check = $pdo->prepare('SELECT id FROM game_fields WHERE id=:id FOR UPDATE'); $check->execute(['id'=>$id]);
-                        if (!$check->fetchColumn()) throw new InvalidArgumentException('Kolom akun tidak ditemukan.');
-                        $stmt = $pdo->prepare('UPDATE game_fields SET game_id=:game,field_key=:key,label=:label,field_type=:type,placeholder=:placeholder,is_required=:required,validation_regex=:regex,sort_order=:sort,status=:status WHERE id=:id');
-                        $stmt->execute(['game'=>$gameId,'key'=>$key,'label'=>$label,'type'=>$type,'placeholder'=>$placeholder ?: null,'required'=>$required,'regex'=>$regex ?: null,'sort'=>$sort,'status'=>$status,'id'=>$id]);
+                        $check = $pdo->prepare('SELECT id,game_id FROM game_fields WHERE id=:id FOR UPDATE'); $check->execute(['id'=>$id]);
+                        $existingField = $check->fetch(PDO::FETCH_ASSOC);
+                        if (!$existingField || (int)$existingField['game_id'] !== $gameId) throw new InvalidArgumentException('Kolom akun tidak ditemukan untuk game yang dipilih.');
+                        $stmt = $pdo->prepare('UPDATE game_fields SET field_key=:key,label=:label,field_type=:type,placeholder=:placeholder,is_required=:required,validation_regex=:regex,sort_order=:sort,status=:status WHERE id=:id AND game_id=:game');
+                        $stmt->execute(['key'=>$key,'label'=>$label,'type'=>$type,'placeholder'=>$placeholder ?: null,'required'=>$required,'regex'=>$regex ?: null,'sort'=>$sort,'status'=>$status,'id'=>$id,'game'=>$gameId]);
                         $auditAction = 'GAME_FIELD_UPDATED';
                     } else {
                         $stmt = $pdo->prepare('INSERT INTO game_fields (game_id,field_key,label,field_type,placeholder,is_required,validation_regex,sort_order,status) VALUES (:game,:key,:label,:type,:placeholder,:required,:regex,:sort,:status)');
                         $stmt->execute(['game'=>$gameId,'key'=>$key,'label'=>$label,'type'=>$type,'placeholder'=>$placeholder ?: null,'required'=>$required,'regex'=>$regex ?: null,'sort'=>$sort,'status'=>$status]);
                         $id = (int)$pdo->lastInsertId(); $auditAction = 'GAME_FIELD_CREATED';
                     }
+                    $pdo->prepare("UPDATE game_field_options SET status='INACTIVE' WHERE game_field_id=:id")->execute(['id'=>$id]);
                     if ($type === 'select') {
-                        $pdo->prepare("UPDATE game_field_options SET status='INACTIVE' WHERE game_field_id=:id")->execute(['id'=>$id]);
                         $upsert = $pdo->prepare("INSERT INTO game_field_options (game_field_id,option_value,option_label,sort_order,status) VALUES (:id,:value,:label,:sort,'ACTIVE') ON DUPLICATE KEY UPDATE option_label=VALUES(option_label),sort_order=VALUES(sort_order),status='ACTIVE'");
                         $n=0; foreach ($options as $value=>$optionLabel) $upsert->execute(['id'=>$id,'value'=>$value,'label'=>$optionLabel,'sort'=>$n++]);
                     }
