@@ -160,6 +160,11 @@
       resultBox.textContent = 'Lengkapi semua kolom akun yang wajib diisi.';
       return;
     }
+    if (!gameMeta.checkout_supported) {
+      accountDataValid = true;
+      resultBox.textContent = 'Form akun game ini belum dipetakan dengan aman. Transaksi dinonaktifkan sampai kebutuhan ID dan server/zone diverifikasi.';
+      return;
+    }
     if (!gameMeta.username_check_available) {
       accountDataValid = true;
       resultBox.textContent = 'Pengecekan username belum didukung oleh supplier untuk game ini. Pastikan ID dan server/zone benar.';
