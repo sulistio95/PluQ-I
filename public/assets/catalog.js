@@ -104,11 +104,9 @@
 
   function renderFields() {
     if (!gameFields.length) {
-      fieldsBox.innerHTML = '<p class="muted">Formulir akun belum dikonfigurasi untuk game ini. Hubungi admin sebelum transaksi diaktifkan.</p>';
-      $('validate-fields').disabled = true;
+      fieldsBox.innerHTML = '<p class="muted">Skema akun otomatis belum tersedia untuk game ini.</p>';
       return;
     }
-    $('validate-fields').disabled = false;
     fieldsBox.innerHTML = gameFields.map((field) => {
       const id = 'game-field-' + String(field.field_key).replace(/[^a-zA-Z0-9_-]/g, '-');
       const required = field.is_required ? ' required' : '';
