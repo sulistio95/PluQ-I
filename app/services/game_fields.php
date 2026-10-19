@@ -61,19 +61,47 @@ function game_account_schema_is_supported(string $slug, string $name, array $fie
  * Only allow nickname lookup when support for that game has been explicitly
  * reviewed. A top-up product code is not proof that get-nickname supports it.
  */
-function game_account_username_check_supported(string $slug, string $name): bool
+/**
+ * Return the dedicated VIPayment Game Feature code for nickname lookup.
+ * These are lookup codes, not top-up product codes.
+ */
+function game_account_username_check_code(string $slug, string $name): ?string
 {
     $identity = strtolower(trim($slug . ' ' . $name));
 
-    // VIPayment rejected the FF top-up code ff5-s13 with:
-    // "Provider for game code ... is not available." Do not guess another
-    // product code; keep lookup optional until VIPayment confirms a lookup code.
-    $isFreeFire = preg_match('/free[\\s_-]*fire/i', $identity) === 1;
+    // Codes supplied by the user from VIPayment's Get Nickname feature list.
+    if (preg_match('/mobile[\s_-]*legends?.*region|region.*mobile[\s_-]*legends?/i', $identity) === 1) {
+        return 'mobile-legends-region';
+    }
+    if (preg_match('/mobile[\s_-]*legends?|\bmlbb\b/i', $identity) === 1) {
+        return 'mobile-legends';
+    }
+    if (preg_match('/free[\s_-]*fire(?:[\s_-]*max)?/i', $identity) === 1) {
+        return 'free-fire';
+    }
+    if (preg_match('/pubg[\s_-]*mobile|\bpubgm\b/i', $identity) === 1) {
+        return 'pubgm';
+    }
+    if (preg_match('/genshin[\s_-]*impact/i', $identity) === 1) {
+        return 'genshin-impact';
+    }
+    if (preg_match('/honkai[\s_-]*star[\s_-]*rail/i', $identity) === 1) {
+        return 'honkai-star-rail';
+    }
+    if (preg_match('/valorant/i', $identity) === 1) {
+        return 'valorant';
+    }
+    if (preg_match('/point[\s_-]*blank|\bpointblank\b/i', $identity) === 1) {
+        return 'pointblank';
+    }
 
-    // HOK nickname lookup was not available in the user's VIPayment app.
-    $isHonorOfKings = preg_match('/honor[\\s_-]*of[\\s_-]*kings?|\\bhok\\b/i', $identity) === 1;
+    // Honor of Kings is absent from the supplied VIPayment lookup list.
+    return null;
+}
 
-    return !$isFreeFire && !$isHonorOfKings;
+function game_account_username_check_supported(string $slug, string $name): bool
+{
+    return game_account_username_check_code($slug, $name) !== null;
 }
 
 /** Return generated fields and whether a reviewed VIPayment nickname lookup is available. */
