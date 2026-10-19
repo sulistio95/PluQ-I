@@ -242,9 +242,11 @@
     }
     productsBox.innerHTML = items.map((product, index) =>
       '<article class="product"><strong>' + escapeHtml(product.name) + '</strong><div class="price">' + rupiah(product.selling_price) + '</div>' +
-      (product.is_available
+      (product.is_available && gameMeta.checkout_supported
         ? '<button type="button" class="select-product" data-product-index="' + index + '">Pilih nominal</button>'
-        : '<div class="unavailable">Tidak tersedia saat ini</div>') +
+        : (product.is_available
+          ? '<div class="unavailable">Form akun otomatis belum diverifikasi untuk game ini</div>'
+          : '<div class="unavailable">Tidak tersedia saat ini</div>')) +
       '</article>'
     ).join('');
     productsBox.querySelectorAll('button[data-product-index]').forEach((button) => {
