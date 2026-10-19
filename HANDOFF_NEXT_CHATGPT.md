@@ -1,3 +1,12 @@
+
+## Update — 2026-10-19: Admin template settings
+
+- Added `public/admin/template-settings.php`; admin navigation now includes **Pengaturan Template**.
+- Page supports add/edit, HTTPS image URL, optional target URL, sort order, active/inactive state, role and CSRF checks, and audit log. Deactivation is non-destructive.
+- Existing public `GET /api/banners` endpoint reads active banners from the `banners` table. Direct image upload and banner scheduling are not included in this first iteration.
+- Not yet tested in a live/local browser with the database, and no CI result claimed yet. Verify syntax and schema compatibility, then check banner create/edit/deactivate and the homepage slider. Expected slider design: 3-second autoplay, looping, pause-on-hover, arrows, indicators, responsive images, mobile swipe.
+- Keep checkout, supplier ordering, and Google Drive backup disabled during testing.
+
 # PluQ-I — Handoff for the next ChatGPT session
 
 Last updated: 2026-10-13 (Asia/Jakarta) — admin checkout hints and timeout CI verified; manual reconciliation is next
