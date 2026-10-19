@@ -14,6 +14,11 @@ function schema_test(bool $condition, string $message): void
 $mobileLegends = game_account_fields_for_game('mobile-legends', 'Mobile Legends');
 schema_test(array_column($mobileLegends, 'field_key') === ['user_id', 'zone_id'], 'Mobile Legends should request User ID and Zone ID');
 
+$genshin = game_account_fields_for_game('genshin-impact', 'Genshin Impact');
+schema_test(array_column($genshin, 'field_key') === ['user_id', 'zone_id'], 'Genshin Impact should request User ID and Zone/Server');
+$honkaiStarRail = game_account_fields_for_game('honkai-star-rail', 'Honkai Star Rail');
+schema_test(array_column($honkaiStarRail, 'field_key') === ['user_id', 'zone_id'], 'Honkai Star Rail should request User ID and Zone/Server');
+
 schema_test(game_account_username_check_supported('free-fire', 'Free Fire'), 'Free Fire nickname lookup should use VIPayment dedicated code');
 schema_test(game_account_username_check_code('free-fire', 'Free Fire') === 'free-fire', 'Free Fire lookup must use free-fire, not a top-up product code');
 schema_test(game_account_username_check_code('free-fire-max', 'Free Fire MAX') === 'free-fire', 'Free Fire MAX should use the documented free-fire lookup code');
