@@ -22,7 +22,7 @@ function game_account_fields_for_game(string $slug, string $name): array
         'validation_regex' => '^[^\\s]{1,190}$',
     ]];
 
-    $needsZone = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b/i', $identity) === 1;
+    $needsZone = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail/i', $identity) === 1;
     $needsServer = !$needsZone && preg_match('/\\b(server|region)\\b/i', $identity) === 1;
 
     if ($needsZone) {
