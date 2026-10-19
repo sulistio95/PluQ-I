@@ -21,6 +21,7 @@ $fields = [
   'DUITKU_MERCHANT_CODE' => 'Merchant Code',
   'DUITKU_API_KEY' => 'API Key',
   'DUITKU_PAYMENT_METHOD' => 'Kode metode pembayaran',
+  'DUITKU_EXPIRY_MINUTES' => 'Masa berlaku invoice (menit, 5–1440)',
   'DUITKU_CALLBACK_URL' => 'URL callback HTTPS',
   'DUITKU_RETURN_URL' => 'URL kembali HTTPS',
  ],
@@ -54,6 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $value = trim((string) ($_POST[$name] ?? ''));
     if ($value === '') continue; // Empty means keep the current value.
     if (strlen($value) > 2000 || str_contains($value, "\0")) throw new RuntimeException('Nilai salah satu kolom tidak valid atau terlalu panjang.');
+    if ($name === 'DUITKU_EXPIRY_MINUTES' && (!ctype_digit($value) || (int)$value < 5 || (int)$value > 1440)) {
+     throw new RuntimeException('Masa berlaku invoice harus berupa bilangan bulat antara 5 dan 1440 menit.');
+    }
     if (str_ends_with($name, '_URL')) {
      $parts = parse_url($value);
      if (!is_array($parts) || strtolower((string)($parts['scheme'] ?? '')) !== 'https' || empty($parts['host'])) {
@@ -116,7 +120,7 @@ function api_settings_escape(mixed $value): string { return htmlspecialchars((st
 </section>
 <form method="post" autocomplete="off"><input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>">
 <?php foreach($fields as $provider=>$providerFields): ?><section class="panel"><h2><?=api_settings_escape($provider)?></h2><div class="fields">
-<?php foreach($providerFields as $name=>$label): ?><label><?=api_settings_escape($label)?> <span class="muted">(<?=$statuses[$name]?'sudah ada — kosongkan untuk mempertahankan':'belum diatur'?>)</span><input type="password" name="<?=api_settings_escape($name)?>" autocomplete="new-password" maxlength="2000" placeholder="Isi nilai baru; tidak ditampilkan kembali"></label><?php endforeach; ?>
+<?php foreach($providerFields as $name=>$label): ?><label><?=api_settings_escape($label)?> <span class="muted">(<?=$statuses[$name]?'sudah ada — kosongkan untuk mempertahankan':'belum diatur'?>)</span><input type="<?=$name === 'DUITKU_EXPIRY_MINUTES' ? 'number' : 'password'?>" name="<?=api_settings_escape($name)?>" <?=$name === 'DUITKU_EXPIRY_MINUTES' ? 'min="5" max="1440" step="1" inputmode="numeric"' : 'autocomplete="new-password" maxlength="2000"'?> placeholder="<?=$name === 'DUITKU_EXPIRY_MINUTES' ? 'Kosongkan untuk mempertahankan; default 30 menit' : 'Isi nilai baru; tidak ditampilkan kembali'?>"></label><?php endforeach; ?>
 </div></section><?php endforeach; ?>
 <section class="panel"><h2>URL API opsional</h2><div class="fields"><?php foreach($optionalFields as $name=>$label): ?><label><?=api_settings_escape($label)?> <span class="muted">(<?=$statuses[$name]?'sudah ada — kosongkan untuk mempertahankan':'default bawaan akan digunakan'?>)</span><input type="url" name="<?=api_settings_escape($name)?>" maxlength="2000" placeholder="https://..."></label><?php endforeach; ?></div></section>
 <section class="panel"><p class="note">Nilai disimpan terenkripsi di database menggunakan APP_KEY. Jangan mengubah APP_KEY setelah menyimpan kredensial karena data tidak dapat dibuka kembali. Kolom kosong mempertahankan nilai lama. Mode Duitku tetap Sandbox; pembayaran, pemesanan supplier, dan backup Drive tidak diaktifkan oleh halaman ini.</p><button type="submit" name="save_api_settings" value="1">Simpan kredensial API</button></section>
