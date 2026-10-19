@@ -220,14 +220,14 @@ $csrf = admin_csrf_token();
 <html lang="id">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Daftar Game Supplier · PluQ-I</title>
+<title>Game List · PluQ-I</title>
 <style>
 :root{color-scheme:dark;--bg:#0c0d10;--panel:#15171d;--line:#292d36;--text:#f3f4f6;--muted:#9ca3af;--accent:#a7f3d0}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}label{display:block;color:var(--muted);margin-bottom:8px}select,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:12px}.error,.notice{padding:10px;border-radius:7px;margin:12px 0}.error{background:#3b1d22}.notice{background:#15352b}.game-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px}.game{display:flex;align-items:center;gap:10px;background:#0d0f13;border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--text);margin:0}.game input{width:18px;height:18px;accent-color:#a7f3d0;flex-shrink:0}.counter{color:var(--muted);margin:8px 0 14px}a{color:var(--accent)}@media(max-width:600px){main{padding:12px}.panel{padding:12px}}
 </style>
 </head>
 <body><main>
-<header class="top"><div><h1>Daftar Game Supplier</h1><div class="muted">Admin: <?=mapping_escape($user['username'])?> · <?=mapping_escape($user['role'])?></div></div><a href="/admin/">Kembali ke panel transaksi</a></header>
+<header class="top"><div><h1>Game List</h1><div class="muted">Admin: <?=mapping_escape($user['username'])?> · <?=mapping_escape($user['role'])?></div></div><a href="/admin/">Kembali ke panel transaksi</a></header>
 <?php if ($error !== ''): ?><div class="error"><?=mapping_escape($error)?></div><?php endif; ?>
 <?php if ($notice !== ''): ?><div class="notice"><?=mapping_escape($notice)?></div><?php endif; ?>
 <section class="panel">
