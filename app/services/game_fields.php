@@ -41,7 +41,7 @@ function game_account_fields_for_game(string $slug, string $name): array
             'field_type' => 'text',
             'placeholder' => 'Masukkan server',
             'is_required' => true,
-            'validation_regex' => '^[^\\s]{1,190}$',
+            'validation_regex' => '^.{1,190}$',
         ];
     }
 
