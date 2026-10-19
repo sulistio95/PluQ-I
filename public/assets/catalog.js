@@ -257,7 +257,7 @@
         ? '<button type="button" class="select-product" data-product-index="' + index + '">Pilih nominal</button>'
         : (product.is_available
           ? '<div class="unavailable">Form akun otomatis belum diverifikasi untuk game ini</div>'
-          : '<div class="unavailable">Tidak tersedia saat ini</div>')) +
+          : '<div class="unavailable">Habis</div>')) +
       '</article>'
     ).join('');
     productsBox.querySelectorAll('button[data-product-index]').forEach((button) => {
