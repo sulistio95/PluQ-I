@@ -1,12 +1,13 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/api_secret_crypto.php';
 
 /** VIPayment (vip-reseller.co.id) form-encoded API helpers. */
 function vipayment_config(): array
 {
-    $apiId = trim((string) getenv('VIPAYMENT_API_ID'));
-    $apiKey = trim((string) getenv('VIPAYMENT_API_KEY'));
-    $baseUrl = rtrim((string) (getenv('VIPAYMENT_API_URL') ?: 'https://vip-reseller.co.id/api'), '/');
+    $apiId = trim((string) pluqi_api_config_value('VIPAYMENT_API_ID'));
+    $apiKey = trim((string) pluqi_api_config_value('VIPAYMENT_API_KEY'));
+    $baseUrl = rtrim((string) (pluqi_api_config_value('VIPAYMENT_API_URL') ?: 'https://vip-reseller.co.id/api'), '/');
     if ($apiId === '' || $apiKey === '') {
         throw new RuntimeException('VIPayment credentials are not configured.');
     }
