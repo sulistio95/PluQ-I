@@ -14,9 +14,17 @@ function schema_test(bool $condition, string $message): void
 $mobileLegends = game_account_fields_for_game('mobile-legends', 'Mobile Legends');
 schema_test(array_column($mobileLegends, 'field_key') === ['user_id', 'zone_id'], 'Mobile Legends should request User ID and Zone ID');
 
-schema_test(!game_account_username_check_supported('free-fire', 'Free Fire'), 'Free Fire nickname lookup must remain optional until VIPayment confirms a valid lookup code');
-schema_test(!game_account_username_check_supported('honor-of-kings', 'Honor of Kings'), 'Honor of Kings nickname lookup must remain optional until provider support is confirmed');
-schema_test(game_account_username_check_supported('mobile-legends', 'Mobile Legends'), 'Mobile Legends may use nickname lookup pending an active mapped service code');
+schema_test(game_account_username_check_supported('free-fire', 'Free Fire'), 'Free Fire nickname lookup should use VIPayment dedicated code');
+schema_test(game_account_username_check_code('free-fire', 'Free Fire') === 'free-fire', 'Free Fire lookup must use free-fire, not a top-up product code');
+schema_test(game_account_username_check_code('free-fire-max', 'Free Fire MAX') === 'free-fire', 'Free Fire MAX should use the documented free-fire lookup code');
+schema_test(game_account_username_check_code('mobile-legends', 'Mobile Legends') === 'mobile-legends', 'Mobile Legends should use its dedicated lookup code');
+schema_test(game_account_username_check_code('mobile-legends-region', 'Mobile Legends Region') === 'mobile-legends-region', 'Mobile Legends Region should use its dedicated lookup code');
+schema_test(game_account_username_check_code('pubgm', 'PUBG Mobile') === 'pubgm', 'PUBG Mobile should use its dedicated lookup code');
+schema_test(game_account_username_check_code('valorant', 'Valorant') === 'valorant', 'Valorant should use its dedicated lookup code');
+schema_test(game_account_username_check_code('genshin-impact', 'Genshin Impact') === 'genshin-impact', 'Genshin Impact should use its dedicated lookup code');
+schema_test(game_account_username_check_code('honkai-star-rail', 'Honkai Star Rail') === 'honkai-star-rail', 'Honkai Star Rail should use its dedicated lookup code');
+schema_test(game_account_username_check_code('pointblank', 'Point Blank') === 'pointblank', 'Point Blank should use its dedicated lookup code');
+schema_test(!game_account_username_check_supported('honor-of-kings', 'Honor of Kings'), 'Honor of Kings should remain unsupported because it is absent from the supplied lookup list');
 
 $honorOfKings = game_account_fields_for_game('honor-of-kings', 'Honor of Kings');
 schema_test(array_column($honorOfKings, 'field_key') === ['user_id'], 'Honor of Kings should request only User ID');
