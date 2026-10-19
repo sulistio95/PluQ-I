@@ -1,3 +1,10 @@
+## 2026-10-19 — VIPayment dipaksa menggunakan IPv4
+
+- Commit `e034368f646d6689448b19f392903d52945bf7bc` menambahkan `CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4` pada helper bersama `vipayment_post()`. Semua request VIPayment yang memakai helper ini dipaksa memilih IPv4, bukan IPv6.
+- Alasan: pengguna melihat error whitelist yang menyebut IPv6 dan menduga whitelist profil hanya menerima IPv4. IP publik IPv4 terdeteksi berbeda oleh beberapa endpoint; whitelist harus memuat alamat IPv4 yang benar-benar terlihat oleh server VIPayment.
+- Status verifikasi: perubahan sudah dikomit ke GitHub, tetapi lint lokal, CI setelah commit, dan uji katalog nyata setelah whitelist belum diverifikasi. Jangan klaim masalah telah selesai sebelum uji ulang.
+- Langkah uji aman: pull perubahan, jalankan `php -l app/services/vipayment.php`, kemudian gunakan tombol pratinjau katalog baca-saja. Ini tidak seharusnya membuat pesanan. Jangan mengaktifkan checkout, supplier fulfillment, atau backup Drive.
+
 
 ## Update — 2026-10-19: Masa berlaku invoice Duitku
 
