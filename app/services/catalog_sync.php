@@ -173,6 +173,9 @@ function sync_digiflazz_catalog(PDO $pdo): array
         if ($validResponseItems === 0) {
             throw new RuntimeException('Digiflazz catalog had no valid product records; refresh was rolled back.');
         }
+        if ($mapped === 0) {
+            throw new RuntimeException('No Digiflazz services matched active game mappings; refresh was rolled back to preserve the existing catalog.');
+        }
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
@@ -239,6 +242,9 @@ function sync_vipayment_catalog(PDO $pdo): array
         }
         if ($validResponseItems === 0) {
             throw new RuntimeException('VIPayment catalog had no valid service records; refresh was rolled back.');
+        }
+        if ($mapped === 0) {
+            throw new RuntimeException('No VIPayment services matched active game mappings; refresh was rolled back to preserve the existing catalog.');
         }
         $pdo->commit();
     } catch (Throwable $e) {
