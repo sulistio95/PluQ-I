@@ -1192,3 +1192,12 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Migration 002 sudah mendefinisikan `game_fields` dan `game_field_options`; tidak ada migration baru yang diperlukan untuk panel ini.
 - Verifikasi yang masih harus dilakukan: `php -l public/admin/game-fields.php`, `php -l public/admin/index.php`, pengujian UI di browser lokal, validasi CSRF/role, serta memastikan field tersimpan dan tampil pada `/api/games/{slug}/fields`. Implementasi belum dianggap lulus pengujian hanya karena commit ada di GitHub.
 - Batasan penting: regex dan required pada panel belum menggantikan validasi server yang ketat untuk request checkout, pengecekan username game, maupun pemetaan field khusus Digiflazz/VIPayment. Pertahankan pembayaran, pesanan supplier, dan backup Drive nonaktif sampai alur tersebut diuji secara terkontrol.
+
+
+## Konfigurasi form akun game — 2026-10-19
+
+- `public/admin/game-fields.php` menyediakan pengelolaan field per game dan opsi dropdown. Form memakai schema yang sudah ada pada migration `002_catalog_and_operations.sql` (`game_fields` dan `game_field_options`). Panel admin memiliki tautan **Konfigurasi Form Akun**.
+- Fitur: tambah/edit kolom teks, angka, dropdown; key/label/placeholder; regex format; wajib/tidak wajib; urutan; status aktif/nonaktif; opsi dropdown `nilai|label`. Perubahan dilindungi oleh role ADMIN/SUPER_ADMIN, CSRF, transaksi database, dan audit log.
+- Hardening commit `ad20f9627f7b7b6a50bcc74a75cee373939bd1df`: edit tidak boleh memindahkan/mengubah field milik game lain hanya dengan memodifikasi POST; opsi lama dinonaktifkan ketika field bukan lagi tipe dropdown.
+- Frontend memakai `GET /api/games/{slug}/fields`. Regex/required di halaman publik memeriksa format input, bukan memvalidasi nickname ke server game. Setiap field harus dicocokkan dengan aturan game/provider; jangan mengasumsikan satu format untuk semua game.
+- Verifikasi CI setelah commit dan pengujian runtime/browser/database belum dikonfirmasi. Setelah pull, uji tambah/edit, dropdown, nonaktif/aktif, duplikasi key, dan tampilan form pada halaman depan. Checkout, supplier ordering, dan backup Drive harus tetap nonaktif.
