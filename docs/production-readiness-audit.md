@@ -1,3 +1,10 @@
+## Hybrid pricing CI follow-up — 2026-10-19
+
+- The first MySQL integration workflow caught a syntax error in the correlated SQL subqueries added for percentage pricing (the subquery's `SELECT` keyword was missing). This was a real CI failure, not a passing test.
+- Corrected both `app/services/catalog.php` and `app/services/checkout_quote.php` in commits `c27b930eeb75d330e9118e389fec54326b29ba3e` and `e3a8d3b87bceaa3b3411cbed16aa6defe37e6e48`.
+- PHP quality and PHP/JavaScript syntax workflows had passed on the earlier commit, but the MySQL integration workflow failed at the catalog query. The post-fix CI result is pending; verify that before treating this change as complete.
+- No live payment, supplier order, or Drive backup was triggered.
+
 ## Pengaturan keuntungan nominal/persentase — 2026-10-19
 
 - Menambahkan `public/admin/pricing-settings.php` dan tautan **Pengaturan Keuntungan** pada panel admin. ADMIN/SUPER_ADMIN dapat menambah dan mengubah rentang modal, memilih keuntungan nominal (Rp) atau persentase, mengaktifkan/menonaktifkan aturan, dan melihat waktu pembaruan. OPERATOR hanya dapat melihat.
