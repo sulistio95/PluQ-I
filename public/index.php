@@ -83,6 +83,9 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
  } catch (InvalidArgumentException $e) {
   json_response(['error'=>'invalid_account','message'=>'Data akun tidak valid.'],422);
  } catch (Throwable $e) {
+  // Log provider/network failures for diagnosis without exposing credentials to customers.
+  $diagnostic = preg_replace('/(key|sign|api[_ -]?key|token|secret)\\s*[:=]\\s*[^\\s,;]+/i', '$1=[redacted]', $e->getMessage());
+  error_log('[PluQ-I username-check] game=' . preg_replace('/[^a-zA-Z0-9_-]/', '', $m[1]) . ' error=' . substr((string)$diagnostic, 0, 240));
   json_response(['error'=>'username_check_failed','message'=>'Pengecekan username sedang tidak tersedia. Anda dapat mencoba lagi nanti.'],503);
  }
 }
