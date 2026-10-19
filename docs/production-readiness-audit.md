@@ -1243,3 +1243,12 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Tes unit schema dan workflow PHP quality ditambahkan. Belum ada klaim bahwa CI, browser, database, username lookup live, checkout, pembayaran, supplier ordering, atau backup Drive sudah lolos.
 
 - Safety refinement: only a reviewed set of common games is currently allowed to reach checkout quotes; unknown games still show a User ID fallback, but product selection is disabled. A separate Server field is shown when indicated by the game name, but checkout remains blocked until supplier-specific mapping is verified. This avoids silently sending an incomplete or incorrectly combined account target.
+
+
+## Admin API management — 2026-10-20
+
+- Added provider-level deletion selection for Duitku, Digiflazz, VIPayment, and each individual custom profile. Deletion removes related database configuration rows transactionally and writes an audit log; it intentionally preserves transactions, orders, catalog rows, and mappings.
+- Added encrypted custom API profiles categorized as Payment Gateway or Supplier, with HTTPS base URL, auth method, key/secret/token fields. These are configuration profiles only; they are not connected to live payment or supplier workflows until a dedicated adapter and security/test suite are implemented.
+- Environment variables are outside the database and must be removed separately when rotating/removing a provider.
+- Code commit: `5b551871ba7c151e0a7905818e8cafb20eff212ac`. Three GitHub Actions workflows were running when checked; current result must be rechecked after the latest docs commit. Local PHP lint and browser/database verification remain pending.
+- No payment, supplier order, or Google Drive backup was triggered. Keep these disabled during testing.
