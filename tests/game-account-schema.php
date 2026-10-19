@@ -19,16 +19,16 @@ schema_test(array_column($genshin, 'field_key') === ['user_id', 'zone_id'], 'Gen
 $honkaiStarRail = game_account_fields_for_game('honkai-star-rail', 'Honkai Star Rail');
 schema_test(array_column($honkaiStarRail, 'field_key') === ['user_id', 'zone_id'], 'Honkai Star Rail should request User ID and Zone/Server');
 
-schema_test(game_account_username_check_supported('free-fire', 'Free Fire'), 'Free Fire nickname lookup should use VIPayment dedicated code');
-schema_test(game_account_username_check_code('free-fire', 'Free Fire') === 'free-fire', 'Free Fire lookup must use free-fire, not a top-up product code');
+schema_test(game_account_username_check_supported('free-fire', 'Free Fire'), 'Free Fire nickname lookup should use external game checker');
+schema_test(game_account_username_check_code('free-fire', 'Free Fire') === 'free-fire', 'Free Fire lookup must use the external API code, not a top-up product code');
 schema_test(game_account_username_check_code('free-fire-max', 'Free Fire MAX') === 'free-fire', 'Free Fire MAX should use the documented free-fire lookup code');
-schema_test(game_account_username_check_code('mobile-legends', 'Mobile Legends') === 'mobile-legends', 'Mobile Legends should use its dedicated lookup code');
-schema_test(game_account_username_check_code('mobile-legends-region', 'Mobile Legends Region') === 'mobile-legends-region', 'Mobile Legends Region should use its dedicated lookup code');
-schema_test(game_account_username_check_code('pubgm', 'PUBG Mobile') === 'pubgm', 'PUBG Mobile should use its dedicated lookup code');
-schema_test(game_account_username_check_code('valorant', 'Valorant') === 'valorant', 'Valorant should use its dedicated lookup code');
-schema_test(game_account_username_check_code('genshin-impact', 'Genshin Impact') === 'genshin-impact', 'Genshin Impact should use its dedicated lookup code');
-schema_test(game_account_username_check_code('honkai-star-rail', 'Honkai Star Rail') === 'honkai-star-rail', 'Honkai Star Rail should use its dedicated lookup code');
-schema_test(game_account_username_check_code('pointblank', 'Point Blank') === 'pointblank', 'Point Blank should use its dedicated lookup code');
+schema_test(game_account_username_check_code('mobile-legends', 'Mobile Legends') === 'mobile-legends', 'Mobile Legends should use its external API code');
+schema_test(game_account_username_check_code('mobile-legends-region', 'Mobile Legends Region') === 'mobile-legends-region', 'Mobile Legends Region should use its external API code');
+schema_test(game_account_username_check_code('pubgm', 'PUBG Mobile') === 'pubg-mobile', 'PUBG Mobile should use the external API code');
+schema_test(game_account_username_check_code('valorant', 'Valorant') === 'valorant', 'Valorant should use the external API code');
+schema_test(game_account_username_check_code('genshin-impact', 'Genshin Impact') === 'genshin-impact', 'Genshin Impact should use the external API code');
+schema_test(game_account_username_check_code('honkai-star-rail', 'Honkai Star Rail') === 'honkai-star-rail', 'Honkai Star Rail should use the external API code');
+schema_test(game_account_username_check_code('pointblank', 'Point Blank') === 'point-blank', 'Point Blank should use the external API code');
 schema_test(!game_account_username_check_supported('honor-of-kings', 'Honor of Kings'), 'Honor of Kings should remain unsupported because it is absent from the supplied lookup list');
 
 $honorOfKings = game_account_fields_for_game('honor-of-kings', 'Honor of Kings');
