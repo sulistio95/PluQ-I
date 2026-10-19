@@ -80,11 +80,17 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
         LIMIT 1");
     $check->execute(['game_id' => $game['id']]);
 
+    // HOK nickname lookup was not available in the user's VIPayment app.
+    // A product code alone does not prove get-nickname support; keep this
+    // optional for HOK until the provider confirms a supported lookup code.
+    $identity = strtolower(trim((string)$game['slug'] . ' ' . (string)$game['name']));
+    $isHonorOfKings = preg_match('/honor[\\s_-]*of[\\s_-]*kings?|\\bhok\\b/i', $identity) === 1;
+
     return [
         'game' => ['slug' => (string)$game['slug'], 'name' => (string)$game['name']],
         'fields' => $fields,
         'checkout_supported' => $checkoutSupported,
-        'username_check_available' => (bool)$check->fetchColumn(),
+        'username_check_available' => !$isHonorOfKings && (bool)$check->fetchColumn(),
     ];
 }
 
