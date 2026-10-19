@@ -1305,3 +1305,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Merge commit di `main`: `0b246f8d7aaaa3d3506530e9d88e7874b65447c8`. GitHub belum melaporkan workflow run terpisah untuk merge commit tersebut saat catatan ini diperbarui; hasil CI yang terverifikasi adalah seluruh workflow sukses pada head PR tepat sebelum merge.
 - Pengguna dapat mengambil branch `main` untuk pengujian lokal. Jangan aktifkan transaksi produksi sebelum field akun dan pengecekan nickname diuji untuk game/provider yang digunakan.
 - Batas keselamatan tetap berlaku: mapping nama game bukan schema resmi VIPayment; jangan aktifkan transaksi produksi sebelum uji lokal memverifikasi field dan nickname check per game.
+
+
+## Update — 2026-10-19: Halaman lihat harga modal supplier
+
+- Menambahkan halaman baca-saja `public/admin/supplier-prices.php` untuk melihat harga modal yang disimpan dari sinkronisasi katalog, harga jual yang dihitung dari aturan keuntungan aktif, dan selisih keuntungan.
+- Halaman menyediakan filter supplier, game, dan pencarian nama/kode; menampilkan hingga 200 baris per tampilan. Produk yang belum dipetakan juga dapat diperiksa. Tidak ada fungsi mengubah harga atau membuat pesanan.
+- Menambahkan tautan **Harga Modal Supplier** di navigasi panel admin.
+- Commit halaman: `10f73ac1a015b9fe8263b146961f9ead61d88175`; commit navigasi: `4369ea04c34c175a1488bee85c6825feaa27b424`.
+- Belum menjalankan PHP lint atau pengujian database/browser untuk halaman baru. Setelah `git pull origin main`, jalankan `php -l public/admin/supplier-prices.php` dan `php -l public/admin/index.php`, lalu buka **Harga Modal Supplier** dari panel admin. Jika tabel kosong, sinkronkan katalog supplier dan pastikan pemetaan game sudah disimpan. Pembayaran, pesanan supplier, dan backup Drive tetap nonaktif.
