@@ -1,3 +1,11 @@
+## Update — 2026-10-19: Paksa koneksi API VIPayment ke IPv4
+
+- Commit kode: `e034368f646d6689448b19f392903d52945bf7bc`.
+- `app/services/vipayment.php` sekarang menyetel `CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4`, sehingga request VIPayment melalui helper ini menggunakan IPv4 dan tidak memilih IPv6.
+- Tujuan: mengatasi penolakan whitelist karena provider tampaknya menerima IPv4 saja. Tambahkan IPv4 publik yang benar-benar dipakai koneksi keluar ke whitelist VIPayment.
+- Verifikasi runtime, hasil pratinjau katalog setelah perubahan, dan CI untuk commit ini masih menunggu. Ini belum membuktikan IP keluar mana yang dipakai jaringan atau bahwa whitelist sudah benar.
+- Setelah menarik commit di komputer lokal, jalankan `php -l app/services/vipayment.php`, lalu coba pratinjau katalog. Jika gagal, catat pesan baru; jangan tampilkan API Key/sign. Pembayaran, pesanan supplier, dan backup Drive tetap nonaktif.
+
 ## Update — 2026-10-19: Pratinjau katalog VIPayment lokal
 
 - Rencana fitur admin: tombol baca-saja untuk mengambil layanan VIPayment melalui `type=services` dan menampilkan daftar game/kategori serta pratinjau hingga 100 layanan.
