@@ -1167,3 +1167,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Panel `/admin/pricing-settings.php` memungkinkan ADMIN/SUPER_ADMIN mengubah rentang modal, nominal atau persentase, dan status aturan. Harga katalog dan kutipan checkout membaca aturan aktif dari database yang sama. Biaya admin invoice tetap terpisah dari laba.
 - Verifikasi GitHub Actions pada commit `a3740fe717da2da54ac11b619172dd07c6f253ee` berhasil: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/39209913651), [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/39209913521), dan [fulfillment/MySQL integration](https://github.com/sulistio95/PluQ-I/actions/runs/39209913435).
 - Ini bukti CI pada database MySQL pengujian, bukan uji browser/shared hosting atau transaksi Duitku/provider nyata. Untuk menggunakan panel, tarik perubahan dan jalankan migration 012 setelah migration 011. Jangan menimpa aturan yang sudah disesuaikan admin saat deployment; migration mempertahankan data lama.
+
+
+## 2026-10-19 — Panel pratinjau VIPayment dan hapus konfigurasi API
+
+- Commit `a981ef81d24df0efe031e75c474b6f807d55bea7` menambahkan pratinjau baca-saja katalog VIPayment pada `public/admin/api-settings.php`, melalui helper API yang sudah ada. Pratinjau membatasi tampilan hingga 100 layanan; hasil tidak disinkronkan ke tabel `games/products` dan tidak membuat pesanan.
+- Panel juga menyediakan penghapusan per nilai konfigurasi API tersimpan di database. Aksi memakai POST + CSRF, allowlist nama konfigurasi, transaksi, dan audit log. Penghapusan database tidak menghapus variabel di `.env` atau environment hosting; hal itu harus dilakukan terpisah.
+- Kode telah diverifikasi ada di commit GitHub. Lint lokal, pengujian browser, respons format katalog VIPayment nyata, dan uji penghapusan terhadap database lokal belum dijalankan. Jangan menyebut fitur teruji sampai bukti tersebut tersedia.
+- Risiko/kelanjutan: verifikasi format respons VIPayment aktual agar pemetaan kolom game/nama/kode/harga sesuai API. Pertahankan pembayaran checkout, pesanan supplier, backup Drive, dan deployment tetap nonaktif.
