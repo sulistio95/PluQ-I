@@ -1,3 +1,9 @@
+## 2026-10-19 — Assertion kapasitas kedua mengikuti tampilan Habis
+
+- Run fulfillment safety pada commit `d247a811c3c9e4e048e9bf610d441d481483a598` melewati assertion pertama setelah koreksi, lalu menemukan assertion kedua yang masih mengharapkan katalog kosong ketika reservasi kedua menghabiskan kapasitas. Ini juga ekspektasi lama yang bertentangan dengan keputusan nominal tetap tampil.
+- Memperbarui assertion kedua agar mengharapkan satu baris nominal dengan `is_available=false`; tes reservasi dan quote checkout tetap memeriksa penolakan sisi server.
+- Commit tes: `6285888f1abfc57c10782a50b9ac4bbea23e1c5a`. Hasil CI setelah commit terbaru masih harus diperiksa.
+
 ## 2026-10-19 — Koreksi tes integrasi setelah keputusan label Habis
 
 - Run CI awal pada commit `d1fabb7dee45f9ad2e5526606312c8408bfcdd14`: PHP quality lulus, PHP/JavaScript syntax lulus, tetapi fulfillment safety gagal karena tes integrasi MySQL masih mengharapkan katalog kosong untuk penawaran yang melewati kapasitas saldo.
