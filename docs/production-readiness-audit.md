@@ -1293,3 +1293,10 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Pada `public/assets/catalog.js`, status kolom tidak wajib/tidak didukung tidak lagi menampilkan keterangan di area hasil username. Jika API benar-benar mendukung pemeriksaan, status pemeriksaan dan hasil nama akun tetap dapat ditampilkan secara dinamis; logika validasi akun dan perlindungan checkout tidak diubah.
 - Perubahan dimaksudkan agar pelanggan tidak menganggap pengecekan username wajib tersedia untuk setiap game. Tidak ada perubahan skema database.
 - Perubahan kode telah dikirim ke GitHub; browser dan alur cek username belum diuji langsung setelah perubahan. Jalankan `php -l public/index.php` dan uji game dengan dukungan cek username serta game tanpa dukungan.
+
+
+## 2026-10-20 — VIPayment nickname check opsional
+- Endpoint publik pemeriksaan nickname sudah ada di `public/index.php` dan memakai `vipayment_post('/game-feature', ['type'=>'get-nickname', ...])`; implementasi memakai helper API bersama yang memaksa IPv4 dan memvalidasi HTTPS/respons JSON.
+- Perubahan `public/assets/catalog.js` commit `d32ae43c433cde7487efcd5ac70d4e7c034bf778`: respons HTTP 409 (cek nickname tidak tersedia/pemetaan tidak ada) sekarang mengosongkan hasil dan tidak menghalangi alur berdasarkan validasi akun biasa. Nickname yang berhasil tetap ditampilkan.
+- API error 422, error jaringan/503, atau throttling tetap diperlakukan sebagai kegagalan pemeriksaan; pelanggan perlu mencoba lagi. Belum ada pengujian runtime atau panggilan API nyata setelah perubahan.
+- Pemeriksaan yang masih diperlukan: `php -l public/index.php`, `node --check public/assets/catalog.js`, lalu uji game dengan nickname check aktif dan game tanpa dukungan. Pembayaran, order supplier, dan backup Drive tetap nonaktif.
