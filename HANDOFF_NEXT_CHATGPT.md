@@ -1262,3 +1262,13 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Tes unit schema dan workflow PHP quality ditambahkan. Belum ada klaim bahwa CI, browser, database, username lookup live, checkout, pembayaran, supplier ordering, atau backup Drive sudah lolos.
 
 - Safety refinement: only a reviewed set of common games is currently allowed to reach checkout quotes; unknown games still show a User ID fallback, but product selection is disabled. A separate Server field is shown when indicated by the game name, but checkout remains blocked until supplier-specific mapping is verified. This avoids silently sending an incomplete or incorrectly combined account target.
+
+
+## Update — 2026-10-19: Hasil pengujian GitHub untuk form akun otomatis
+
+- Perbaikan fixture tes integrasi MySQL: nama game uji sebelumnya tidak termasuk daftar skema akun yang diizinkan, sehingga checkout sengaja ditolak oleh guard baru. Fixture kini menggunakan nama Honor of Kings agar pengujian concurrency menguji tujuan aslinya, bukan ditolak oleh aturan skema.
+- Commit perbaikan fixture: `07ad701af829114d387edf993c1007c79121c658` dan `8f47fbb14d0a5c4c17a56ac2cca18cc803e78a54`.
+- Pada commit `8f47fbb14d0a5c4c17a56ac2cca18cc803e78a54`, ketiga workflow GitHub Actions selesai dengan sukses: PHP quality checks, PHP/JavaScript syntax checks, dan Fulfillment safety tests (termasuk tes integrasi MySQL dan checkout concurrency).
+- Hasil ini adalah pengujian otomatis di runner GitHub dengan MySQL test dan Duitku mock/sandbox fixture. Ini bukan pengujian pada hosting, browser pengguna, API VIPayment langsung, pembayaran nyata, supplier order nyata, atau backup Google Drive.
+- Setelah commit catatan ini, pastikan ulang workflow pada head PR terbaru sebelum merge. Jika seluruh workflow masih sukses, PR #3 dapat digabungkan ke `main`; pengguna kemudian dapat mengambil `main` dan melakukan uji lokal.
+- Batas keselamatan tetap berlaku: mapping nama game bukan schema resmi VIPayment; jangan aktifkan transaksi produksi sebelum uji lokal memverifikasi field dan nickname check per game.
