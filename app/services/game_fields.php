@@ -58,12 +58,7 @@ function game_account_schema_is_supported(string $slug, string $name, array $fie
 }
 
 /**
- * Only allow nickname lookup when support for that game has been explicitly
- * reviewed. A top-up product code is not proof that get-nickname supports it.
- */
-/**
- * Return the dedicated VIPayment Game Feature code for nickname lookup.
- * These are lookup codes, not top-up product codes.
+ * Return the game code used by the separate Game Check API, not a supplier product code.
  */
 function game_account_username_check_code(string $slug, string $name): ?string
 {
@@ -80,7 +75,7 @@ function game_account_username_check_code(string $slug, string $name): ?string
         return 'free-fire';
     }
     if (preg_match('/pubg[\s_-]*mobile|\bpubgm\b/i', $identity) === 1) {
-        return 'pubgm';
+        return 'pubg-mobile';
     }
     if (preg_match('/genshin[\s_-]*impact/i', $identity) === 1) {
         return 'genshin-impact';
@@ -92,7 +87,7 @@ function game_account_username_check_code(string $slug, string $name): ?string
         return 'valorant';
     }
     if (preg_match('/point[\s_-]*blank|\bpointblank\b/i', $identity) === 1) {
-        return 'pointblank';
+        return 'point-blank';
     }
 
     // Honor of Kings is absent from the supplied VIPayment lookup list.
@@ -116,24 +111,15 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
 
     $fields = game_account_fields_for_game((string)$game['slug'], (string)$game['name']);
     $checkoutSupported = game_account_schema_is_supported((string)$game['slug'], (string)$game['name'], $fields);
-    $check = $pdo->prepare("SELECT 1
-        FROM products p
-        INNER JOIN providers pr ON pr.id=p.provider_id
-        WHERE p.game_id=:game_id AND p.status='ACTIVE' AND pr.code='VIPAY'
-          AND pr.status IN ('ACTIVE','LOW_BALANCE') AND p.provider_product_code IS NOT NULL
-          AND TRIM(p.provider_product_code)<>'' 
-          AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%joki%'
-          AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%vilog%'
-        LIMIT 1");
-    $check->execute(['game_id' => $game['id']]);
-
+    // Nickname lookup is independent from supplier catalogue, balance, and product codes.
     $usernameCheckSupported = game_account_username_check_supported((string)$game['slug'], (string)$game['name']);
+    $usernameCheckerConfigured = trim((string) (getenv('GAME_CHECK_API_KEY') ?: '')) !== '';
 
     return [
         'game' => ['slug' => (string)$game['slug'], 'name' => (string)$game['name']],
         'fields' => $fields,
         'checkout_supported' => $checkoutSupported,
-        'username_check_available' => $usernameCheckSupported && (bool)$check->fetchColumn(),
+        'username_check_available' => $usernameCheckSupported && $usernameCheckerConfigured,
     ];
 }
 
