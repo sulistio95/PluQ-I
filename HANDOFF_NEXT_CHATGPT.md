@@ -1385,3 +1385,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Perbaikan frontend di `public/assets/catalog.js` (commit `d32ae43c433cde7487efcd5ac70d4e7c034bf778`): jika server mengembalikan HTTP 409 karena pemeriksaan nickname tidak didukung atau pemetaan/kode layanan tidak tersedia, hasil tetap kosong dan akun tidak diblokir oleh pemeriksaan nickname. Validasi kolom akun biasa tetap berlaku.
 - Respons nickname sukses tetap ditampilkan. Error validasi ID dari API (mis. HTTP 422), timeout/kegagalan jaringan, atau pembatasan laju tidak dianggap sebagai dukungan yang tidak tersedia; hasil error tetap terlihat dan pilihan nominal tetap tertahan sampai pemeriksaan berhasil.
 - Belum menjalankan PHP lint, JavaScript syntax check, atau panggilan API nyata dengan kredensial VIPayment. Verifikasi lokal: `php -l public/index.php`, `node --check public/assets/catalog.js`, lalu uji satu game yang mendukung nickname dan satu game yang tidak mendukungnya. Jangan mengaktifkan pembayaran/pemesanan supplier untuk pengujian ini.
+
+
+## Lanjutan — 2026-10-20: Cek username FF gagal di PluQ-I
+
+- FF cek nickname terlihat pada aplikasi VIPayment, tetapi endpoint PluQ-I mengembalikan pesan umum. Kode saat ini menggunakan kode produk termurah untuk `get-nickname`, yang belum tentu merupakan kode lookup yang benar.
+- Commit diagnosis `ff0bc98a510f2f269340576132bafef18d874060` menambahkan log server-side dengan awalan `[PluQ-I username-check]`; respons publik tetap generik dan tidak menampilkan kredensial.
+- Reproduksi sekali, lalu cari awalan tersebut di error log PHP/web-server hosting. Laporkan hanya teks error yang sudah disensor; jangan bagikan API ID/key/sign atau payload sensitif.
+- Setelah error diketahui, verifikasi kode lookup FF yang sesuai dari VIPayment dan hindari memakai kode termurah secara otomatis. Tes PHP lint, CI, browser, dan API nyata belum dilakukan. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
