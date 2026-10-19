@@ -1277,3 +1277,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Hapus icon mengosongkan `icon_url` dan menghapus file lokal terkelola jika ada, tanpa menghapus game/mapping. URL eksternal tidak dihapus dari server asal. Direktori memiliki `.htaccess` untuk menonaktifkan listing dan handler ekstensi skrip.
 - Commits: `41543b6e3cbce9bc97cb196d825f5e09faeef567`, `7164700e961485fe800a8feb97efd8372aeb9c1d`.
 - Runtime upload, homepage browser check, PHP lint, dan CI untuk perubahan ini belum diverifikasi pada saat pencatatan. Jalankan uji terkontrol sebelum deployment; pembayaran, supplier ordering, dan Drive backup tetap nonaktif.
+
+
+## Pengaturan Template — matriks icon dan saran ukuran gambar — 2026-10-20
+
+- `public/admin/template-settings.php` mengubah daftar Icon Game List dari tabel memanjang menjadi grid/matriks kartu responsif, sehingga banyak game lebih mudah dipindai dan dikelola. Setiap kartu tetap menyediakan pratinjau, unggah/ganti, dan hapus icon.
+- Menu banner kini menampilkan saran ukuran **1200 × 400 px (3:1, landscape)**. Bagian Icon Game List menampilkan saran **512 × 512 px (1:1, persegi)**. Keduanya hanya rekomendasi, bukan batas validasi; batas upload tetap 5 MB dan format JPG/PNG/WebP.
+- Commit kode: `7ee62fc3741ea01a0efcdb210246cd08a85f6ed5`.
+- Belum ada klaim bahwa PHP lint, GitHub Actions, browser, atau unggah/hapus file lokal sudah lolos untuk perubahan ini. Setelah pull, jalankan `php -l public/admin/template-settings.php`, lalu cek matriks pada desktop dan ponsel serta uji unggah/ganti/hapus icon dan banner. Checkout, supplier ordering, backup Google Drive, dan deployment tetap nonaktif selama pengujian.
