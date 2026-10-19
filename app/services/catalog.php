@@ -23,7 +23,7 @@ function catalog_products(PDO $pdo, string $slug): array
     $sql = "SELECT p.id,p.name,p.provider_product_code AS code,p.base_price,
         COALESCE(
           p.base_price + (
-            CASE WHEN rr.profit_type='PERCENTAGE'
+            SELECT CASE WHEN rr.profit_type='PERCENTAGE'
               THEN ROUND(p.base_price * rr.profit_value / 100, 0)
               ELSE rr.profit_value END
             FROM pricing_rules rr
