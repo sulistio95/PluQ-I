@@ -34,8 +34,7 @@ function banner_setting_url(string $url, bool $allowRelative = false): bool
 
 function banner_local_upload_path(string $url): ?string
 {
-    $path = parse_url($url, PHP_URL_PATH);
-    if (!is_string($path) || !preg_match('~^/uploads/banners/([a-f0-9]{32})\\.(jpg|png|webp)$~D', $path, $matches)) {
+    if (!preg_match('~^/uploads/banners/([a-f0-9]{32})\\.(jpg|png|webp)$~D', $url, $matches)) {
         return null;
     }
     return PLUQI_ROOT . '/public/uploads/banners/' . $matches[1] . '.' . $matches[2];
