@@ -34,6 +34,7 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
   require_once PLUQI_ROOT.'/app/services/vipayment.php';
   $pdo = database();
   $schema = catalog_game_account_schema($pdo, $m[1]);
+  if (!$schema['checkout_supported']) json_response(['error'=>'account_schema_unverified','message'=>'Pemetaan akun game ini belum diverifikasi.'],409);
   if (!$schema['username_check_available']) json_response(['error'=>'username_check_unavailable','message'=>'Pengecekan username belum tersedia untuk game ini.'],409);
   $account = $input['account'] ?? null;
   if (!is_array($account) || array_is_list($account)) json_response(['error'=>'invalid_account'],422);
