@@ -4,6 +4,8 @@ declare(strict_types=1);
 require dirname(__DIR__, 2) . '/app/bootstrap.php';
 require_once PLUQI_ROOT . '/config/database.php';
 require_once PLUQI_ROOT . '/app/services/admin_auth.php';
+require_once PLUQI_ROOT . '/app/services/digiflazz.php';
+require_once PLUQI_ROOT . '/app/services/vipayment.php';
 
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
@@ -22,6 +24,93 @@ if (!$user) {
 $error = '';
 $notice = '';
 $canManage = admin_can_manage_settings($user);
+$providers = $pdo->query("SELECT id,code,name FROM providers WHERE code IN ('DIGI','VIPAY') ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+$providerById = [];
+foreach ($providers as $provider) {
+    $providerById[(int) $provider['id']] = $provider;
+}
+$selectedProviderId = filter_var($_POST['provider_id'] ?? $_GET['provider_id'] ?? null, FILTER_VALIDATE_INT);
+$selectedProviderId = $selectedProviderId && isset($providerById[(int) $selectedProviderId]) ? (int) $selectedProviderId : 0;
+$apiGames = [];
+$checkedCodes = [];
+$apiWasLoaded = false;
+
+function mapping_escape(mixed $value): string
+{
+    return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+/** Build a unique, readable slug for a provider-discovered game. */
+function mapping_game_slug(PDO $pdo, string $name): string
+{
+    $slug = strtolower(trim($name));
+    if (function_exists('iconv')) {
+        $converted = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $slug);
+        if (is_string($converted) && $converted !== '') $slug = $converted;
+    }
+    $slug = trim((string) preg_replace('/[^a-z0-9]+/', '-', $slug), '-');
+    if ($slug === '') $slug = 'game';
+    $base = substr($slug, 0, 130);
+    $slug = $base;
+    $suffix = 2;
+    $check = $pdo->prepare('SELECT id FROM games WHERE slug=:slug LIMIT 1');
+    while (true) {
+        $check->execute(['slug' => $slug]);
+        if (!$check->fetchColumn()) return $slug;
+        $slug = substr($base, 0, 140 - strlen((string) $suffix)) . '-' . $suffix;
+        $suffix++;
+    }
+}
+
+/** Fetch distinct game names from the selected supplier without exposing its codes in the UI. */
+function mapping_fetch_provider_games(string $providerCode): array
+{
+    if ($providerCode === 'DIGI') {
+        $items = digiflazz_price_list();
+        $games = [];
+        foreach ($items as $item) {
+            if (!is_array($item)) continue;
+            $code = trim((string) ($item['brand'] ?? ''));
+            if ($code === '' || strlen($code) > 190) continue;
+            $lower = strtolower($code);
+            if (str_contains($lower, 'joki') || str_contains($lower, 'vilog')) continue;
+            $games[$code] = ['code' => $code, 'name' => $code];
+        }
+    } elseif ($providerCode === 'VIPAY') {
+        $items = vipayment_game_services(null, null);
+        $games = [];
+        foreach ($items as $item) {
+            if (!is_array($item)) continue;
+            $code = trim((string) ($item['game'] ?? ''));
+            if ($code === '' || strlen($code) > 190) continue;
+            $lower = strtolower($code);
+            if (str_contains($lower, 'joki') || str_contains($lower, 'vilog')) continue;
+            $games[$code] = ['code' => $code, 'name' => $code];
+        }
+    } else {
+        throw new InvalidArgumentException('Supplier tidak dikenal.');
+    }
+
+    uasort($games, static fn(array $a, array $b): int => strcasecmp($a['name'], $b['name']));
+    if ($games === []) {
+        throw new RuntimeException('API supplier tidak mengembalikan daftar game yang valid. Pemetaan lama tidak diubah.');
+    }
+    return array_values($games);
+}
+
+/** Find or create one canonical web game so same-named supplier games share one storefront entry. */
+function mapping_canonical_game_id(PDO $pdo, string $name): int
+{
+    $find = $pdo->prepare('SELECT id FROM games WHERE LOWER(name)=LOWER(:name) ORDER BY id LIMIT 1');
+    $find->execute(['name' => $name]);
+    $id = $find->fetchColumn();
+    if ($id !== false) return (int) $id;
+
+    $slug = mapping_game_slug($pdo, $name);
+    $insert = $pdo->prepare("INSERT INTO games (slug,name,status,sort_order) VALUES (:slug,:name,'INACTIVE',0)");
+    $insert->execute(['slug' => $slug, 'name' => $name]);
+    return (int) $pdo->lastInsertId();
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!admin_csrf_valid($_POST['csrf'] ?? null)) {
@@ -29,133 +118,158 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Sesi formulir tidak valid. Muat ulang halaman dan coba lagi.';
     } elseif (!$canManage) {
         http_response_code(403);
-        $error = 'Peran akun Anda hanya dapat melihat pemetaan, bukan mengubahnya.';
-    } elseif (isset($_POST['save_mapping'])) {
-        $gameId = filter_var($_POST['game_id'] ?? null, FILTER_VALIDATE_INT);
-        $providerId = filter_var($_POST['provider_id'] ?? null, FILTER_VALIDATE_INT);
-        $providerCode = trim((string) ($_POST['provider_game_code'] ?? ''));
-        $providerName = trim((string) ($_POST['provider_game_name'] ?? ''));
+        $error = 'Peran akun Anda tidak diizinkan mengubah daftar game supplier.';
+    } elseif (!$selectedProviderId) {
+        $error = 'Pilih supplier terlebih dahulu.';
+    } else {
+        $provider = $providerById[$selectedProviderId];
+        try {
+            // Fetch fresh data on both load and save. A provider/API failure never deactivates stored mappings.
+            $apiGames = mapping_fetch_provider_games((string) $provider['code']);
+            $apiWasLoaded = true;
+            $knownCodes = array_fill_keys(array_column($apiGames, 'code'), true);
 
-        if (!$gameId || !$providerId || $providerCode === '' || strlen($providerCode) > 190 || strlen($providerName) > 190) {
-            $error = 'Pilih game dan supplier, lalu masukkan kode game supplier yang valid (maksimal 190 karakter).';
-        } else {
-            $gameCheck = $pdo->prepare("SELECT id FROM games WHERE id=:id LIMIT 1");
-            $gameCheck->execute(['id' => $gameId]);
-            $providerCheck = $pdo->prepare("SELECT id FROM providers WHERE id=:id LIMIT 1");
-            $providerCheck->execute(['id' => $providerId]);
-            if (!$gameCheck->fetchColumn() || !$providerCheck->fetchColumn()) {
-                $error = 'Game atau supplier yang dipilih tidak ditemukan.';
-            } else {
+            if (isset($_POST['load_games'])) {
+                $stmt = $pdo->prepare("SELECT provider_game_code FROM game_provider_mappings WHERE provider_id=:provider_id AND status='ACTIVE'");
+                $stmt->execute(['provider_id' => $selectedProviderId]);
+                $checkedCodes = array_fill_keys(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN)), true);
+                $notice = 'Daftar game berhasil diambil dari ' . $provider['name'] . '. Centang game yang ingin ditampilkan, lalu simpan.';
+            } elseif (isset($_POST['save_selection'])) {
+                $submittedCodes = $_POST['game_codes'] ?? [];
+                if (!is_array($submittedCodes)) $submittedCodes = [];
+                $selectedCodes = [];
+                foreach ($submittedCodes as $submittedCode) {
+                    if (!is_string($submittedCode) || !isset($knownCodes[$submittedCode])) {
+                        throw new RuntimeException('Daftar game berubah atau tidak valid. Tarik ulang daftar game lalu coba lagi.');
+                    }
+                    $selectedCodes[$submittedCode] = true;
+                }
+
+                $gameByCode = [];
+                foreach ($apiGames as $game) $gameByCode[$game['code']] = $game;
+
                 $pdo->beginTransaction();
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO game_provider_mappings
-                        (game_id, provider_id, provider_game_code, provider_game_name, status)
-                        VALUES (:game_id, :provider_id, :code, :name, 'ACTIVE')
-                        ON DUPLICATE KEY UPDATE game_id=VALUES(game_id),
-                        provider_game_name=VALUES(provider_game_name), status='ACTIVE'");
-                    $stmt->execute([
-                        'game_id' => $gameId,
-                        'provider_id' => $providerId,
-                        'code' => $providerCode,
-                        'name' => $providerName !== '' ? $providerName : null,
-                    ]);
-                    $lookup = $pdo->prepare("SELECT id FROM game_provider_mappings WHERE provider_id=:provider_id AND provider_game_code=:code LIMIT 1");
-                    $lookup->execute(['provider_id' => $providerId, 'code' => $providerCode]);
-                    $mappingId = (int) $lookup->fetchColumn();
+                    // Replace only this supplier's selection. The other supplier's active mappings are untouched.
+                    $deactivate = $pdo->prepare("UPDATE game_provider_mappings SET status='INACTIVE' WHERE provider_id=:provider_id AND status='ACTIVE'");
+                    $deactivate->execute(['provider_id' => $selectedProviderId]);
+
+                    $upsert = $pdo->prepare("INSERT INTO game_provider_mappings
+                        (game_id,provider_id,provider_game_code,provider_game_name,status)
+                        VALUES (:game_id,:provider_id,:code,:name,'ACTIVE')
+                        ON DUPLICATE KEY UPDATE game_id=VALUES(game_id),provider_game_name=VALUES(provider_game_name),status='ACTIVE'");
+                    foreach (array_keys($selectedCodes) as $code) {
+                        $game = $gameByCode[$code];
+                        $gameId = mapping_canonical_game_id($pdo, $game['name']);
+                        $upsert->execute([
+                            'game_id' => $gameId,
+                            'provider_id' => $selectedProviderId,
+                            'code' => $game['code'],
+                            'name' => $game['name'],
+                        ]);
+                    }
+
+                    // Storefront visibility is derived from whether any supplier has selected the canonical game.
+                    $pdo->exec("UPDATE games g SET g.status=CASE WHEN EXISTS (
+                        SELECT 1 FROM game_provider_mappings m WHERE m.game_id=g.id AND m.status='ACTIVE'
+                    ) THEN 'ACTIVE' ELSE 'INACTIVE' END");
+
                     $audit = $pdo->prepare("INSERT INTO audit_logs
                         (actor_type,actor_id,action,entity_type,entity_id,details,ip_address)
-                        VALUES ('ADMIN',:actor,'GAME_PROVIDER_MAPPING_SAVED','GAME_PROVIDER_MAPPING',:entity,:details,:ip)");
+                        VALUES ('ADMIN',:actor,'SUPPLIER_GAME_SELECTION_SAVED','PROVIDER',:entity,:details,:ip)");
                     $audit->execute([
                         'actor' => $user['id'],
-                        'entity' => (string) $mappingId,
-                        'details' => json_encode(['game_id' => $gameId, 'provider_id' => $providerId, 'provider_game_code' => $providerCode], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                        'entity' => (string) $selectedProviderId,
+                        'details' => json_encode([
+                            'provider_code' => $provider['code'],
+                            'selected_count' => count($selectedCodes),
+                            'api_game_count' => count($apiGames),
+                        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
                         'ip' => substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
                     ]);
                     $pdo->commit();
-                    header('Location: /admin/game-mappings.php?saved=1');
-                    exit;
                 } catch (Throwable $e) {
                     if ($pdo->inTransaction()) $pdo->rollBack();
-                    $error = 'Pemetaan gagal disimpan. Periksa log server dan pastikan migration 002 sudah diterapkan.';
+                    throw $e;
                 }
-            }
-        }
-    } elseif (isset($_POST['deactivate_mapping'])) {
-        $mappingId = filter_var($_POST['mapping_id'] ?? null, FILTER_VALIDATE_INT);
-        if (!$mappingId || $mappingId < 1) {
-            $error = 'ID pemetaan tidak valid.';
-        } else {
-            $pdo->beginTransaction();
-            try {
-                $stmt = $pdo->prepare("UPDATE game_provider_mappings SET status='INACTIVE' WHERE id=:id AND status='ACTIVE'");
-                $stmt->execute(['id' => $mappingId]);
-                if ($stmt->rowCount() > 0) {
-                    $audit = $pdo->prepare("INSERT INTO audit_logs
-                        (actor_type,actor_id,action,entity_type,entity_id,ip_address)
-                        VALUES ('ADMIN',:actor,'GAME_PROVIDER_MAPPING_DEACTIVATED','GAME_PROVIDER_MAPPING',:entity,:ip)");
-                    $audit->execute([
-                        'actor' => $user['id'],
-                        'entity' => (string) $mappingId,
-                        'ip' => substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
-                    ]);
-                }
-                $pdo->commit();
-                header('Location: /admin/game-mappings.php?deactivated=1');
+                header('Location: /admin/game-mappings.php?saved=1&provider_id=' . $selectedProviderId);
                 exit;
-            } catch (Throwable $e) {
-                if ($pdo->inTransaction()) $pdo->rollBack();
-                $error = 'Pemetaan tidak dapat dinonaktifkan. Periksa log server.';
+            }
+        } catch (Throwable $e) {
+            $error = 'Tidak dapat mengambil atau menyimpan daftar game dari supplier. Periksa pengaturan API dan log server. Daftar tersimpan tidak diubah jika proses penarikan API gagal.';
+            if ($apiWasLoaded && isset($_POST['load_games'])) {
+                $apiGames = [];
+                $apiWasLoaded = false;
             }
         }
     }
 }
 
-if (($_GET['saved'] ?? '') === '1') $notice = 'Pemetaan berhasil disimpan dan diaktifkan.';
-if (($_GET['deactivated'] ?? '') === '1') $notice = 'Pemetaan dinonaktifkan. Produk dari kode ini tidak akan dipetakan pada sinkronisasi berikutnya.';
-
-$games = $pdo->query("SELECT id,name,slug FROM games ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
-$providers = $pdo->query("SELECT id,code,name FROM providers ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
-$mappings = $pdo->query("SELECT m.id,m.provider_game_code,m.provider_game_name,m.status,m.updated_at,
-    g.name AS game_name,g.slug,p.code AS provider_code,p.name AS provider_name
-    FROM game_provider_mappings m
-    JOIN games g ON g.id=m.game_id JOIN providers p ON p.id=m.provider_id
-    ORDER BY m.status='ACTIVE' DESC,p.name,g.name,m.provider_game_code")->fetchAll(PDO::FETCH_ASSOC);
-$csrf = admin_csrf_token();
-
-function mapping_escape(mixed $value): string {
-    return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+if (($_GET['saved'] ?? '') === '1') {
+    $notice = 'Pilihan game berhasil disimpan. Untuk melihat kembali centang yang tersimpan, tarik ulang daftar dari supplier ini.';
 }
+if ($selectedProviderId > 0 && $apiWasLoaded) {
+    $stmt = $pdo->prepare("SELECT provider_game_code FROM game_provider_mappings WHERE provider_id=:provider_id AND status='ACTIVE'");
+    $stmt->execute(['provider_id' => $selectedProviderId]);
+    $checkedCodes = array_fill_keys(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN)), true);
+}
+
+$csrf = admin_csrf_token();
 ?>
 <!doctype html>
 <html lang="id">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pemetaan Game Supplier · PluQ-I</title>
+<title>Daftar Game Supplier · PluQ-I</title>
 <style>
 :root{color-scheme:dark;--bg:#0c0d10;--panel:#15171d;--line:#292d36;--text:#f3f4f6;--muted:#9ca3af;--accent:#a7f3d0}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}label{display:grid;gap:6px;color:var(--muted)}input,select,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.danger{background:#3b1d22;color:#fecaca}.error,.notice{padding:10px;border-radius:7px;margin:12px 0}.error{background:#3b1d22}.notice{background:#15352b}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{text-align:left;border-bottom:1px solid var(--line);padding:10px}th{color:var(--muted)}.status{font-size:12px;border:1px solid var(--line);border-radius:5px;padding:3px 6px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}a{color:var(--accent)}form.inline{margin:0}form.inline button{width:auto;padding:6px 10px}@media(max-width:600px){main{padding:12px}.panel{padding:12px}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}label{display:block;color:var(--muted);margin-bottom:8px}select,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:12px}.error,.notice{padding:10px;border-radius:7px;margin:12px 0}.error{background:#3b1d22}.notice{background:#15352b}.game-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px}.game{display:flex;align-items:center;gap:10px;background:#0d0f13;border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--text);margin:0}.game input{width:18px;height:18px;accent-color:#a7f3d0;flex-shrink:0}.counter{color:var(--muted);margin:8px 0 14px}a{color:var(--accent)}@media(max-width:600px){main{padding:12px}.panel{padding:12px}}
 </style>
 </head>
 <body><main>
-<header class="top"><div><h1>Pemetaan Game Supplier</h1><div class="muted">Admin: <?=mapping_escape($user['username'])?> · <?=mapping_escape($user['role'])?></div></div><a href="/admin/">Kembali ke panel transaksi</a></header>
+<header class="top"><div><h1>Daftar Game Supplier</h1><div class="muted">Admin: <?=mapping_escape($user['username'])?> · <?=mapping_escape($user['role'])?></div></div><a href="/admin/">Kembali ke panel transaksi</a></header>
 <?php if ($error !== ''): ?><div class="error"><?=mapping_escape($error)?></div><?php endif; ?>
 <?php if ($notice !== ''): ?><div class="notice"><?=mapping_escape($notice)?></div><?php endif; ?>
 <section class="panel">
-<h2>Tambah atau perbarui pemetaan</h2>
-<p class="muted">Masukkan kode game/merek persis seperti yang dikirim supplier pada respons API. Jangan menebak kode dari nama yang mirip. Satu kode supplier hanya boleh dipasangkan ke satu game lokal untuk setiap supplier.</p>
-<?php if (!$canManage): ?><p class="muted">Peran akun ini hanya dapat melihat data pemetaan.</p><?php else: ?>
-<form method="post" class="grid">
+<h2>1. Pilih supplier dan tarik game</h2>
+<p class="muted">Daftar ditarik langsung dari API supplier yang dipilih. Pilihan tersimpan untuk supplier lain tidak dihapus saat Anda berpindah supplier. Kegagalan API tidak akan mengubah pemetaan tersimpan.</p>
+<?php if (!$canManage): ?><p class="muted">Peran akun Anda hanya dapat melihat panel transaksi. Minta ADMIN atau SUPER_ADMIN mengelola daftar game.</p><?php else: ?>
+<form method="post">
 <input type="hidden" name="csrf" value="<?=mapping_escape($csrf)?>">
-<label>Game PluQ-I<select name="game_id" required><option value="">Pilih game lokal</option><?php foreach($games as $game): ?><option value="<?= (int) $game['id'] ?>"><?=mapping_escape($game['name'])?> (<?=mapping_escape($game['slug'])?>)</option><?php endforeach; ?></select></label>
-<label>Supplier<select name="provider_id" required><option value="">Pilih supplier</option><?php foreach($providers as $provider): ?><option value="<?= (int) $provider['id'] ?>"><?=mapping_escape($provider['name'])?> (<?=mapping_escape($provider['code'])?>)</option><?php endforeach; ?></select></label>
-<label>Kode game supplier<input name="provider_game_code" maxlength="190" required placeholder="Contoh: kode persis dari API"></label>
-<label>Nama game supplier (opsional)<input name="provider_game_name" maxlength="190" placeholder="Nama dari respons API"></label>
-<div><button type="submit" name="save_mapping" value="1">Simpan pemetaan</button></div>
+<label for="provider_id">Supplier</label>
+<select id="provider_id" name="provider_id" required>
+<option value="">Pilih supplier</option>
+<?php foreach ($providers as $provider): ?><option value="<?=(int)$provider['id']?>" <?=$selectedProviderId === (int)$provider['id'] ? 'selected' : ''?>><?=mapping_escape($provider['name'])?></option><?php endforeach; ?>
+</select>
+<div class="actions"><button type="submit" name="load_games" value="1">Tarik daftar game dari API</button></div>
 </form>
 <?php endif; ?>
 </section>
-<section class="panel"><h2>Pemetaan tersimpan</h2><div class="table-wrap"><table><thead><tr><th>Game PluQ-I</th><th>Supplier</th><th>Kode supplier</th><th>Nama supplier</th><th>Status</th><th>Diubah</th><th>Aksi</th></tr></thead><tbody>
-<?php if (!$mappings): ?><tr><td colspan="7" class="muted">Belum ada pemetaan. Tambahkan game lokal terlebih dahulu, lalu buat pemetaan berdasarkan respons API supplier.</td></tr><?php endif; ?>
-<?php foreach($mappings as $mapping): ?><tr><td><?=mapping_escape($mapping['game_name'])?><div class="muted"><?=mapping_escape($mapping['slug'])?></div></td><td><?=mapping_escape($mapping['provider_name'])?> (<?=mapping_escape($mapping['provider_code'])?>)</td><td><?=mapping_escape($mapping['provider_game_code'])?></td><td><?=mapping_escape($mapping['provider_game_name'] ?: '-')?></td><td><span class="status"><?=mapping_escape($mapping['status'])?></span></td><td><?=mapping_escape($mapping['updated_at'])?></td><td><?php if ($canManage && $mapping['status'] === 'ACTIVE'): ?><form class="inline" method="post" onsubmit="return confirm('Nonaktifkan pemetaan ini? Produk tidak akan dipetakan pada sinkronisasi berikutnya.');"><input type="hidden" name="csrf" value="<?=mapping_escape($csrf)?>"><input type="hidden" name="mapping_id" value="<?=(int)$mapping['id']?>"><button class="danger" type="submit" name="deactivate_mapping" value="1">Nonaktifkan</button></form><?php else: ?>-<?php endif; ?></td></tr><?php endforeach; ?>
-</tbody></table></div></section>
+<?php if ($apiWasLoaded): ?>
+<section class="panel">
+<h2>2. Pilih game yang ditampilkan di web</h2>
+<p class="muted"><?=count($apiGames)?> nama game diterima dari API. Hanya nama game ditampilkan di sini; kode supplier digunakan secara internal untuk mencocokkan katalog dan pesanan.</p>
+<?php if (!$canManage): ?><p class="muted">Akun ini tidak dapat menyimpan perubahan.</p><?php else: ?>
+<form method="post">
+<input type="hidden" name="csrf" value="<?=mapping_escape($csrf)?>">
+<input type="hidden" name="provider_id" value="<?=$selectedProviderId?>">
+<div class="game-list">
+<?php foreach ($apiGames as $game): ?>
+<label class="game"><input type="checkbox" name="game_codes[]" value="<?=mapping_escape($game['code'])?>" <?=isset($checkedCodes[$game['code']]) ? 'checked' : ''?>><span><?=mapping_escape($game['name'])?></span></label>
+<?php endforeach; ?>
+</div>
+<div class="actions"><button type="submit" name="save_selection" value="1">Simpan pilihan game</button></div>
+</form>
+<?php endif; ?>
+<?php endif; ?>
+</section>
+<section class="panel">
+<h2>Aturan tampilan web</h2>
+<ul>
+<li>Game yang dicentang dari setidaknya satu supplier tampil satu kali di halaman game utama.</li>
+<li>Jika kedua supplier menyediakan nama game yang sama, keduanya dipetakan ke satu game web. Produk dan pilihan server/region tetap berasal dari penawaran supplier yang cocok.</li>
+<li>Game yang tidak dicentang dari semua supplier tidak ditampilkan.</li>
+<li>Kode game supplier tetap disimpan di database untuk sinkronisasi katalog, tetapi tidak ditampilkan sebagai kolom atau input admin.</li>
+</ul>
+</section>
 </main></body></html>
