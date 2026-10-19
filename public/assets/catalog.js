@@ -92,6 +92,10 @@
   }
 
   function showCatalog() {
+    if (usernameTimer) clearTimeout(usernameTimer);
+    usernameRequestId++;
+    gameFields = [];
+    gameMeta = {username_check_available:false,checkout_supported:false};
     $('catalog-view').classList.remove('hidden');
     $('product-view').classList.add('hidden');
     $('customer-email-wrap').classList.add('hidden');
@@ -203,6 +207,8 @@
   }
 
   async function showProducts(game) {
+    if (usernameTimer) clearTimeout(usernameTimer);
+    usernameRequestId++;
     activeGame = game;
     selectedProduct = null;
     accountDataValid = false;
