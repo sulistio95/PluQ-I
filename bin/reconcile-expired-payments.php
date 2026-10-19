@@ -52,15 +52,14 @@ foreach ($rows as $row) {
                     pt.gateway_expiry_at
                 FROM payment_transactions pt
                 JOIN orders o ON o.id=pt.order_id
-                WHERE pt.id=:id AND pt.gateway='DUITKU'
+                WHERE pt.id=:id AND pt.gateway='DUITKU' AND pt.gateway_expiry_at <= NOW()
                 FOR UPDATE");
             $lock->execute(['id' => (int)$row['id']]);
             $current = $lock->fetch(PDO::FETCH_ASSOC);
             if ($current
                 && $current['status'] === 'PENDING'
                 && $current['payment_status'] === 'PENDING'
-                && $current['gateway_expiry_at'] !== null
-                && strtotime((string)$current['gateway_expiry_at']) <= time()) {
+                && $current['gateway_expiry_at'] !== null) {
                 $updatePayment = $pdo->prepare("UPDATE payment_transactions
                     SET status='EXPIRED'
                     WHERE id=:id AND status='PENDING'");
