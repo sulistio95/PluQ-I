@@ -1252,3 +1252,12 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Environment variables are outside the database and must be removed separately when rotating/removing a provider.
 - Code commit: `5b551871ba7c151e0a7905818e8cafb20eff212ac`. Three GitHub Actions workflows were running when checked; current result must be rechecked after the latest docs commit. Local PHP lint and browser/database verification remain pending.
 - No payment, supplier order, or Google Drive backup was triggered. Keep these disabled during testing.
+
+
+## Admin template: unggah dan hapus gambar banner — 2026-10-20
+
+- Pengaturan Template kini mendukung unggah lokal JPG/PNG/WebP (maks. 5 MB) serta URL HTTPS yang sudah didukung. Validasi memeriksa MIME, dimensi gambar, dan nama file acak; file disimpan pada `public/uploads/banners/`.
+- Saat edit, URL kosong mempertahankan gambar lama; upload baru mengganti gambar setelah penyimpanan database dan audit log berhasil. Penghapusan banner menghapus baris database secara transaksional dan menghapus file lokal yang sesuai setelah commit; URL eksternal tidak disentuh. Menonaktifkan banner tetap non-destruktif.
+- `public/uploads/banners/.htaccess` menonaktifkan directory listing dan menolak akses ke file berekstensi skrip. Hosting harus mengizinkan PHP menulis folder upload dan batas `upload_max_filesize`/`post_max_size` harus sesuai.
+- Commits: `f1824eb05e28a9eebc3c41fbe0bf838a75418c4e`, `1fc141bf71ac435888bf9a9d7bf4703b1eac84d2`, `c78151b34daa8ef3157dce7c039c593f55b54b3a`.
+- Belum ada klaim lint, CI, browser, atau uji hosting. Verifikasi workflow CI dan lakukan uji lokal tambah/edit/ganti/nonaktif/hapus. Jangan aktifkan checkout, pesanan supplier, atau backup Drive.
