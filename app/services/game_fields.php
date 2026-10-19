@@ -57,7 +57,26 @@ function game_account_schema_is_supported(string $slug, string $name, array $fie
     return $knownGame && !$hasUnmappedServer;
 }
 
-/** Return generated fields and whether VIPayment has a service code for nickname lookup. */
+/**
+ * Only allow nickname lookup when support for that game has been explicitly
+ * reviewed. A top-up product code is not proof that get-nickname supports it.
+ */
+function game_account_username_check_supported(string $slug, string $name): bool
+{
+    $identity = strtolower(trim($slug . ' ' . $name));
+
+    // VIPayment rejected the FF top-up code ff5-s13 with:
+    // "Provider for game code ... is not available." Do not guess another
+    // product code; keep lookup optional until VIPayment confirms a lookup code.
+    $isFreeFire = preg_match('/free[\\s_-]*fire/i', $identity) === 1;
+
+    // HOK nickname lookup was not available in the user's VIPayment app.
+    $isHonorOfKings = preg_match('/honor[\\s_-]*of[\\s_-]*kings?|\\bhok\\b/i', $identity) === 1;
+
+    return !$isFreeFire && !$isHonorOfKings;
+}
+
+/** Return generated fields and whether a reviewed VIPayment nickname lookup is available. */
 function catalog_game_account_schema(PDO $pdo, string $slug): array
 {
     $stmt = $pdo->prepare("SELECT id,slug,name FROM games WHERE slug=:slug AND status='ACTIVE' LIMIT 1");
@@ -80,17 +99,13 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
         LIMIT 1");
     $check->execute(['game_id' => $game['id']]);
 
-    // HOK nickname lookup was not available in the user's VIPayment app.
-    // A product code alone does not prove get-nickname support; keep this
-    // optional for HOK until the provider confirms a supported lookup code.
-    $identity = strtolower(trim((string)$game['slug'] . ' ' . (string)$game['name']));
-    $isHonorOfKings = preg_match('/honor[\\s_-]*of[\\s_-]*kings?|\\bhok\\b/i', $identity) === 1;
+    $usernameCheckSupported = game_account_username_check_supported((string)$game['slug'], (string)$game['name']);
 
     return [
         'game' => ['slug' => (string)$game['slug'], 'name' => (string)$game['name']],
         'fields' => $fields,
         'checkout_supported' => $checkoutSupported,
-        'username_check_available' => !$isHonorOfKings && (bool)$check->fetchColumn(),
+        'username_check_available' => $usernameCheckSupported && (bool)$check->fetchColumn(),
     ];
 }
 

@@ -14,6 +14,10 @@ function schema_test(bool $condition, string $message): void
 $mobileLegends = game_account_fields_for_game('mobile-legends', 'Mobile Legends');
 schema_test(array_column($mobileLegends, 'field_key') === ['user_id', 'zone_id'], 'Mobile Legends should request User ID and Zone ID');
 
+schema_test(!game_account_username_check_supported('free-fire', 'Free Fire'), 'Free Fire nickname lookup must remain optional until VIPayment confirms a valid lookup code');
+schema_test(!game_account_username_check_supported('honor-of-kings', 'Honor of Kings'), 'Honor of Kings nickname lookup must remain optional until provider support is confirmed');
+schema_test(game_account_username_check_supported('mobile-legends', 'Mobile Legends'), 'Mobile Legends may use nickname lookup pending an active mapped service code');
+
 $honorOfKings = game_account_fields_for_game('honor-of-kings', 'Honor of Kings');
 schema_test(array_column($honorOfKings, 'field_key') === ['user_id'], 'Honor of Kings should request only User ID');
 schema_test(game_account_schema_is_supported('honor-of-kings', 'Honor of Kings', $honorOfKings), 'Reviewed Honor of Kings schema should allow checkout');

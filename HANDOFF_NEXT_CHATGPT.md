@@ -1393,3 +1393,13 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Commit diagnosis `ff0bc98a510f2f269340576132bafef18d874060` menambahkan log server-side dengan awalan `[PluQ-I username-check]`; respons publik tetap generik dan tidak menampilkan kredensial.
 - Reproduksi sekali, lalu cari awalan tersebut di error log PHP/web-server hosting. Laporkan hanya teks error yang sudah disensor; jangan bagikan API ID/key/sign atau payload sensitif.
 - Setelah error diketahui, verifikasi kode lookup FF yang sesuai dari VIPayment dan hindari memakai kode termurah secara otomatis. Tes PHP lint, CI, browser, dan API nyata belum dilakukan. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: Perbaikan aman pengecekan nickname Free Fire
+
+- Diagnostik lokal: VIPayment menolak `ff5-s13` dengan pesan `Provider for game code 'ff5-s13' is not available.`
+- Perubahan berada di branch `fix/free-fire-nickname-lookup` (belum di-merge ke `main`). File `app/services/game_fields.php` kini menganggap lookup nickname Free Fire belum didukung sampai kode lookup yang benar dikonfirmasi. HOK tetap opsional seperti sebelumnya.
+- Karena endpoint fields menyatakan lookup tidak tersedia, frontend seharusnya melewati cek nickname untuk FF; input User ID dan pemilihan nominal tidak lagi bergantung pada API nickname. Kode produk top-up termurah tidak lagi dipakai untuk cek nickname FF.
+- Dokumentasi VIPayment: https://vip-reseller.co.id/page/api/game-feature — mencantumkan parameter `get-nickname`, tetapi tidak mengidentifikasi kode lookup Free Fire yang valid.
+- Tes schema ditambah untuk guard Free Fire. Belum menjalankan lint, tes lokal, CI, browser, atau panggilan API live pada branch ini.
+- Setelah perubahan di-merge ke `main`, di Puppy Linux jalankan `git pull origin main`, `php -l app/services/game_fields.php`, `php tests/game-account-schema.php`, dan `php -l public/index.php`; lalu uji halaman Free Fire. Jangan aktifkan pembayaran, supplier ordering, atau backup Drive.

@@ -1310,3 +1310,14 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Langkah berikutnya: reproduksi sekali untuk FF, lalu periksa PHP/web-server error log hosting untuk baris berawalan `[PluQ-I username-check]`. Jangan mengirim API ID/key/sign, payload lengkap, atau kredensial dalam laporan. Pesan provider yang tercatat akan membantu membedakan penolakan API, kegagalan jaringan, konfigurasi, dan respons JSON tidak sesuai.
 - Perlu tindak lanjut setelah diketahui kode layanan yang benar: jangan terus mengandalkan produk termurah sebagai kode cek nickname; pertimbangkan konfigurasi kode lookup per game atau mekanisme yang dikonfirmasi VIPayment.
 - Status pengujian: perubahan sudah dikirim ke GitHub; PHP lint, CI, hosting error-log, dan panggilan VIPayment langsung belum diverifikasi. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: Free Fire nickname lookup dibuat opsional sampai kode resmi dikonfirmasi
+
+- Log runtime lokal mengonfirmasi VIPayment menolak kode produk top-up `ff5-s13` untuk `get-nickname`: `Provider for game code 'ff5-s13' is not available.`
+- Menurut dokumentasi API VIPayment, `get-nickname` memerlukan parameter `code`, `target`, dan `additional_target`, tetapi dokumentasi publik tidak memastikan kode produk top-up Free Fire mana yang valid sebagai kode lookup. Referensi: https://vip-reseller.co.id/page/api/game-feature
+- Pada branch `fix/free-fire-nickname-lookup`, `game_account_username_check_supported()` menonaktifkan pemeriksaan nickname Free Fire dan HOK sampai kode lookup yang sesuai dikonfirmasi. Endpoint fields akan melaporkan lookup tidak tersedia, sehingga frontend tidak memanggil endpoint cek nickname untuk FF dan pelanggan tetap dapat mengisi User ID serta melanjutkan melihat nominal.
+- Ini bukan perbaikan lookup live; ini mitigasi aman untuk mencegah pengiriman kode produk yang belum terverifikasi. Kode lookup Free Fire khusus belum diketahui.
+- Menambahkan tes schema untuk memastikan pengecekan nickname Free Fire tetap opsional. PHP lint, tes lokal, CI, browser, dan panggilan VIPayment live setelah perubahan belum dijalankan.
+- Langkah verifikasi setelah checkout perubahan: `git pull origin main` hanya setelah branch di-merge; jalankan `php -l app/services/game_fields.php`, `php tests/game-account-schema.php`, dan `php -l public/index.php`. Buka Free Fire dan pastikan tidak muncul error pengecekan nickname serta form/nominal tetap dapat digunakan.
+- Jangan aktifkan pembayaran, pesanan supplier, atau backup Google Drive.
