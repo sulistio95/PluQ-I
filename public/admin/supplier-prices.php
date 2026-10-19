@@ -13,6 +13,8 @@ $pdo = database();
 $user = admin_current_user($pdo);
 if (!$user) { header('Location: /admin/'); exit; }
 $filters = ['provider'=>trim((string)($_GET['provider']??'')), 'game_id'=>trim((string)($_GET['game_id']??'')), 'q'=>trim((string)($_GET['q']??''))];
+$sort = (string)($_GET['sort'] ?? 'price_asc');
+if (!in_array($sort, ['price_asc','price_desc'], true)) { $sort = 'price_asc'; }
 $error = ''; $rows = []; $providers = []; $games = []; $total = 0;
 function supplier_prices_money(mixed $value): string { return 'Rp '.number_format((float)$value,0,',','.'); }
 try {
@@ -43,7 +45,7 @@ try {
  COALESCE(p.base_price+(SELECT CASE WHEN rr.profit_type='PERCENTAGE' THEN ROUND(p.base_price*rr.profit_value/100,0) ELSE rr.profit_value END
  FROM pricing_rules rr WHERE rr.status='ACTIVE' AND rr.min_amount<=p.base_price AND (rr.max_amount IS NULL OR rr.max_amount>=p.base_price)
  ORDER BY rr.min_amount DESC,rr.id DESC LIMIT 1),p.selling_price) AS selling_price".$from.$whereSql.
- " ORDER BY pr.name,game_name,pp.product_name,pp.provider_product_code LIMIT 200";
+ " ORDER BY pp.base_price " . ($sort === 'price_desc' ? 'DESC' : 'ASC') . ", pr.name,game_name,pp.product_name,pp.provider_product_code LIMIT 200";
  $stmt=$pdo->prepare($sql); $stmt->execute($params); $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) { $error='Data harga belum dapat dibaca. Pastikan migrasi katalog sudah diterapkan dan periksa log server.'; }
 ?>
@@ -56,7 +58,8 @@ try {
 <section class="panel"><p class="muted">Harga modal adalah harga dari sinkronisasi katalog terakhir. Harga jual dihitung dengan aturan keuntungan aktif. Produk yang belum dipetakan tetap dapat dilihat. Halaman ini hanya-baca: tidak mengubah harga dan tidak membuat pesanan.</p>
 <form method="get" class="filters"><label>Supplier<select name="provider"><option value="">Semua supplier</option><?php foreach($providers as $p): ?><option value="<?=admin_escape($p['code'])?>" <?=$filters['provider']===$p['code']?'selected':''?>><?=admin_escape($p['name'])?> (<?=admin_escape($p['code'])?>)</option><?php endforeach; ?></select></label>
 <label>Game<select name="game_id"><option value="">Semua game</option><?php foreach($games as $g): ?><option value="<?=admin_escape($g['id'])?>" <?=$filters['game_id']===(string)$g['id']?'selected':''?>><?=admin_escape($g['name'])?></option><?php endforeach; ?></select></label>
-<label>Cari nama/kode<input type="search" name="q" maxlength="150" value="<?=admin_escape($filters['q'])?>" placeholder="Nama produk atau kode supplier"></label><button type="submit">Terapkan filter</button></form></section>
+<label>Cari nama/kode<input type="search" name="q" maxlength="150" value="<?=admin_escape($filters['q'])?>" placeholder="Nama produk atau kode supplier"></label>
+<label>Urutan harga modal<select name="sort"><option value="price_asc" <?=$sort==='price_asc'?'selected':''?>>Terendah ke tertinggi</option><option value="price_desc" <?=$sort==='price_desc'?'selected':''?>>Tertinggi ke terendah</option></select></label><button type="submit">Terapkan filter</button></form></section>
 <section class="panel"><div class="bar"><h2>Daftar harga</h2><span class="muted"><?=number_format(count($rows))?> dari <?=number_format($total)?> baris · maksimal 200</span></div><div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Game</th><th>Produk</th><th>Kode supplier</th><th>Harga modal</th><th>Harga jual</th><th>Keuntungan</th><th>Status katalog</th><th>Sinkron terakhir</th></tr></thead><tbody>
 <?php if(!$rows): ?><tr><td colspan="9" class="muted">Belum ada data. Simpan pemetaan game lalu jalankan sinkronisasi katalog di Pengaturan API.</td></tr><?php endif; ?>
 <?php foreach($rows as $r): $base=(int)$r['base_price']; $sell=$r['selling_price']===null?null:(int)$r['selling_price']; ?><tr><td><?=admin_escape($r['provider_name'])?> <span class="muted small">(<?=admin_escape($r['provider_code'])?>)</span></td><td><?=admin_escape($r['game_name'])?><div class="muted small"><?=admin_escape($r['provider_game_code'])?></div></td><td><?=admin_escape($r['product_name'])?></td><td><?=admin_escape($r['provider_product_code'])?></td><td><?=supplier_prices_money($base)?></td><td><?=$sell===null?'—':supplier_prices_money($sell)?></td><td><?=$sell===null?'Belum dipetakan':supplier_prices_money($sell-$base)?></td><td><?=((int)$r['is_available']===1?'Tersedia':'Tidak tersedia')?><?=!empty($r['store_status'])?'<div class="muted small">Produk toko: '.admin_escape($r['store_status']).'</div>':''?></td><td><?=admin_escape($r['synced_at']??'—')?></td></tr><?php endforeach; ?>
