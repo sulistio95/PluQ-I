@@ -1209,3 +1209,13 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Panel `/admin/pricing-settings.php` memungkinkan ADMIN/SUPER_ADMIN mengubah rentang modal, nominal atau persentase, dan status aturan. Harga katalog dan kutipan checkout membaca aturan aktif dari database yang sama. Biaya admin invoice tetap terpisah dari laba.
 - Verifikasi GitHub Actions pada commit `a3740fe717da2da54ac11b619172dd07c6f253ee` berhasil: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/39209913651), [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/39209913521), dan [fulfillment/MySQL integration](https://github.com/sulistio95/PluQ-I/actions/runs/39209913435).
 - Ini bukti CI pada database MySQL pengujian, bukan uji browser/shared hosting atau transaksi Duitku/provider nyata. Untuk menggunakan panel, tarik perubahan dan jalankan migration 012 setelah migration 011. Jangan menimpa aturan yang sudah disesuaikan admin saat deployment; migration mempertahankan data lama.
+
+
+## Update — 2026-10-19: Pratinjau katalog VIPayment dan penghapusan konfigurasi API
+
+- Commit `a981ef81d24df0efe031e75c474b6f807d55bea7` memperbarui `public/admin/api-settings.php`.
+- Panel sekarang memiliki tombol **Ambil daftar game dan layanan** yang memanggil helper `vipayment_game_services(null, null)` untuk mengambil daftar layanan VIPayment, lalu menampilkan pratinjau maksimum 100 baris dan jumlah layanan/game yang teridentifikasi. Ini hanya pratinjau; tidak menulis ke tabel katalog dan tidak membuat pesanan.
+- Panel **Hapus API tersimpan** menyediakan tombol hapus per nilai konfigurasi yang tersimpan di database. Permintaan POST memerlukan CSRF valid, nama konfigurasi dibatasi pada allowlist, penghapusan dicatat dalam audit log dan memakai transaksi database.
+- Penghapusan hanya menghapus nilai `api_secret_*` dari database. Nilai yang ditetapkan lewat `.env` atau environment hosting tidak dapat dihapus dari panel ini dan perlu dihapus terpisah.
+- Perubahan sudah terkonfirmasi di GitHub melalui commit di atas. **Belum diuji lint lokal, browser, maupun dengan API VIPayment nyata**. Setelah pengguna menarik commit, jalankan `php -l public/admin/api-settings.php`; lalu login sebagai ADMIN/SUPER_ADMIN, periksa tombol pratinjau dan penghapusan. Jangan gunakan tombol pratinjau sampai kredensial VIPayment sudah benar karena itu mengirim permintaan baca ke API eksternal.
+- Tetap nonaktifkan pembayaran checkout, pesanan supplier, dan backup Google Drive. Pratinjau katalog tidak mengaktifkan ketiganya.
