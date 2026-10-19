@@ -171,7 +171,7 @@ function checkout_create_payment(PDO $pdo, array $input, ?callable $paymentCreat
         $stmt = $pdo->prepare("UPDATE payment_transactions
           SET gateway_reference=COALESCE(gateway_reference,:reference),
               gateway_payment_url=:url,
-              gateway_expiry_at=COALESCE(gateway_expiry_at,DATE_ADD(NOW(),INTERVAL 30 MINUTE))
+              gateway_expiry_at=COALESCE(gateway_expiry_at,DATE_ADD(NOW(),INTERVAL " . duitku_expiry_minutes() . " MINUTE))
           WHERE merchant_order_id=:id");
         $stmt->execute(['reference'=>$payment['reference'],'url'=>$payment['payment_url'],'id'=>$publicId]);
         return ['order_id'=>$publicId,'payment_url'=>$payment['payment_url'],'reused'=>false];
