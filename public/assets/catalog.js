@@ -187,8 +187,10 @@
         if (requestId !== usernameRequestId) return;
         if (!response.ok || !data.data || !data.data.username) {
           if (response.status === 409) {
+            // Nickname lookup is optional. If the provider/game mapping does not support it,
+            // keep the result area blank and allow the normal local/server account validation.
             accountDataValid = true;
-            resultBox.textContent = 'Pengecekan username tidak tersedia untuk game ini. Pastikan data akun benar.';
+            resultBox.textContent = '';
             return;
           }
           accountDataValid = false;
