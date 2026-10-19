@@ -65,6 +65,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $idRaw = filter_var($_POST['id'] ?? '0', FILTER_VALIDATE_INT);
             if ($idRaw === false || $idRaw < 0) throw new InvalidArgumentException('ID aturan tidak valid.');
             $id = (int)$idRaw;
+
+            if ($action === 'delete') {
+                $pdo->beginTransaction();
+                try {
+                    $check = $pdo->prepare('SELECT id,status FROM pricing_rules WHERE id=:id FOR UPDATE');
+                    $check->execute(['id' => $id]);
+                    $rule = $check->fetch(PDO::FETCH_ASSOC);
+                    if (!$rule) throw new InvalidArgumentException('Aturan keuntungan tidak ditemukan.');
+                    if ($rule['status'] !== 'INACTIVE') {
+                        throw new InvalidArgumentException('Aturan aktif tidak dapat dihapus. Nonaktifkan aturan terlebih dahulu.');
+                    }
+                    $activeCount = (int)$pdo->query("SELECT COUNT(*) FROM pricing_rules WHERE status='ACTIVE'")->fetchColumn();
+                    if ($activeCount < 1) throw new InvalidArgumentException('Setidaknya satu aturan keuntungan harus tetap aktif.');
+                    $stmt = $pdo->prepare("DELETE FROM pricing_rules WHERE id=:id AND status='INACTIVE'");
+                    $stmt->execute(['id' => $id]);
+                    if ($stmt->rowCount() !== 1) throw new RuntimeException('Aturan tidak berhasil dihapus.');
+                    $audit = $pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,details,ip_address) VALUES ('ADMIN',:actor,'PRICING_RULE_DELETED','PRICING_RULE',:entity,:details,:ip)");
+                    $audit->execute([
+                        'actor' => $user['id'],
+                        'entity' => (string)$id,
+                        'details' => json_encode(['status' => 'INACTIVE'], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),
+                        'ip' => substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
+                    ]);
+                    $pdo->commit();
+                } catch (Throwable $e) {
+                    if ($pdo->inTransaction()) $pdo->rollBack();
+                    throw $e;
+                }
+                header('Location: /admin/pricing-settings.php?deleted=1');
+                exit;
+            }
+
             $min = pricing_admin_amount($_POST['min_amount'] ?? null, 'Harga modal minimum');
             $max = pricing_admin_amount($_POST['max_amount'] ?? null, 'Harga modal maksimum', true);
             $type = (string)($_POST['profit_type'] ?? 'FIXED');
@@ -116,6 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 if (($_GET['saved'] ?? '') === '1') $notice = 'Aturan keuntungan berhasil disimpan.';
+if (($_GET['deleted'] ?? '') === '1') $notice = 'Aturan keuntungan berhasil dihapus.';
 try {
     $rows = $pdo->query('SELECT id,min_amount,max_amount,profit_amount,profit_type,profit_value,status,updated_at FROM pricing_rules ORDER BY min_amount,id')->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
@@ -129,7 +162,7 @@ function pricing_admin_money(mixed $value): string { return 'Rp ' . number_forma
 <title>Pengaturan Keuntungan · PluQ-I</title>
 <style>
 :root{color-scheme:dark;--bg:#0c0d10;--panel:#15171d;--line:#292d36;--text:#f3f4f6;--muted:#9ca3af;--accent:#a7f3d0}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}label{display:grid;gap:6px;color:var(--muted)}input,select,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.notice,.error{padding:10px;border-radius:7px;margin:12px 0}.notice{background:#15352b}.error{background:#3b1d22}a{color:var(--accent)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted)}.rule-form{min-width:790px}.rule-form .grid{grid-template-columns:1fr 1fr 1fr 1fr .8fr .8fr auto;align-items:end}.small{font-size:12px}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.actions button{width:auto}@media(max-width:650px){main{padding:12px}.panel{padding:12px}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}label{display:grid;gap:6px;color:var(--muted)}input,select,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.notice,.error{padding:10px;border-radius:7px;margin:12px 0}.notice{background:#15352b}.error{background:#3b1d22}a{color:var(--accent)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted)}.rule-form{min-width:790px}.rule-form .grid{grid-template-columns:1fr 1fr 1fr 1fr .8fr .8fr auto;align-items:end}.small{font-size:12px}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.actions button{width:auto}.danger-button{background:#fecaca;color:#7f1d1d}.muted-button{background:#30343d;color:var(--muted);cursor:not-allowed}@media(max-width:650px){main{padding:12px}.panel{padding:12px}}
 </style></head><body><main>
 <header class="bar"><div><h1>Pengaturan Keuntungan</h1><div class="muted">Atur keuntungan berdasarkan rentang harga modal: nominal rupiah atau persentase.</div></div><a href="/admin/">Kembali ke panel admin</a></header>
 <?php if($error!==''):?><div class="error"><?=admin_escape($error)?></div><?php endif;?>
@@ -146,8 +179,8 @@ function pricing_admin_money(mixed $value): string { return 'Rp ' . number_forma
 <label>Status<select name="status"><option value="ACTIVE">Aktif</option><option value="INACTIVE">Nonaktif</option></select></label>
 <div></div><button type="submit">Tambah aturan</button>
 </div></form><?php endif;?></section>
-<section class="panel"><h2>Aturan tersimpan</h2><p class="muted">Setiap baris dapat diedit. Gunakan angka batas yang tidak saling bertabrakan.</p><div class="table-wrap"><table><thead><tr><th>ID</th><th>Rentang modal dan keuntungan</th><th>Status / pembaruan</th></tr></thead><tbody>
-<?php if(!$rows):?><tr><td colspan="3" class="muted">Belum ada aturan atau migration belum diterapkan.</td></tr><?php endif;?>
+<section class="panel"><h2>Aturan tersimpan</h2><p class="muted">Setiap baris dapat diedit. Gunakan angka batas yang tidak saling bertabrakan.</p><div class="table-wrap"><table><thead><tr><th>ID</th><th>Rentang modal dan keuntungan</th><th>Status / pembaruan</th><th>Aksi</th></tr></thead><tbody>
+<?php if(!$rows):?><tr><td colspan="4" class="muted">Belum ada aturan atau migration belum diterapkan.</td></tr><?php endif;?>
 <?php foreach($rows as $row):?><tr><td>#<?=number_format((int)$row['id'])?></td><td>
 <?php if($canManage):?><form method="post" class="rule-form"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?=admin_escape($row['id'])?>"><div class="grid">
 <label>Modal minimum<input type="number" name="min_amount" min="0" step="1" required value="<?=admin_escape((int)$row['min_amount'])?>"></label>
@@ -157,6 +190,10 @@ function pricing_admin_money(mixed $value): string { return 'Rp ' . number_forma
 <label>Status<select name="status"><option value="ACTIVE" <?=$row['status']==='ACTIVE'?'selected':''?>>Aktif</option><option value="INACTIVE" <?=$row['status']==='INACTIVE'?'selected':''?>>Nonaktif</option></select></label>
 <div></div><button type="submit">Simpan</button>
 </div></form><?php else:?><?=pricing_admin_money($row['min_amount'])?> – <?= $row['max_amount']===null?'tanpa batas':pricing_admin_money($row['max_amount'])?> · <?= $row['profit_type']==='PERCENTAGE'?admin_escape($row['profit_value']).'%':pricing_admin_money($row['profit_value'])?><?php endif;?>
-</td><td><span><?=admin_escape($row['status'])?></span><div class="muted small"><?=admin_escape($row['updated_at'])?></div></td></tr><?php endforeach;?>
+</td><td><span><?=admin_escape($row['status'])?></span><div class="muted small"><?=admin_escape($row['updated_at'])?></div></td><td>
+<?php if($canManage && $row['status']==='INACTIVE'):?>
+<form method="post" onsubmit="return confirm('Hapus aturan keuntungan #<?=admin_escape($row['id'])?>? Tindakan ini tidak dapat dibatalkan.')" class="actions"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?=admin_escape($row['id'])?>"><button type="submit" class="danger-button">Hapus</button></form>
+<?php elseif($canManage):?><span class="muted small">Nonaktifkan dulu untuk menghapus.</span><?php else:?><span class="muted small">—</span><?php endif;?>
+</td></tr><?php endforeach;?>
 </tbody></table></div></section>
 </main></body></html>
