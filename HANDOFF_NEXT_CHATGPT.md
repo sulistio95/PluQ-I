@@ -1,3 +1,9 @@
+## Follow-up verifikasi katalog Habis — 2026-10-19
+
+- Run MySQL berikutnya menemukan assertion katalog kedua yang masih mengharapkan hasil kosong setelah reservasi kedua memakai kapasitas supplier. Assertion itu juga sudah diperbarui agar mengharapkan satu nominal `is_available=false`; penolakan reservasi/checkout tetap diuji terpisah.
+- Commit tes terbaru: `6285888f1abfc57c10782a50b9ac4bbea23e1c5a`. GitHub Actions untuk commit dan catatan terbaru harus diselesaikan sebelum menyatakan CI hijau.
+- Pada run sebelumnya, PHP quality dan syntax lulus; fulfillment safety gagal hanya karena assertion katalog lama di skenario kapasitas kedua. Pengujian lokal pengguna dilakukan setelah status CI terbaru selesai.
+
 ## Verifikasi katalog Habis — 2026-10-19
 
 - Pemeriksaan GitHub Actions setelah fitur nominal Habis menemukan kegagalan integrasi MySQL: `tests/provider-budget-reservation-mysql-integration.php` masih mengharapkan katalog menghilangkan penawaran yang melampaui sisa anggaran supplier. Harapan itu sudah tidak sesuai keputusan baru, karena nominal harus tetap terlihat dengan `is_available=false`.
