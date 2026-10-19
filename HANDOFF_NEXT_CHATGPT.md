@@ -1,3 +1,9 @@
+## Update — 2026-10-19: Pratinjau katalog VIPayment lokal
+
+- Rencana fitur admin: tombol baca-saja untuk mengambil layanan VIPayment melalui `type=services` dan menampilkan daftar game/kategori serta pratinjau hingga 100 layanan.
+- Pratinjau ini tidak mengubah tabel katalog lokal dan tidak membuat pesanan. Sinkronisasi ke tabel `games`/`products` perlu tahap terpisah setelah format respons dan pemetaan kode produk dipastikan.
+- Status implementasi: belum berhasil ditulis ke repository; pembaruan kode melalui GitHub ditolak oleh pemeriksaan keamanan alat. Jangan menganggap fitur tersedia sampai commit kode terverifikasi.
+
 
 ## Update — 2026-10-19: Masa berlaku invoice Duitku
 
