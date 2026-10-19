@@ -34,6 +34,9 @@ $fields = [
  ],
 ];
 $optionalFields = ['DIGIFLAZZ_API_URL' => 'URL API Digiflazz (opsional)', 'VIPAYMENT_API_URL' => 'URL API VIPayment (opsional)'];
+$allFields = [];
+foreach ($fields as $groupFields) { foreach ($groupFields as $fieldName => $fieldLabel) { $allFields[$fieldName] = $fieldLabel; } }
+foreach ($optionalFields as $fieldName => $fieldLabel) { $allFields[$fieldName] = $fieldLabel; }
 $message = '';
 $error = '';
 $csrf = admin_csrf_token();
@@ -47,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
    $key = (string) getenv('APP_KEY');
    if (strlen($key) < 32 || str_contains($key, 'replace-with')) throw new RuntimeException('Atur APP_KEY acak minimal 32 karakter di konfigurasi privat terlebih dahulu.');
    $saved = [];
-   foreach (array_merge(...array_values($fields), $optionalFields) as $name => $label) {
+   foreach ($allFields as $name => $label) {
     $value = trim((string) ($_POST[$name] ?? ''));
     if ($value === '') continue; // Empty means keep the current value.
     if (strlen($value) > 2000 || str_contains($value, "\0")) throw new RuntimeException('Nilai salah satu kolom tidak valid atau terlalu panjang.');
@@ -91,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (isset($_GET['saved']) && $_GET['saved'] === '1') $message = 'Pengaturan API terenkripsi berhasil disimpan.';
 
 $statuses = [];
-foreach (array_merge(...array_values($fields), $optionalFields) as $name => $label) {
+foreach ($allFields as $name => $label) {
  $stmt = $pdo->prepare('SELECT setting_value FROM app_settings WHERE setting_key=:key LIMIT 1');
  $stmt->execute(['key' => 'api_secret_' . $name]);
  $stored = $stmt->fetchColumn();
