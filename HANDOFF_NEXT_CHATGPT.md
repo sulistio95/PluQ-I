@@ -1145,3 +1145,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Repository has only `public/.htaccess`, not a root-level one. Point the web document root to `public/`; never expose the repository root directly.
 - No real external Duitku/supplier/Google API or hosting test was performed. Keep all transaction/fulfillment/settlement flags off. Production Duitku mode is not implemented.
 - Next: review staging domain and hosting capabilities only when provided/available; then run preflight against a dedicated staging DB, verify cron and document-root isolation, and conduct controlled sandbox testing. Never run queue recovery tests against a non-disposable DB.
+
+
+## Admin supplier-driven game selection — 2026-10-19
+
+- Commit `970dea8b2e829c1d5cd3d63c82b38551b9b73ea5` replaces the manual mapping form with supplier selection, explicit API game-list fetch, checkboxes, and save.
+- The saved checkbox state is provider-specific. Switching suppliers does not erase the previous supplier's saved choices. A failed supplier request must not deactivate mappings.
+- The visible UI no longer asks for supplier game codes or supplier game names. Codes are retained internally for catalog matching.
+- Same-named selected games across suppliers are attached to one canonical web game; storefront visibility follows active mappings from either supplier.
+- **Not yet verified:** PHP lint/CI, live API response shapes, local database save/reload, duplicate-name merging, and customer-facing server/region choices. Do not claim runtime testing. Keep checkout, supplier orders, and Drive backup disabled.
