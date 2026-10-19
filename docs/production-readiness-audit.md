@@ -2,6 +2,11 @@
 
 Audit baseline: GitHub default branch at the time this file was added. This is a source-code review, not a live-hosting or payment certification.
 
+## Admin API settings UI verification — 2026-10-19
+
+- After correcting a PHP argument-unpacking syntax error in the new settings page, all three GitHub Actions workflows passed on commit `bda15ed334c5dd318f362c079cfb6b652bcee286`: [syntax](https://github.com/sulistio95/PluQ-I/actions/runs/39200932151), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/39200932012), and [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/39200931982).
+- CI proves syntax and existing regression suites pass; it does **not** prove that saving/decrypting credentials or the new page's interactive requests were tested end-to-end. Local browser/database verification remains pending.
+
 ## Admin API settings UI — 2026-10-19
 
 - Added `public/admin/api-settings.php` and an admin navigation link for Duitku, Digiflazz, and VIPayment credentials.
