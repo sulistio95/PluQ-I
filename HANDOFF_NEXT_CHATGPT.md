@@ -1345,3 +1345,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Commit kode: `f1824eb05e28a9eebc3c41fbe0bf838a75418c4e`; rollback hardening: `1fc141bf71ac435888bf9a9d7bf4703b1eac84d2`; proteksi folder upload: `c78151b34daa8ef3157dce7c039c593f55b54b3a`.
 - Belum mengklaim PHP lint, CI, upload runtime, atau uji browser berhasil. Periksa GitHub Actions setelah commit dokumentasi ini; lalu tarik `main`, jalankan `php -l public/admin/template-settings.php`, dan uji tambah gambar lokal, edit/ganti gambar, nonaktifkan, hapus, serta gambar URL eksternal di database lokal.
 - Jangan aktifkan checkout, pemesanan supplier, atau backup Google Drive selama pengujian.
+
+
+## Follow-up hardening upload banner — 2026-10-20
+
+- Memperketat deteksi file lokal agar penghapusan hanya dapat menyasar URL relatif tepat berbentuk `/uploads/banners/{nama-acak}.{jpg|png|webp}`, bukan URL eksternal yang kebetulan memakai path serupa. Commit: `9ef66075a549a93c361de259a85a0ef05b89271b`.
+- Menyederhanakan `public/uploads/banners/.htaccess` untuk menonaktifkan directory listing dan handler ekstensi skrip. Commit: `5a6802401a36d31c328da92a4e64813bd7648693`.
+- Status CI yang teramati: PHP quality dan syntax lulus pada commit kode `9ef66075`; syntax juga lulus pada commit `5a680240`. Fulfillment safety dan PHP quality pada head terbaru masih berjalan saat catatan ini diperbarui. Upload dan uji browser/database lokal tetap belum diuji.
