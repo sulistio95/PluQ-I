@@ -1107,3 +1107,13 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Refreshed `docs/staging-payment-test-runbook.md` in commit `eb3773166795a9608270619baf202b56470a76e3` to supersede older historical notes about Actions being blocked, and added shared-hosting execution checks.
 - Confirmed repository root contains no root-level `.htaccess`; only `public/.htaccess` exists. Hosting must serve `public/` as document root or separately deny access to private source/configuration/data directories. Do not deploy with repository root exposed.
 - CI success proves the automated workflow ran; it does not prove real Duitku sandbox, supplier APIs, shared-hosting cron/permissions, or Google Drive OAuth/upload. Production Duitku mode remains unsupported by current code. Payment, supplier order, and settlement backup flags remain disabled.
+
+
+## Admin supplier-driven game selection — 2026-10-19
+
+- Replaced manual game/provider mapping fields in `public/admin/game-mappings.php` with a supplier-first workflow: select Digiflazz or VIPayment, explicitly fetch the current game list from that supplier API, check the games to expose, and save.
+- Selection is stored per supplier. Saving one supplier deactivates only that supplier's previous mappings; it does not clear the other supplier's selection. API fetch/validation failures leave saved mappings untouched.
+- The UI displays game names and checkboxes only. Supplier game codes/names remain internal mapping data for catalog synchronization and fulfillment.
+- Selected same-named games from different suppliers resolve to a shared canonical `games` row, so the storefront can show one game entry while its products/offers remain tied to provider mappings. Storefront game status is recalculated from whether any supplier has an active mapping.
+- The UI filters out names containing `joki` or `vilog`, preserves admin role/CSRF checks, and records an audit event containing supplier/counts but not credentials.
+- **Verification pending:** this is a code change only. No live supplier API was called by this review and no local PHP lint, database migration/integration test, admin browser test, or GitHub Actions result has yet been confirmed for commit `970dea8b2e829c1d5cd3d63c82b38551b9b73ea5`. Before using the page, run syntax checks and review the saved selection behavior with a disposable local database and valid read-only supplier credentials. Do not enable checkout, supplier fulfillment, or Drive backup for this UI test.
