@@ -1238,3 +1238,13 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - **Status pengujian:** kode tersimpan di GitHub, tetapi lint PHP, uji browser, uji CSRF/role untuk halaman baru, dan pengujian database lokal belum dijalankan. Sesudah `git pull`, jalankan `php -l public/admin/game-fields.php` dan `php -l public/admin/index.php`, lalu buka panel admin dan konfigurasi satu game uji.
 - Contoh konfigurasi awal: Mobile Legends biasanya memerlukan `user_id` dan `zone_id`; HOK menggunakan `user_id`. Pastikan persyaratan masing-masing game benar sebelum mengaktifkan kolom. Halaman ini belum melakukan pengecekan nama akun ke game dan belum memastikan pemetaan kunci ke format request tiap supplier.
 - Jangan mengaktifkan checkout, pemesanan supplier, atau backup Google Drive. Setelah UI diuji, pekerjaan berikutnya adalah validasi akun sisi server serta pengujian mapping field per supplier sebelum transaksi diaktifkan.
+
+
+## Update — 2026-10-19: Konfigurasi form akun game
+
+- Halaman admin `public/admin/game-fields.php` tersedia dan ditautkan dari panel admin sebagai **Konfigurasi Form Akun**. Admin dapat memilih game, menambah/mengubah kolom `text`, `number`, atau dropdown; menentukan label, key, placeholder, regex format, wajib/tidak wajib, urutan, dan status; serta mengatur opsi dropdown dengan format `nilai|label`.
+- Memakai tabel `game_fields` dan `game_field_options` dari migration `002_catalog_and_operations.sql`; tidak perlu migration tambahan untuk fitur ini.
+- Perubahan pada 2026-10-19 memperketat edit agar field hanya bisa diperbarui dalam game asalnya, dan menonaktifkan opsi lama ketika tipe kolom diubah dari dropdown menjadi teks/angka. Semua perubahan menggunakan transaksi DB, CSRF, pembatasan role ADMIN/SUPER_ADMIN, dan audit log.
+- Frontend membaca konfigurasi melalui `GET /api/games/{slug}/fields`. Contoh umum: Mobile Legends `user_id` + `zone_id`; HOK `user_id` saja, tetapi cocokkan kebutuhan setiap game dengan format provider yang benar.
+- Status verifikasi: perubahan hardening dikomit pada `ad20f9627f7b7b6a50bcc74a75cee373939bd1df`. CI dan uji interaktif browser/database setelah commit masih perlu diperiksa. Jangan klaim pengujian runtime berhasil sebelum ada hasil aktual.
+- Langkah pengguna: pull `main`, buka **Panel Admin → Konfigurasi Form Akun**, pilih game, tambahkan kolom sesuai kebutuhan, simpan, lalu buka game dari halaman depan untuk memastikan field tampil. Jangan aktifkan pembayaran, pemesanan supplier, atau backup Google Drive selama pengujian.
