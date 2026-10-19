@@ -1,3 +1,12 @@
+## Pengaturan keuntungan nominal/persentase — 2026-10-19
+
+- Menambahkan `public/admin/pricing-settings.php` dan tautan **Pengaturan Keuntungan** pada panel admin. ADMIN/SUPER_ADMIN dapat menambah dan mengubah rentang modal, memilih keuntungan nominal (Rp) atau persentase, mengaktifkan/menonaktifkan aturan, dan melihat waktu pembaruan. OPERATOR hanya dapat melihat.
+- Migration `database/migrations/012_pricing_rules_hybrid.sql` menambah `profit_type` dan `profit_value`; data lama dipertahankan dengan menyalin `profit_amount` ke `profit_value` sebagai FIXED.
+- Perhitungan di `app/services/pricing.php`, katalog publik, dan validasi harga checkout menggunakan aturan yang sama. Persentase dihitung dari modal supplier dan dibulatkan ke rupiah terdekat; biaya admin invoice tetap terpisah. Rentang aktif yang tumpang tindih ditolak dan perubahan dicatat di audit log dalam transaksi DB.
+- Menambahkan `tests/pricing-hybrid.php` dan memasukkannya ke workflow PHP quality. Preflight kini mewajibkan migration `012_pricing_rules_hybrid`.
+- Commits: migration `9aad765bf710aa9716861c66df58dbe39c947a73`; halaman admin `81b5ee4a05eae463e8f836c33c401d50b9bf6fac`; service `66ddc234ea0b01ef1d4ff0d99d57f6b674d3da0b`; katalog `86d67429412405f73751ab8aee5f2a86d6f19c82`; quote `8ca22bfa5bff9f6edf65c740a0cc002ad6cdca8f`; navigasi `b113a9ef8aa96e77c02baab016d1222c236b00b3`; preflight `e5e8aea7204213d8e53e5f6f54bf2eb949f11b9f`; test `cd0e0145a8728cd61fd4a50fa2984093f77a45da`; workflow `53c004b0d9589b9439c1b229444c27c398a3a0bd`.
+- Belum diklaim lulus CI, lint lokal, atau uji browser/database. Sebelum digunakan, tarik perubahan, terapkan migration 012 setelah migration 011, lalu periksa halaman, pengubahan aturan, harga katalog dan kutipan checkout. Jangan mengaktifkan pembayaran, pemesanan supplier, atau backup Drive saat pengujian.
+
 ## Homepage layout clarification — 2026-10-19
 
 - Updated `public/index.php` so the existing **PluQ** brand remains in its original top-left header position and appearance; it was not redesigned or moved.
