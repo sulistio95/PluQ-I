@@ -1,17 +1,18 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/provider_http.php';
+require_once __DIR__ . '/api_secret_crypto.php';
 
 function duitku_config(): array
 {
     if (strtolower((string)(getenv('DUITKU_ENV') ?: 'sandbox')) !== 'sandbox') {
         throw new RuntimeException('Only sandbox payments are enabled in this build.');
     }
-    $merchant = trim((string)getenv('DUITKU_MERCHANT_CODE'));
-    $key = trim((string)getenv('DUITKU_API_KEY'));
-    $method = strtoupper(trim((string)getenv('DUITKU_PAYMENT_METHOD')));
-    $callback = trim((string)getenv('DUITKU_CALLBACK_URL'));
-    $return = trim((string)getenv('DUITKU_RETURN_URL'));
+    $merchant = trim((string)pluqi_api_config_value('DUITKU_MERCHANT_CODE'));
+    $key = trim((string)pluqi_api_config_value('DUITKU_API_KEY'));
+    $method = strtoupper(trim((string)pluqi_api_config_value('DUITKU_PAYMENT_METHOD')));
+    $callback = trim((string)pluqi_api_config_value('DUITKU_CALLBACK_URL'));
+    $return = trim((string)pluqi_api_config_value('DUITKU_RETURN_URL'));
     if ($merchant === '' || $key === '' || $method === '') {
         throw new RuntimeException('Duitku sandbox credentials/payment method are not configured.');
     }
