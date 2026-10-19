@@ -4,6 +4,12 @@ Last updated: 2026-10-13 (Asia/Jakarta) — admin checkout hints and timeout CI 
 Repository: https://github.com/sulistio95/PluQ-I
 Default branch: `main`
 
+## Admin API settings UI CI update — 2026-10-19
+
+- Fixed PHP argument-unpacking compatibility in `public/admin/api-settings.php`.
+- All three workflows passed on commit `bda15ed334c5dd318f362c079cfb6b652bcee286`: [syntax](https://github.com/sulistio95/PluQ-I/actions/runs/39200932151), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/39200932012), [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/39200931982).
+- Interactive local testing of encrypted save/reload and supplier read-only requests is still pending. Do not say this UI has been end-to-end tested yet.
+
 ## Update — 2026-10-19: Admin API settings UI
 
 - Added `public/admin/api-settings.php` and the panel navigation link for Duitku, Digiflazz, and VIPayment.
