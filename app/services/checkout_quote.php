@@ -109,6 +109,9 @@ function checkout_quote(PDO $pdo, array $input): array
 
     require_once __DIR__ . '/game_fields.php';
     $schema = catalog_game_account_schema($pdo, $slug);
+    if (!$schema['checkout_supported']) {
+      throw new DomainException('Form akun game ini belum memiliki pemetaan otomatis yang aman. Checkout dinonaktifkan sampai kebutuhan ID, zone, atau server dipastikan.');
+    }
     $fields = $schema['fields'];
     $keys=[]; $normalized=[];
     foreach ($fields as $field) {
