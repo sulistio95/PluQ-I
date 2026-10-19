@@ -40,6 +40,8 @@ function vipayment_post(string $path, array $parameters = []): array
         CURLOPT_POSTFIELDS => http_build_query($payload, '', '&', PHP_QUERY_RFC3986),
         CURLOPT_HTTPHEADER => ['Accept: application/json', 'Content-Type: application/x-www-form-urlencoded'],
         CURLOPT_RETURNTRANSFER => true,
+        // VIPayment whitelist may accept IPv4 only; force all requests through IPv4.
+        CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
         CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_TIMEOUT => 20,
         CURLOPT_FOLLOWLOCATION => false,
