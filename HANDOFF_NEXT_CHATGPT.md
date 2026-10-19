@@ -1,3 +1,11 @@
+## Verifikasi katalog Habis — 2026-10-19
+
+- Pemeriksaan GitHub Actions setelah fitur nominal Habis menemukan kegagalan integrasi MySQL: `tests/provider-budget-reservation-mysql-integration.php` masih mengharapkan katalog menghilangkan penawaran yang melampaui sisa anggaran supplier. Harapan itu sudah tidak sesuai keputusan baru, karena nominal harus tetap terlihat dengan `is_available=false`.
+- Memperbarui tes integrasi agar memastikan nominal tetap muncul sebagai tidak tersedia ketika sisa anggaran tidak cukup; tes tetap memastikan `checkout_quote()` menolak transaksi itu di sisi server.
+- Commit koreksi tes: `0437cc493ca2ec3cd07203355938f3a4f76a082a`. GitHub Actions untuk commit ini berjalan saat catatan diperbarui; periksa hasil terbaru sebelum uji lokal.
+- CI sebelumnya: PHP quality dan PHP/JavaScript syntax lulus; fulfillment safety gagal hanya pada assertion katalog yang usang, sebelum tes integrasi berikutnya dijalankan. Jangan menyebut seluruh CI lulus sampai run setelah koreksi selesai.
+- Pengguna akan menguji di mesin lokal setelah hasil CI selesai. Tetap nonaktifkan pembayaran, pesanan supplier, dan backup Google Drive.
+
 ## Update — 2026-10-19: Keputusan katalog untuk nominal habis
 
 - Keputusan pengguna: jika ada beberapa supplier untuk nominal yang sama, pilih penawaran termurah dari supplier yang memenuhi syarat. Jika tidak ada supplier yang tersedia, nominal tetap ditampilkan dengan label **Habis**.
