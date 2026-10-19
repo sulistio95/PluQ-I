@@ -1,0 +1,2 @@
+Options -Indexes
+RemoveHandler .php .php8 .phtml .phar .cgi .pl .py .sh
