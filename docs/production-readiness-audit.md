@@ -1,3 +1,12 @@
+
+## Admin template settings — 2026-10-19
+
+- Added `public/admin/template-settings.php` and linked it from the admin navigation as **Pengaturan Template**.
+- The page supports creating/editing banners using an HTTPS image URL, optional click-through destination, display order, and active/inactive status. Active banners are already exposed by the existing `GET /api/banners` catalog endpoint via `catalog_banners()`.
+- Banner changes require an authenticated ADMIN/SUPER_ADMIN role, CSRF validation, and write audit-log entries. Deactivation preserves the record instead of deleting it.
+- This first iteration uses image URLs; direct file upload and scheduling are not implemented in this page yet. The homepage slider's visual behavior (3-second autoplay, loop, arrows, indicators, pause-on-hover, mobile swipe) still needs browser verification and may require frontend changes if not already present.
+- No real browser/database end-to-end test or GitHub Actions result is claimed for this commit. Keep checkout, supplier orders, and Drive backup disabled while testing.
+
 # PluQ-I implementation and readiness audit
 
 Audit baseline: GitHub default branch at the time this file was added. This is a source-code review, not a live-hosting or payment certification.
