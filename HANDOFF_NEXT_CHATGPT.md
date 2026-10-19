@@ -1229,3 +1229,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Tetap nonaktifkan pembayaran checkout, pesanan supplier, dan backup Google Drive. Pratinjau katalog tidak mengaktifkan ketiganya.
 
 - Follow-up CI verification on commit `6a1527b2496f20207a626cdaa3f8071e089441de` passed: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/39234587186), [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/39234586979), and [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/39234586947). These CI checks do not exercise browser interaction or call the live VIPayment API.
+
+## Update — 2026-10-19: Panel konfigurasi form akun per game
+
+- Commit `4a17016b8d2cf7b7b97cbbff34f102743208184a` menambahkan `public/admin/game-fields.php`; commit `be413cf13c8f9c621f8fee98b8acab5b0dcbb7cf` menautkan halaman sebagai **Konfigurasi Form Akun** di navigasi admin.
+- Panel memungkinkan ADMIN/SUPER_ADMIN memilih game, membuat/mengubah kolom teks/angka/dropdown, menentukan kunci data, label, placeholder, required, regex opsional, urutan dan status aktif. Opsi dropdown ditulis satu per baris dengan format `nilai|Label`. Kolom dapat dinonaktifkan tanpa menghapus catatan konfigurasi.
+- Aksi perubahan memakai POST, token CSRF, pemeriksaan peran, prepared statements, transaksi, dan audit log. Dropdown aktif wajib memiliki setidaknya satu opsi. Data disimpan pada tabel `game_fields` dan `game_field_options` yang sudah disediakan migration 002.
+- **Status pengujian:** kode tersimpan di GitHub, tetapi lint PHP, uji browser, uji CSRF/role untuk halaman baru, dan pengujian database lokal belum dijalankan. Sesudah `git pull`, jalankan `php -l public/admin/game-fields.php` dan `php -l public/admin/index.php`, lalu buka panel admin dan konfigurasi satu game uji.
+- Contoh konfigurasi awal: Mobile Legends biasanya memerlukan `user_id` dan `zone_id`; HOK menggunakan `user_id`. Pastikan persyaratan masing-masing game benar sebelum mengaktifkan kolom. Halaman ini belum melakukan pengecekan nama akun ke game dan belum memastikan pemetaan kunci ke format request tiap supplier.
+- Jangan mengaktifkan checkout, pemesanan supplier, atau backup Google Drive. Setelah UI diuji, pekerjaan berikutnya adalah validasi akun sisi server serta pengujian mapping field per supplier sebelum transaksi diaktifkan.
