@@ -1268,3 +1268,12 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Jalur penghapusan file dibatasi ke URL relatif upload yang tepat; URL eksternal tidak dapat dipetakan menjadi path file lokal hanya karena memiliki path serupa. Commit: `9ef66075a549a93c361de259a85a0ef05b89271b`.
 - File `public/uploads/banners/.htaccess` menggunakan `Options -Indexes` dan `RemoveHandler` untuk ekstensi skrip. Ini defense-in-depth; file upload tetap hanya boleh berasal dari validator JPG/PNG/WebP, dan konfigurasi server hosting perlu diverifikasi.
 - PHP quality dan syntax lulus pada commit `9ef66075`; syntax lulus pada head `5a680240`. PHP quality dan fulfillment safety untuk head terbaru masih berjalan saat dicatat. Belum ada pengujian upload melalui browser, database lokal, atau hosting.
+
+
+## Pengaturan Template — icon game aktif — 2026-10-20
+
+- Menambahkan daftar **Icon Game List** pada `public/admin/template-settings.php`, hanya menampilkan game dengan status ACTIVE dari pilihan yang tersimpan pada Game List. Ikon menggunakan kolom `games.icon_url` yang sudah dipakai katalog; tidak perlu migration.
+- Unggah/ganti menerima JPG/PNG/WebP maks. 5 MB, memvalidasi MIME dan dimensi, menggunakan nama acak, serta menyimpan di `public/uploads/game-icons/`. Update database dan audit log berada dalam transaksi. Icon lokal sebelumnya dibersihkan setelah update berhasil.
+- Hapus icon mengosongkan `icon_url` dan menghapus file lokal terkelola jika ada, tanpa menghapus game/mapping. URL eksternal tidak dihapus dari server asal. Direktori memiliki `.htaccess` untuk menonaktifkan listing dan handler ekstensi skrip.
+- Commits: `41543b6e3cbce9bc97cb196d825f5e09faeef567`, `7164700e961485fe800a8feb97efd8372aeb9c1d`.
+- Runtime upload, homepage browser check, PHP lint, dan CI untuk perubahan ini belum diverifikasi pada saat pencatatan. Jalankan uji terkontrol sebelum deployment; pembayaran, supplier ordering, dan Drive backup tetap nonaktif.
