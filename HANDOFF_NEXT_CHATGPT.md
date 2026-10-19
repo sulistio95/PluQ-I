@@ -1370,3 +1370,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Menu banner kini menampilkan saran ukuran **1200 × 400 px (3:1, landscape)**. Bagian Icon Game List menampilkan saran **512 × 512 px (1:1, persegi)**. Keduanya hanya rekomendasi, bukan batas validasi; batas upload tetap 5 MB dan format JPG/PNG/WebP.
 - Commit kode: `7ee62fc3741ea01a0efcdb210246cd08a85f6ed5`.
 - Belum ada klaim bahwa PHP lint, GitHub Actions, browser, atau unggah/hapus file lokal sudah lolos untuk perubahan ini. Setelah pull, jalankan `php -l public/admin/template-settings.php`, lalu cek matriks pada desktop dan ponsel serta uji unggah/ganti/hapus icon dan banner. Checkout, supplier ordering, backup Google Drive, dan deployment tetap nonaktif selama pengujian.
+
+
+## Form data akun — hilangkan label Username dan helper text — 2026-10-20
+
+- Pada `public/index.php`, label **Username** dan teks awal `Isi data akun; username akan diperiksa otomatis jika API mendukungnya.` dihapus dari form pelanggan. Area hasil pengecekan dibiarkan kosong pada keadaan awal.
+- Pada `public/assets/catalog.js`, status kolom tidak wajib/tidak didukung tidak lagi menampilkan keterangan di area hasil username. Jika API benar-benar mendukung pemeriksaan, status pemeriksaan dan hasil nama akun tetap dapat ditampilkan secara dinamis; logika validasi akun dan perlindungan checkout tidak diubah.
+- Perubahan dimaksudkan agar pelanggan tidak menganggap pengecekan username wajib tersedia untuk setiap game. Tidak ada perubahan skema database.
+- Perubahan kode telah dikirim ke GitHub; browser dan alur cek username belum diuji langsung setelah perubahan. Jalankan `php -l public/index.php` dan uji game dengan dukungan cek username serta game tanpa dukungan.
