@@ -1,3 +1,9 @@
+## Hybrid pricing CI follow-up — 2026-10-19
+
+- First MySQL integration CI found a missing `SELECT` in the new percentage-profit subqueries in catalog and checkout quote. Corrected in commits `c27b930eeb75d330e9118e389fec54326b29ba3e` and `e3a8d3b87bceaa3b3411cbed16aa6defe37e6e48`.
+- PHP quality and syntax workflows passed before that SQL correction; MySQL integration failed at `catalog_products()`. Recheck the post-fix CI runs before considering verification complete.
+- No live payment, supplier order, or Google Drive backup was triggered.
+
 ## Update — 2026-10-19: Pengaturan keuntungan
 
 - Added `public/admin/pricing-settings.php`, linked as **Pengaturan Keuntungan** in admin navigation.
