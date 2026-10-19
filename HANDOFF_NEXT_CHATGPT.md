@@ -1427,3 +1427,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Endpoint tetap memakai `type=get-nickname`, `target=user_id`, dan `additional_target=zone_id/server` (kosong untuk game yang hanya memerlukan User ID). Pengecekan nickname tidak membuat order supplier.
 - Menambahkan tes unit pemetaan kode untuk delapan kode yang tersedia dalam daftar. Tes lokal dan panggilan API VIPayment live belum dijalankan pada saat commit; hasil nickname Free Fire perlu diuji dari browser dan log server setelah update.
 - Tetap jangan aktifkan pembayaran, pemesanan supplier, atau backup Google Drive selama pengujian.
+
+
+## 2026-10-20 — Pengecekan nickname dipisahkan dari supplier
+
+- Arah arsitektur diperbarui sesuai keputusan pengguna: pengecekan nickname tidak lagi memanggil endpoint Game Feature VIPayment atau memakai kode produk Digiflazz/VIPayment. Dibuat adapter terpisah `app/services/game_username_check.php` untuk API Game Check eksternal melalui HTTPS, cURL, validasi TLS, timeout, dan IPv4.
+- Kandidat API yang dipilih untuk integrasi awal adalah Game Check by Evo Game Store: `https://gamecheck.evogamestore.com/api/v1/check`. Dokumentasinya menyebut 8 game dan mewajibkan API key gratis melalui halaman request. API key disimpan di environment server `GAME_CHECK_API_KEY`, bukan JavaScript atau GitHub. Referensi dokumentasi: https://game-check.evogamestore.com/.
+- Cakupan awal yang dipetakan: Mobile Legends, Mobile Legends Region, Free Fire/Free Fire MAX, PUBG Mobile, Valorant, Genshin Impact, Honkai: Star Rail, dan Point Blank. Game lain—termasuk Honor of Kings—belum didukung oleh layanan ini dan harus menampilkan kondisi tidak tersedia, bukan mengklaim semua game dapat diverifikasi.
+- Metadata cek nickname kini tidak bergantung pada katalog produk, saldo, atau status supplier. Kode game checker dipisahkan dari kode produk top-up. Tambahan `GAME_CHECK_API_KEY=` dimasukkan ke `.env.example`.
+- Tes pemetaan schema diperbarui. Belum ada panggilan API live karena API key pengguna belum dikonfigurasi; PHP lint, browser, serta workflow CI perlu diverifikasi setelah perubahan. Tidak ada order supplier, pembayaran, atau backup Drive yang dibuat/diaktifkan.
