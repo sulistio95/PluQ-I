@@ -1201,3 +1201,15 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Hardening commit `ad20f9627f7b7b6a50bcc74a75cee373939bd1df`: edit tidak boleh memindahkan/mengubah field milik game lain hanya dengan memodifikasi POST; opsi lama dinonaktifkan ketika field bukan lagi tipe dropdown.
 - Frontend memakai `GET /api/games/{slug}/fields`. Regex/required di halaman publik memeriksa format input, bukan memvalidasi nickname ke server game. Setiap field harus dicocokkan dengan aturan game/provider; jangan mengasumsikan satu format untuk semua game.
 - Verifikasi CI setelah commit dan pengujian runtime/browser/database belum dikonfirmasi. Setelah pull, uji tambah/edit, dropdown, nonaktif/aktif, duplikasi key, dan tampilan form pada halaman depan. Checkout, supplier ordering, dan backup Drive harus tetap nonaktif.
+
+
+## Update — 2026-10-19: Form akun otomatis (branch belum merge)
+
+- Branch: `feature/automatic-game-account-form`. Belum masuk ke `main` dan belum diuji pada hosting.
+- Menghapus tautan admin **Konfigurasi Form Akun** dan menghapus `public/admin/game-fields.php`; tabel lama `game_fields`/`game_field_options` tidak dihapus agar data lama tetap tersedia.
+- Form dibuat otomatis: User ID untuk semua game; Zone ID untuk judul yang dikenali memakai zone (termasuk Mobile Legends, Genshin Impact, Honkai: Star Rail/Impact, dan beberapa judul lain); Server untuk nama game yang secara eksplisit menyebut server/region jika tidak ada aturan Zone ID.
+- Endpoint `GET /api/games/{slug}/fields` kini mengirim field hasil generator serta metadata apakah tersedia kode layanan VIPAY untuk pengecekan username.
+- Ditambahkan `POST /api/games/{slug}/check-username`: memanggil VIPayment `type=get-nickname` dengan `code`, `target`, dan `additional_target`; memakai pembatasan per sesi dan pesan aman untuk kegagalan. Pengecekan berjalan otomatis setelah kolom wajib terisi. Tidak ada pesanan supplier yang dibuat oleh endpoint ini.
+- Validasi kutipan checkout menggunakan schema generator, bukan konfigurasi manual `game_fields`. Email pembayaran dipindah keluar dari grid kolom akun.
+- Batas penting: API `services` VIPayment tidak mengembalikan skema kolom tiap game. Generator saat ini menggunakan aturan nama game yang konservatif, bukan schema formal dari supplier. Unknown game hanya mendapat User ID. Username check hanya tersedia jika ada kode produk VIPAY aktif; hasil runtime perlu diuji sebelum mengaktifkan checkout.
+- Tes unit schema dan workflow PHP quality ditambahkan. Belum ada klaim bahwa CI, browser, database, username lookup live, checkout, pembayaran, supplier ordering, atau backup Drive sudah lolos.
