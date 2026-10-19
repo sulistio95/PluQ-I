@@ -1,3 +1,11 @@
+## Homepage layout clarification — 2026-10-19
+
+- Updated `public/index.php` so the existing **PluQ** brand remains in its original top-left header position and appearance; it was not redesigned or moved.
+- Homepage content order is now: unchanged top-left PluQ brand → banner area → game search field → game catalog/list. Search filtering remains connected to the existing catalog JavaScript.
+- Updated `public/assets/catalog.css` to make the search field full-width below the banner and keep spacing responsive on mobile. Existing banner rotation code still advances every 3 seconds when multiple active banners exist.
+- Source change committed as `3fac5a148b383e962cdf6f6296dcf32fb82ec75a`; CSS commit: `7c7e73019485a28df667ca10989249521b115aeb`.
+- Runtime/browser screenshot verification and GitHub Actions verification are not yet claimed. Check layout at desktop/mobile sizes and confirm the banner/search/list order once local browser access is available. Keep checkout, supplier ordering, and Google Drive backup disabled.
+
 
 ## Admin template settings — 2026-10-19
 
