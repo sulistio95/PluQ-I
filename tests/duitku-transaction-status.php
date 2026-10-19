@@ -12,6 +12,21 @@ function status_test_assert(bool $condition, string $message): void
 }
 
 $config = ['merchant_code' => 'DTEST', 'api_key' => 'test-only-secret'];
+
+// Invoice expiry is bounded and defaults to 30 minutes. The test avoids database credentials.
+putenv('DUITKU_EXPIRY_MINUTES=');
+status_test_assert(duitku_expiry_minutes() === 30, 'Invoice expiry should default to 30 minutes.');
+putenv('DUITKU_EXPIRY_MINUTES=45');
+status_test_assert(duitku_expiry_minutes() === 45, 'Invoice expiry should honor a valid configured value.');
+foreach (['4', '1441', '30.5', 'abc'] as $invalidExpiry) {
+    putenv('DUITKU_EXPIRY_MINUTES=' . $invalidExpiry);
+    try {
+        duitku_expiry_minutes();
+        status_test_assert(false, 'Invalid invoice expiry must be rejected: ' . $invalidExpiry);
+    } catch (RuntimeException $expected) {
+    }
+}
+putenv('DUITKU_EXPIRY_MINUTES=');
 $orderId = str_repeat('a', 26);
 $expectedSignature = hash_hmac('sha256', 'DTEST' . $orderId, 'test-only-secret');
 status_test_assert(duitku_transaction_status_signature($config, $orderId) === $expectedSignature, 'Status query signature must use HMAC-SHA256 over merchant code + order ID.');
