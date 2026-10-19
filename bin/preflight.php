@@ -24,14 +24,25 @@ foreach ($requiredExtensions as $extension) {
     $add('PHP extension: ' . $extension, extension_loaded($extension), extension_loaded($extension) ? 'loaded' : 'missing');
 }
 
+$appEnv = strtolower(trim((string) (getenv('APP_ENV') ?: 'production')));
+$isLocalEnvironment = $appEnv === 'local';
 $appUrl = (string) $config['url'];
-$add('APP_URL uses HTTPS', str_starts_with(strtolower($appUrl), 'https://'), $appUrl !== '' ? 'configured (value not echoed)' : 'not configured');
+$usesHttps = str_starts_with(strtolower($appUrl), 'https://');
+$add(
+    'APP_URL uses HTTPS',
+    $isLocalEnvironment || $usesHttps,
+    $isLocalEnvironment ? 'not required for local development' : ($usesHttps ? 'configured (value not echoed)' : ($appUrl !== '' ? 'HTTPS required outside local development' : 'not configured'))
+);
 $appKey = (string) getenv('APP_KEY');
 $add('APP_KEY strength', strlen($appKey) >= 32, strlen($appKey) >= 32 ? 'present; value hidden' : 'missing or shorter than 32 characters');
 $schedulerToken = (string) $config['scheduler_token'];
 $add('SCHEDULER_TOKEN strength', strlen($schedulerToken) >= 32, strlen($schedulerToken) >= 32 ? 'present; value hidden' : 'missing or shorter than 32 characters');
 $debug = filter_var(getenv('APP_DEBUG') ?: 'false', FILTER_VALIDATE_BOOLEAN);
-$add('APP_DEBUG disabled', !$debug, $debug ? 'must be false in production' : 'disabled');
+$add(
+    'APP_DEBUG disabled',
+    $isLocalEnvironment || !$debug,
+    $isLocalEnvironment ? 'debug allowed for local development' : ($debug ? 'must be false outside local development' : 'disabled')
+);
 $checkoutPaymentsEnabled = filter_var(getenv('CHECKOUT_PAYMENTS_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
 $add('Checkout payments stay disabled', !$checkoutPaymentsEnabled, $checkoutPaymentsEnabled ? 'WARNING: enabled; turn off until staging checks pass' : 'disabled');
 $supplierEnabled = filter_var(getenv('SUPPLIER_ORDERS_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
