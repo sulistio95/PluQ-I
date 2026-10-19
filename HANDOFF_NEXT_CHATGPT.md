@@ -1,3 +1,11 @@
+## Update — 2026-10-19: Keputusan katalog untuk nominal habis
+
+- Keputusan pengguna: jika ada beberapa supplier untuk nominal yang sama, pilih penawaran termurah dari supplier yang memenuhi syarat. Jika tidak ada supplier yang tersedia, nominal tetap ditampilkan dengan label **Habis**.
+- Implementasi: `catalog_select_customer_products()` tetap mengutamakan penawaran tersedia; bila semua penawaran setara tidak tersedia, pilih penawaran cache termurah dan kembalikan `is_available=false`.
+- Frontend menampilkan label **Habis** dan tidak menyediakan tombol pilih untuk item yang tidak tersedia. Item yang terlihat habis bukan izin untuk checkout; validasi server tetap wajib menolak produk/supplier yang tidak tersedia.
+- Tes regresi katalog diperbarui untuk mencakup nominal dengan satu supplier tidak tersedia, dua supplier tidak tersedia, pilihan supplier termurah yang tersedia, dan deduplikasi nominal.
+- Belum mengklaim lint, CI, atau pengujian browser/database setelah perubahan. Pembayaran, pemesanan supplier, dan backup Drive tetap nonaktif.
+
 ## Update — 2026-10-19: Paksa koneksi API VIPayment ke IPv4
 
 - Commit kode: `e034368f646d6689448b19f392903d52945bf7bc`.
