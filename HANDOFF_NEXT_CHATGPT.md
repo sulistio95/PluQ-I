@@ -1270,5 +1270,7 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Commit perbaikan fixture: `07ad701af829114d387edf993c1007c79121c658` dan `8f47fbb14d0a5c4c17a56ac2cca18cc803e78a54`.
 - Pada commit `8f47fbb14d0a5c4c17a56ac2cca18cc803e78a54`, ketiga workflow GitHub Actions selesai dengan sukses: PHP quality checks, PHP/JavaScript syntax checks, dan Fulfillment safety tests (termasuk tes integrasi MySQL dan checkout concurrency).
 - Hasil ini adalah pengujian otomatis di runner GitHub dengan MySQL test dan Duitku mock/sandbox fixture. Ini bukan pengujian pada hosting, browser pengguna, API VIPayment langsung, pembayaran nyata, supplier order nyata, atau backup Google Drive.
-- Setelah commit catatan ini, pastikan ulang workflow pada head PR terbaru sebelum merge. Jika seluruh workflow masih sukses, PR #3 dapat digabungkan ke `main`; pengguna kemudian dapat mengambil `main` dan melakukan uji lokal.
+- Ketiga workflow diulang pada head PR terbaru `97078e1f07681a050b75f2fb74d529236c882db7` setelah pembaruan catatan, dan semuanya sukses. PR #3 kemudian berhasil di-squash-merge ke `main` pada 2026-10-19.
+- Merge commit di `main`: `0b246f8d7aaaa3d3506530e9d88e7874b65447c8`. GitHub belum melaporkan workflow run terpisah untuk merge commit tersebut saat catatan ini diperbarui; hasil CI yang terverifikasi adalah seluruh workflow sukses pada head PR tepat sebelum merge.
+- Pengguna dapat mengambil branch `main` untuk pengujian lokal. Jangan aktifkan transaksi produksi sebelum field akun dan pengecekan nickname diuji untuk game/provider yang digunakan.
 - Batas keselamatan tetap berlaku: mapping nama game bukan schema resmi VIPayment; jangan aktifkan transaksi produksi sebelum uji lokal memverifikasi field dan nickname check per game.
