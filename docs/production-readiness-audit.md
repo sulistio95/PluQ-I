@@ -1261,3 +1261,10 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - `public/uploads/banners/.htaccess` menonaktifkan directory listing dan menolak akses ke file berekstensi skrip. Hosting harus mengizinkan PHP menulis folder upload dan batas `upload_max_filesize`/`post_max_size` harus sesuai.
 - Commits: `f1824eb05e28a9eebc3c41fbe0bf838a75418c4e`, `1fc141bf71ac435888bf9a9d7bf4703b1eac84d2`, `c78151b34daa8ef3157dce7c039c593f55b54b3a`.
 - Belum ada klaim lint, CI, browser, atau uji hosting. Verifikasi workflow CI dan lakukan uji lokal tambah/edit/ganti/nonaktif/hapus. Jangan aktifkan checkout, pesanan supplier, atau backup Drive.
+
+
+## Follow-up keamanan upload banner — 2026-10-20
+
+- Jalur penghapusan file dibatasi ke URL relatif upload yang tepat; URL eksternal tidak dapat dipetakan menjadi path file lokal hanya karena memiliki path serupa. Commit: `9ef66075a549a93c361de259a85a0ef05b89271b`.
+- File `public/uploads/banners/.htaccess` menggunakan `Options -Indexes` dan `RemoveHandler` untuk ekstensi skrip. Ini defense-in-depth; file upload tetap hanya boleh berasal dari validator JPG/PNG/WebP, dan konfigurasi server hosting perlu diverifikasi.
+- PHP quality dan syntax lulus pada commit `9ef66075`; syntax lulus pada head `5a680240`. PHP quality dan fulfillment safety untuk head terbaru masih berjalan saat dicatat. Belum ada pengujian upload melalui browser, database lokal, atau hosting.
