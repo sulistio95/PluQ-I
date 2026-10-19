@@ -1378,3 +1378,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Pada `public/assets/catalog.js`, status kolom tidak wajib/tidak didukung tidak lagi menampilkan keterangan di area hasil username. Jika API benar-benar mendukung pemeriksaan, status pemeriksaan dan hasil nama akun tetap dapat ditampilkan secara dinamis; logika validasi akun dan perlindungan checkout tidak diubah.
 - Perubahan dimaksudkan agar pelanggan tidak menganggap pengecekan username wajib tersedia untuk setiap game. Tidak ada perubahan skema database.
 - Perubahan kode telah dikirim ke GitHub; browser dan alur cek username belum diuji langsung setelah perubahan. Jalankan `php -l public/index.php` dan uji game dengan dukungan cek username serta game tanpa dukungan.
+
+
+## Update — 2026-10-20: Pemeriksaan nickname VIPayment opsional
+- Endpoint `POST /api/games/{slug}/check-username` pada `public/index.php` sudah memanggil VIPayment `POST /game-feature` dengan `type=get-nickname`, `code`, `target`, dan `additional_target`; kredensial/signature dan koneksi IPv4 memakai helper `vipayment_post()`.
+- Perbaikan frontend di `public/assets/catalog.js` (commit `d32ae43c433cde7487efcd5ac70d4e7c034bf778`): jika server mengembalikan HTTP 409 karena pemeriksaan nickname tidak didukung atau pemetaan/kode layanan tidak tersedia, hasil tetap kosong dan akun tidak diblokir oleh pemeriksaan nickname. Validasi kolom akun biasa tetap berlaku.
+- Respons nickname sukses tetap ditampilkan. Error validasi ID dari API (mis. HTTP 422), timeout/kegagalan jaringan, atau pembatasan laju tidak dianggap sebagai dukungan yang tidak tersedia; hasil error tetap terlihat dan pilihan nominal tetap tertahan sampai pemeriksaan berhasil.
+- Belum menjalankan PHP lint, JavaScript syntax check, atau panggilan API nyata dengan kredensial VIPayment. Verifikasi lokal: `php -l public/index.php`, `node --check public/assets/catalog.js`, lalu uji satu game yang mendukung nickname dan satu game yang tidak mendukungnya. Jangan mengaktifkan pembayaran/pemesanan supplier untuk pengujian ini.
