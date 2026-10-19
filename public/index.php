@@ -31,7 +31,7 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
  try {
   require_once PLUQI_ROOT.'/config/database.php';
   require_once PLUQI_ROOT.'/app/services/game_fields.php';
-  require_once PLUQI_ROOT.'/app/services/vipayment.php';
+  require_once PLUQI_ROOT.'/app/services/game_username_check.php';
   $pdo = database();
   $schema = catalog_game_account_schema($pdo, $m[1]);
   if (!$schema['checkout_supported']) json_response(['error'=>'account_schema_unverified','message'=>'Pemetaan akun game ini belum diverifikasi.'],409);
@@ -59,14 +59,10 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
   $recent[$fingerprint] = $now;
   $_SESSION['pluqi_username_checks'] = $recent;
   $serviceCode = game_account_username_check_code((string)$schema['game']['slug'], (string)$schema['game']['name']);
-  if ($serviceCode === null) json_response(['error'=>'username_check_unavailable','message'=>'Kode khusus pengecekan username belum tersedia untuk game ini.'],409);
+  if ($serviceCode === null) json_response(['error'=>'username_check_unavailable','message'=>'API pengecekan username belum mendukung game ini.'],409);
   $userId = (string)($normalized['user_id'] ?? '');
   $zoneId = (string)($normalized['zone_id'] ?? $normalized['server'] ?? '');
-  $response = vipayment_post('/game-feature', [
-   'type'=>'get-nickname','code'=>$serviceCode,'target'=>$userId,'additional_target'=>$zoneId
-  ]);
-  $username = is_scalar($response['data'] ?? null) ? trim((string)$response['data']) : '';
-  if ($username === '') json_response(['error'=>'username_not_found','message'=>'Username tidak dapat diverifikasi. Periksa kembali ID game dan server/zone.'],422);
+  $username = game_username_check($serviceCode, $userId, $zoneId);
   json_response(['data'=>['username'=>$username,'verified'=>true]]);
  } catch (DomainException $e) {
   json_response(['error'=>'game_unavailable','message'=>'Game tidak tersedia.'],404);
