@@ -3,9 +3,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/provider_http.php';
 require_once __DIR__ . '/api_secret_crypto.php';
 
-function duitku_expiry_minutes(): int
+function duitku_expiry_minutes(?string $configured = null): int
 {
-    $raw = trim((string)pluqi_api_config_value('DUITKU_EXPIRY_MINUTES'));
+    $raw = trim($configured ?? pluqi_api_config_value('DUITKU_EXPIRY_MINUTES'));
     if ($raw === '') return 30;
     if (!ctype_digit($raw) || (int)$raw < 5 || (int)$raw > 1440) {
         throw new RuntimeException('Masa berlaku invoice Duitku harus berupa bilangan bulat 5–1440 menit.');
