@@ -1418,3 +1418,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Pada branch `fix/username-status-without-label`, `public/index.php` menghapus label `Username` tetapi mempertahankan `#username-check` dan `#username-result`. `public/assets/catalog.js` menampilkan pesan generik `Pengecekan username gagal` untuk kegagalan lookup yang dicoba.
 - Untuk Free Fire/HOK yang lookup-nya dinonaktifkan karena kode/dukungan belum dikonfirmasi, area status tetap kosong; User ID dan form tetap tampil.
 - Lint PHP/JS dan uji browser belum dilakukan. Jangan aktifkan pembayaran, pesanan supplier, atau backup Drive.
+
+
+## 2026-10-20 — Koreksi kode khusus VIPayment Get Nickname
+
+- Pengguna memberikan daftar kode resmi dari komentar fitur VIPayment Get Nickname. Kode lookup Free Fire adalah `free-fire`, bukan kode produk top-up `ff5-s13`; daftar juga mencantumkan `mobile-legends`, `mobile-legends-region`, `pubgm`, `valorant`, `genshin-impact`, `honkai-star-rail`, dan `pointblank`.
+- Mengganti pemetaan cek nickname agar memakai kode khusus Game Feature berdasarkan game, bukan memilih kode produk VIPAY termurah dari tabel katalog. Kode lookup dipisahkan dari kode top-up. Honor of Kings tetap tidak didukung karena tidak tercantum pada daftar yang diberikan.
+- Endpoint tetap memakai `type=get-nickname`, `target=user_id`, dan `additional_target=zone_id/server` (kosong untuk game yang hanya memerlukan User ID). Pengecekan nickname tidak membuat order supplier.
+- Menambahkan tes unit pemetaan kode untuk delapan kode yang tersedia dalam daftar. Tes lokal dan panggilan API VIPayment live belum dijalankan pada saat commit; hasil nickname Free Fire perlu diuji dari browser dan log server setelah update.
+- Tetap jangan aktifkan pembayaran, pemesanan supplier, atau backup Google Drive selama pengujian.
