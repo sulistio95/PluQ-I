@@ -72,7 +72,10 @@ function checkout_quote(PDO $pdo, array $input): array
     // Match the same normalized product name used by catalog_products(), but only among currently eligible offers.
     $cheapestStmt = $pdo->prepare("SELECT p.id,
         p.base_price + (
-          SELECT rr.profit_amount FROM pricing_rules rr
+          CASE WHEN rr.profit_type='PERCENTAGE'
+            THEN ROUND(p.base_price * rr.profit_value / 100, 0)
+            ELSE rr.profit_value END
+          FROM pricing_rules rr
           WHERE rr.status='ACTIVE' AND rr.min_amount <= p.base_price
             AND (rr.max_amount IS NULL OR rr.max_amount >= p.base_price)
           ORDER BY rr.min_amount DESC, rr.id DESC LIMIT 1
