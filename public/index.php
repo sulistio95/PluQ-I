@@ -19,7 +19,7 @@ if ($method === 'GET' && in_array($path,['/api/games','/api/banners'],true)) {
  } catch (Throwable $e) { json_response(['error'=>'catalog_unavailable'],503); }
 }
 if ($method==='GET' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/fields$#D',$path,$m)===1) {
- try { require_once PLUQI_ROOT.'/config/database.php'; require_once PLUQI_ROOT.'/app/services/game_fields.php'; $schema=catalog_game_account_schema(database(),$m[1]); json_response(['data'=>$schema['fields'],'meta'=>['username_check_available'=>$schema['username_check_available']]]); }
+ try { require_once PLUQI_ROOT.'/config/database.php'; require_once PLUQI_ROOT.'/app/services/game_fields.php'; $schema=catalog_game_account_schema(database(),$m[1]); json_response(['data'=>$schema['fields'],'meta'=>['username_check_available'=>$schema['username_check_available'],'checkout_supported'=>$schema['checkout_supported']]]); }
  catch (Throwable $e) { json_response(['error'=>'game_fields_unavailable'],503); }
 }
 if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username$#D',$path,$m)===1) {
