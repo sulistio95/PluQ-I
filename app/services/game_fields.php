@@ -48,6 +48,15 @@ function game_account_fields_for_game(string $slug, string $name): array
     return $fields;
 }
 
+/** Only permit checkout for game schemas whose account target mapping is reviewed in code. */
+function game_account_schema_is_supported(string $slug, string $name, array $fields): bool
+{
+    $identity = strtolower(trim($slug . ' ' . $name));
+    $knownGame = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|honor[\\s_-]*of[\\s_-]*kings?|\\bhok\\b|free[\\s_-]*fire|pubg[\\s_-]*mobile|genshin|honkai[\\s_-]*(star[\\s_-]*rail|impact)|call[\\s_-]*of[\\s_-]*duty|\\bcod\\b|valorant|arena[\\s_-]*of[\\s_-]*valor|wild[\\s_-]*rift|blood[\\s_-]*strike|farlight[\\s_-]*84|sausage[\\s_-]*man|super[\\s_-]*sus/i', $identity) === 1;
+    $hasUnmappedServer = count($fields) > 1 && ($fields[1]['field_key'] ?? '') === 'server';
+    return $knownGame && !$hasUnmappedServer;
+}
+
 /** Return generated fields and whether VIPayment has a service code for nickname lookup. */
 function catalog_game_account_schema(PDO $pdo, string $slug): array
 {
@@ -58,10 +67,8 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
         throw new DomainException('Game tidak tersedia.');
     }
 
-    $identity = strtolower(trim((string)$game['slug'] . ' ' . (string)$game['name']));
-    $knownGame = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|honor[\\s_-]*of[\\s_-]*kings?|\\bhok\\b|free[\\s_-]*fire|pubg[\\s_-]*mobile|genshin|honkai[\\s_-]*(star[\\s_-]*rail|impact)|call[\\s_-]*of[\\s_-]*duty|\\bcod\\b|valorant|arena[\\s_-]*of[\\s_-]*valor|wild[\\s_-]*rift|blood[\\s_-]*strike|farlight[\\s_-]*84|sausage[\\s_-]*man|super[\\s_-]*sus/i', $identity) === 1;
     $fields = game_account_fields_for_game((string)$game['slug'], (string)$game['name']);
-    $hasUnmappedServer = count($fields) > 1 && $fields[1]['field_key'] === 'server';
+    $checkoutSupported = game_account_schema_is_supported((string)$game['slug'], (string)$game['name'], $fields);
     $check = $pdo->prepare("SELECT 1
         FROM products p
         INNER JOIN providers pr ON pr.id=p.provider_id
@@ -76,7 +83,7 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
     return [
         'game' => ['slug' => (string)$game['slug'], 'name' => (string)$game['name']],
         'fields' => $fields,
-        'checkout_supported' => $knownGame && !$hasUnmappedServer,
+        'checkout_supported' => $checkoutSupported,
         'username_check_available' => (bool)$check->fetchColumn(),
     ];
 }
