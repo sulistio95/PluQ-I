@@ -68,9 +68,10 @@ function catalog_products(PDO $pdo, string $slug): array
 
 /**
  * Collapse equivalent supplier offers to one customer-facing product.
- * Prefer any currently eligible offer, then the cheapest offer at that eligibility level.
- * Offers with no eligible supplier are omitted rather than shown as purchasable choices.
- * Kept separate from SQL so provider-zero-balance behavior can be regression-tested.
+ * Prefer the cheapest eligible offer when at least one supplier can fulfill it.
+ * If none are eligible, keep the cheapest cached offer visible with is_available=false
+ * so the storefront can show the denomination as "Habis". Checkout must independently
+ * reject unavailable products; visibility is not permission to purchase.
  */
 function catalog_select_customer_products(array $rows): array
 {
@@ -92,8 +93,9 @@ function catalog_select_customer_products(array $rows): array
         }
     }
 
-    // Do not reveal an unavailable supplier offer as a product card to customers.
-    $out = array_values(array_filter($chosen, static fn(array $row): bool => (int) ($row['is_available'] ?? 0) === 1));
+    // Keep one row per denomination even when every supplier is unavailable.
+    // The frontend labels these rows "Habis"; checkout must still validate availability server-side.
+    $out = array_values($chosen);
     foreach ($out as &$row) {
         $row['base_price'] = (float) $row['base_price'];
         $row['selling_price'] = (float) $row['selling_price'];
