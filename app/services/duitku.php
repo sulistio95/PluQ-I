@@ -3,6 +3,16 @@ declare(strict_types=1);
 require_once __DIR__ . '/provider_http.php';
 require_once __DIR__ . '/api_secret_crypto.php';
 
+function duitku_expiry_minutes(): int
+{
+    $raw = trim((string)pluqi_api_config_value('DUITKU_EXPIRY_MINUTES'));
+    if ($raw === '') return 30;
+    if (!ctype_digit($raw) || (int)$raw < 5 || (int)$raw > 1440) {
+        throw new RuntimeException('Masa berlaku invoice Duitku harus berupa bilangan bulat 5–1440 menit.');
+    }
+    return (int)$raw;
+}
+
 function duitku_config(): array
 {
     if (strtolower((string)(getenv('DUITKU_ENV') ?: 'sandbox')) !== 'sandbox') {
@@ -48,7 +58,7 @@ function duitku_create_payment(array $config, string $orderId, int $amount, stri
         'callbackUrl' => $config['callback_url'],
         'returnUrl' => $config['return_url'],
         'signature' => $signature,
-        'expiryPeriod' => 30,
+        'expiryPeriod' => duitku_expiry_minutes(),
     ];
     $response = provider_http_json($config['endpoint'], $payload, [], 20);
     $url = (string)($response['paymentUrl'] ?? '');
