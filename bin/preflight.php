@@ -72,6 +72,7 @@ try {
             '009_refund_order_latest_index',
             '010_checkout_payload_fingerprint',
             '011_provider_budget_reservations',
+            '012_pricing_rules_hybrid',
         ] as $migration) {
             $ok = in_array($migration, $applied, true);
             $add('Database migration: ' . $migration, $ok, $ok ? 'applied' : 'missing; apply migrations in order');
