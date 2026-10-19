@@ -1314,3 +1314,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Menambahkan tautan **Harga Modal Supplier** di navigasi panel admin.
 - Commit halaman: `10f73ac1a015b9fe8263b146961f9ead61d88175`; commit navigasi: `4369ea04c34c175a1488bee85c6825feaa27b424`.
 - Belum menjalankan PHP lint atau pengujian database/browser untuk halaman baru. Setelah `git pull origin main`, jalankan `php -l public/admin/supplier-prices.php` dan `php -l public/admin/index.php`, lalu buka **Harga Modal Supplier** dari panel admin. Jika tabel kosong, sinkronkan katalog supplier dan pastikan pemetaan game sudah disimpan. Pembayaran, pesanan supplier, dan backup Drive tetap nonaktif.
+
+
+## Update — 2026-10-19: Pengurutan harga modal
+
+- Menambahkan pilihan urutan di halaman **Harga Modal Supplier**: **Terendah ke tertinggi** dan **Tertinggi ke terendah**, berdasarkan harga modal supplier.
+- Filter supplier, game, dan pencarian tetap dapat dipakai bersamaan dengan pengurutan.
+- Commit: `4b42f2ab980210db77f7f1238a48695e46f0afca`.
+- Belum menjalankan PHP lint atau uji browser lokal setelah perubahan ini. Untuk mengambil perubahan: `git pull origin main`; kemudian periksa dengan `php -l public/admin/supplier-prices.php`.
