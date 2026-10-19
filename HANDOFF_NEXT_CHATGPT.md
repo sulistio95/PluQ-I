@@ -1322,3 +1322,15 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Filter supplier, game, dan pencarian tetap dapat dipakai bersamaan dengan pengurutan.
 - Commit: `4b42f2ab980210db77f7f1238a48695e46f0afca`.
 - Belum menjalankan PHP lint atau uji browser lokal setelah perubahan ini. Untuk mengambil perubahan: `git pull origin main`; kemudian periksa dengan `php -l public/admin/supplier-prices.php`.
+
+
+## Update — 2026-10-20: Pilih API untuk dihapus dan profil API custom
+
+- Mengubah **Pengaturan API → Hapus API tersimpan** menjadi satu dropdown untuk memilih provider yang tepat: Duitku, Digiflazz, VIPayment, atau profil custom tertentu. Tombol hapus tidak lagi membuat satu tombol per kolom kredensial.
+- Menghapus satu provider bawaan menghapus semua key/secret/URL terkait yang disimpan di `app_settings` dalam satu transaksi DB dan mencatat audit log. Profil custom dihapus berdasarkan ID profil yang dipilih. Data transaksi, pesanan, mapping game, dan katalog sengaja dipertahankan agar riwayat dan relasi tetap utuh.
+- Menambahkan form **Tambah API custom** dengan nama, jenis Payment Gateway/Supplier, HTTPS base URL, metode autentikasi, API key, secret, dan token. Profil beserta kredensial disimpan terenkripsi menggunakan Sodium dan dapat dipilih secara spesifik pada dropdown penghapusan.
+- Batas integrasi penting: profil custom saat ini adalah penyimpanan konfigurasi terenkripsi, belum otomatis menjadi adapter pembayaran/supplier. Sebelum digunakan untuk checkout, pembayaran, sinkronisasi katalog, atau fulfillment, perlu adapter khusus provider, validasi signature/callback, pemetaan respons, dan tes sandbox.
+- Menghapus konfigurasi database tidak mengubah nilai yang ditetapkan di `.env` atau environment hosting; hapus nilai tersebut terpisah bila ingin benar-benar mengganti kredensial. Riwayat transaksi dan katalog tidak ikut dihapus.
+- Commit kode: `5b551871ba7c151e0a790581e8cafb20eff212ac`.
+- GitHub Actions pada commit ini sedang berjalan ketika catatan ditulis: [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/39319602896), [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/39319602645), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/39319602539). Jangan menganggapnya lulus sampai status final diperiksa. PHP lint lokal serta pengujian halaman di browser/database masih pending.
+- Tetap biarkan pembayaran, pesanan supplier, dan backup Google Drive nonaktif selama pengujian.
