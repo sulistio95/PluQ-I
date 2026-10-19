@@ -176,8 +176,8 @@ function duitku_status_config(): array
     if (strtolower((string)(getenv('DUITKU_ENV') ?: 'sandbox')) !== 'sandbox') {
         throw new RuntimeException('Only sandbox transaction-status lookups are enabled in this build.');
     }
-    $merchant = trim((string)getenv('DUITKU_MERCHANT_CODE'));
-    $key = trim((string)getenv('DUITKU_API_KEY'));
+    $merchant = trim((string)pluqi_api_config_value('DUITKU_MERCHANT_CODE'));
+    $key = trim((string)pluqi_api_config_value('DUITKU_API_KEY'));
     if ($merchant === '' || $key === '') {
         throw new RuntimeException('Duitku sandbox merchant code and API key are required for status lookup.');
     }
