@@ -1300,3 +1300,13 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Perubahan `public/assets/catalog.js` commit `d32ae43c433cde7487efcd5ac70d4e7c034bf778`: respons HTTP 409 (cek nickname tidak tersedia/pemetaan tidak ada) sekarang mengosongkan hasil dan tidak menghalangi alur berdasarkan validasi akun biasa. Nickname yang berhasil tetap ditampilkan.
 - API error 422, error jaringan/503, atau throttling tetap diperlakukan sebagai kegagalan pemeriksaan; pelanggan perlu mencoba lagi. Belum ada pengujian runtime atau panggilan API nyata setelah perubahan.
 - Pemeriksaan yang masih diperlukan: `php -l public/index.php`, `node --check public/assets/catalog.js`, lalu uji game dengan nickname check aktif dan game tanpa dukungan. Pembayaran, order supplier, dan backup Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: Diagnosis kegagalan cek nickname VIPayment
+
+- Pengguna melaporkan bahwa cek nickname Free Fire muncul di aplikasi VIPayment, tetapi PluQ-I menampilkan pesan umum `Pengecekan username sedang tidak tersedia`.
+- Kemungkinan yang perlu diverifikasi: kode produk termurah yang dipilih PluQ-I belum tentu kode yang cocok untuk `get-nickname`; parameter request atau respons penolakan VIPayment juga bisa menjadi penyebab. Belum ada bukti cukup untuk menyimpulkan penyebab pasti.
+- Commit `ff0bc98a510f2f269340576132bafef18d874060` menambahkan `error_log` server-side pada catch kegagalan cek nickname. Log mencatat slug game dan pesan exception yang dibatasi; kredensial tidak dimasukkan ke respons publik. Respons pelanggan tetap generik.
+- Langkah berikutnya: reproduksi sekali untuk FF, lalu periksa PHP/web-server error log hosting untuk baris berawalan `[PluQ-I username-check]`. Jangan mengirim API ID/key/sign, payload lengkap, atau kredensial dalam laporan. Pesan provider yang tercatat akan membantu membedakan penolakan API, kegagalan jaringan, konfigurasi, dan respons JSON tidak sesuai.
+- Perlu tindak lanjut setelah diketahui kode layanan yang benar: jangan terus mengandalkan produk termurah sebagai kode cek nickname; pertimbangkan konfigurasi kode lookup per game atau mekanisme yang dikonfirmasi VIPayment.
+- Status pengujian: perubahan sudah dikirim ke GitHub; PHP lint, CI, hosting error-log, dan panggilan VIPayment langsung belum diverifikasi. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
