@@ -30,3 +30,22 @@ function pluqi_decrypt_api_secret(string $value): string
     if (!is_string($plain)) throw new RuntimeException('Tidak dapat membuka kredensial API. Periksa APP_KEY.');
     return $plain;
 }
+
+/** Values saved through the admin form take precedence over .env. */
+function pluqi_api_config_value(string $name): string
+{
+    static $cache = [];
+    if (array_key_exists($name, $cache)) return $cache[$name];
+    $fallback = trim((string) getenv($name));
+    if (!preg_match('/^(DUITKU|DIGIFLAZZ|VIPAYMENT)_[A-Z0-9_]+$/D', $name)) return $cache[$name] = $fallback;
+    try {
+        require_once PLUQI_ROOT . '/config/database.php';
+        $stmt = database()->prepare('SELECT setting_value FROM app_settings WHERE setting_key = :key LIMIT 1');
+        $stmt->execute(['key' => 'api_secret_' . $name]);
+        $stored = $stmt->fetchColumn();
+        if (is_string($stored) && $stored !== '') return $cache[$name] = pluqi_decrypt_api_secret($stored);
+    } catch (Throwable $e) {
+        if (str_contains($e->getMessage(), 'Tidak dapat membuka kredensial') || str_contains($e->getMessage(), 'kredensial API tersimpan')) throw $e;
+    }
+    return $cache[$name] = $fallback;
+}
