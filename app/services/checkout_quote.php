@@ -107,25 +107,21 @@ function checkout_quote(PDO $pdo, array $input): array
       throw new DomainException('Pilihan produk berubah. Muat ulang katalog dan pilih harga termurah yang tersedia.');
     }
 
-    $stmt=$pdo->prepare("SELECT id,field_key,label,field_type,is_required,validation_regex FROM game_fields WHERE game_id=:gid AND status='ACTIVE'");
-    $stmt->execute(['gid'=>$game['id']]); $fields=$stmt->fetchAll();
-    if (!$fields) throw new DomainException('Formulir game belum dikonfigurasi.');
+    require_once __DIR__ . '/game_fields.php';
+    $schema = catalog_game_account_schema($pdo, $slug);
+    if (!$schema['checkout_supported']) {
+      throw new DomainException('Form akun game ini belum memiliki pemetaan otomatis yang aman. Checkout dinonaktifkan sampai kebutuhan ID, zone, atau server dipastikan.');
+    }
+    $fields = $schema['fields'];
     $keys=[]; $normalized=[];
-    $optionStmt=$pdo->prepare("SELECT option_value FROM game_field_options WHERE game_field_id=:fid AND status='ACTIVE'");
     foreach ($fields as $field) {
       $key=(string)$field['field_key']; $keys[]=$key; $value=$account[$key]??'';
       if (!is_scalar($value)) throw new InvalidArgumentException('Format data akun tidak valid.');
       $value=trim((string)$value);
       if (strlen($value)>190) throw new InvalidArgumentException('Data akun terlalu panjang.');
       if ((bool)$field['is_required'] && $value==='') throw new InvalidArgumentException('Kolom '.$field['label'].' wajib diisi.');
-      if ($value!=='' && $field['field_type']==='number' && !preg_match('/^[0-9]+$/D',$value)) throw new InvalidArgumentException('Kolom '.$field['label'].' harus berupa angka.');
-      if ($value!=='' && $field['validation_regex']!==null && $field['validation_regex']!=='') {
-        $pattern=str_replace('~','\\~',(string)$field['validation_regex']);
-        if (@preg_match('~^(?:'.$pattern.')$~uD',$value)!==1) throw new InvalidArgumentException('Format kolom '.$field['label'].' tidak sesuai.');
-      }
-      if ($value!=='' && $field['field_type']==='select') {
-        $optionStmt->execute(['fid'=>$field['id']]); $options=array_column($optionStmt->fetchAll(),'option_value');
-        if (!in_array($value,$options,true)) throw new InvalidArgumentException('Pilihan '.$field['label'].' tidak valid.');
+      if ($value!=='' && $field['validation_regex']!==null && $field['validation_regex']!=='' && @preg_match('~^(?:'.str_replace('~','\\~',(string)$field['validation_regex']).')$~uD',$value)!==1) {
+        throw new InvalidArgumentException('Format kolom '.$field['label'].' tidak sesuai.');
       }
       $normalized[$key]=$value;
     }

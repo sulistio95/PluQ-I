@@ -49,7 +49,7 @@ $orderIds = [];
 try {
     $pdo->beginTransaction();
     $pdo->prepare("UPDATE providers SET balance=1000000,reserve_percentage=50,status='ACTIVE' WHERE code='DIGI'")->execute();
-    $pdo->prepare("INSERT INTO games (slug,name,status) VALUES (:slug,'Checkout Race Integration','ACTIVE')")
+    $pdo->prepare("INSERT INTO games (slug,name,status) VALUES (:slug,'Honor of Kings Checkout Race Integration','ACTIVE')")
         ->execute(['slug' => $slug]);
     $gameId = (int)$pdo->lastInsertId();
     $pdo->prepare("INSERT INTO products (game_id,provider_id,provider_product_code,name,base_price,selling_price,status)

@@ -10,6 +10,9 @@
   let bannerTimer = null;
   let activeGame = null;
   let gameFields = [];
+  let gameMeta = {username_check_available: false};
+  let usernameTimer = null;
+  let usernameRequestId = 0;
   let selectedProduct = null;
   let accountDataValid = false;
   let lastQuote = null;
@@ -89,8 +92,13 @@
   }
 
   function showCatalog() {
+    if (usernameTimer) clearTimeout(usernameTimer);
+    usernameRequestId++;
+    gameFields = [];
+    gameMeta = {username_check_available:false,checkout_supported:false};
     $('catalog-view').classList.remove('hidden');
     $('product-view').classList.add('hidden');
+    $('customer-email-wrap').classList.add('hidden');
     search.disabled = false;
     activeGame = null;
     selectedProduct = null;
@@ -100,11 +108,9 @@
 
   function renderFields() {
     if (!gameFields.length) {
-      fieldsBox.innerHTML = '<p class="muted">Formulir akun belum dikonfigurasi untuk game ini. Hubungi admin sebelum transaksi diaktifkan.</p>';
-      $('validate-fields').disabled = true;
+      fieldsBox.innerHTML = '<p class="muted">Skema akun otomatis belum tersedia untuk game ini.</p>';
       return;
     }
-    $('validate-fields').disabled = false;
     fieldsBox.innerHTML = gameFields.map((field) => {
       const id = 'game-field-' + String(field.field_key).replace(/[^a-zA-Z0-9_-]/g, '-');
       const required = field.is_required ? ' required' : '';
@@ -117,10 +123,6 @@
       const inputMode = field.field_type === 'number' ? ' inputmode="numeric"' : '';
       return '<div class="field">' + label + '<input id="' + escapeHtml(id) + '" name="' + escapeHtml(field.field_key) + '" type="' + type + '"' + inputMode + ' placeholder="' + escapeHtml(field.placeholder || '') + '"' + required + ' autocomplete="off"></div>';
     }).join('');
-    const emailWrap = document.createElement('div');
-    emailWrap.className = 'field';
-    emailWrap.innerHTML = '<label for="customer-email">Email untuk pembayaran <span aria-hidden="true">*</span></label><input id="customer-email" name="customer_email" type="email" maxlength="255" autocomplete="email" required placeholder="nama@contoh.com">';
-    fieldsBox.appendChild(emailWrap);
   }
 
   function showMessage(message, isError) {
@@ -130,45 +132,83 @@
     box.classList.toggle('error-message', Boolean(isError));
   }
 
-  function validateAccountForm(event) {
-    event.preventDefault();
-    accountDataValid = false;
-    selectedProduct = null;
-    const form = $('account-form');
-    if (!gameFields.length) {
-      showMessage('Data akun belum bisa diperiksa karena formulir game belum tersedia.', true);
-      return;
-    }
-    if (!form.reportValidity()) return;
-
+  function readAccount() {
+    const account = {};
     for (const field of gameFields) {
-      const input = form.elements.namedItem(field.field_key);
-      if (!input) continue;
-      const value = String(input.value || '').trim();
-      if (field.is_required && !value) {
-        input.focus();
-        showMessage('Lengkapi kolom ' + field.label + '.', true);
-        return;
-      }
+      const input = $('account-form').elements.namedItem(field.field_key);
+      account[field.field_key] = input ? String(input.value || '').trim() : '';
+    }
+    return account;
+  }
+
+  function localAccountIsReady(account) {
+    for (const field of gameFields) {
+      const value = String(account[field.field_key] || '');
+      if (field.is_required && !value) return false;
       if (value && field.validation_regex) {
         try {
-          if (!(new RegExp('^(?:' + field.validation_regex + ')$')).test(value)) {
-            input.focus();
-            showMessage('Format ' + field.label + ' tidak sesuai.', true);
-            return;
-          }
-        } catch (_) {
-          showMessage('Aturan validasi untuk ' + field.label + ' belum valid. Hubungi admin.', true);
-          return;
-        }
+          if (!(new RegExp('^(?:' + field.validation_regex + ')$')).test(value)) return false;
+        } catch (_) { return false; }
       }
     }
-    accountDataValid = true;
-    showMessage('Format data akun lolos pemeriksaan di browser. Ini bukan verifikasi username ke server game.', false);
-    $('checkout-note').textContent = 'Data input siap. Checkout dan pembayaran belum tersedia; belum ada pesanan yang dibuat.';
+    return true;
+  }
+
+  function scheduleUsernameCheck() {
+    if (usernameTimer) clearTimeout(usernameTimer);
+    const requestId = ++usernameRequestId;
+    accountDataValid = false;
+    const account = readAccount();
+    const resultBox = $('username-result');
+    if (!localAccountIsReady(account)) {
+      resultBox.textContent = 'Lengkapi semua kolom akun yang wajib diisi.';
+      return;
+    }
+    if (!gameMeta.checkout_supported) {
+      accountDataValid = true;
+      resultBox.textContent = 'Form akun game ini belum dipetakan dengan aman. Transaksi dinonaktifkan sampai kebutuhan ID dan server/zone diverifikasi.';
+      return;
+    }
+    if (!gameMeta.username_check_available) {
+      accountDataValid = true;
+      resultBox.textContent = 'Pengecekan username belum didukung oleh supplier untuk game ini. Pastikan ID dan server/zone benar.';
+      return;
+    }
+    resultBox.textContent = 'Memeriksa username secara otomatis...';
+    usernameTimer = setTimeout(async () => {
+      try {
+        const response = await fetch('/api/games/' + encodeURIComponent(activeGame.slug) + '/check-username', {
+          method: 'POST',
+          headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8','Accept':'application/json'},
+          credentials: 'same-origin',
+          body: new URLSearchParams({payload: JSON.stringify({account})})
+        });
+        const data = await response.json();
+        if (requestId !== usernameRequestId) return;
+        if (!response.ok || !data.data || !data.data.username) {
+          if (response.status === 409) {
+            accountDataValid = true;
+            resultBox.textContent = 'Pengecekan username tidak tersedia untuk game ini. Pastikan data akun benar.';
+            return;
+          }
+          accountDataValid = false;
+          resultBox.textContent = data.message || 'Username belum dapat diverifikasi. Periksa ID game dan server/zone.';
+          return;
+        }
+        accountDataValid = true;
+        resultBox.textContent = data.data.username;
+        showMessage('Username berhasil diverifikasi.', false);
+      } catch (_) {
+        if (requestId !== usernameRequestId) return;
+        accountDataValid = false;
+        resultBox.textContent = 'Pengecekan username gagal terhubung. Coba lagi setelah beberapa saat.';
+      }
+    }, 800);
   }
 
   async function showProducts(game) {
+    if (usernameTimer) clearTimeout(usernameTimer);
+    usernameRequestId++;
     activeGame = game;
     selectedProduct = null;
     accountDataValid = false;
@@ -179,6 +219,8 @@
     productsBox.innerHTML = '<div class="notice">Memuat produk...</div>';
     fieldsBox.innerHTML = '<p class="muted">Memuat formulir...</p>';
     $('field-message').classList.add('hidden');
+    $('customer-email-wrap').classList.add('hidden');
+    $('username-result').textContent = 'Isi data akun; username akan diperiksa otomatis jika API mendukungnya.';
     $('checkout-note').textContent = 'Pilih game dan isi data akun. Pembayaran sandbox belum dimulai.';
     paymentButton.hidden = true;
     paymentButton.disabled = false;
@@ -192,11 +234,12 @@
 
     if (fieldsResult.status === 'fulfilled') {
       gameFields = Array.isArray(fieldsResult.value.data) ? fieldsResult.value.data : [];
+      gameMeta = fieldsResult.value.meta || {username_check_available:false};
       renderFields();
     } else {
       gameFields = [];
-      fieldsBox.innerHTML = '<div class="notice">Formulir akun belum dapat dimuat.</div>';
-      $('validate-fields').disabled = true;
+      gameMeta = {username_check_available:false};
+      fieldsBox.innerHTML = '<div class="notice">Formulir akun otomatis belum dapat dimuat.</div>';
     }
 
     if (productsResult.status !== 'fulfilled') {
@@ -210,9 +253,11 @@
     }
     productsBox.innerHTML = items.map((product, index) =>
       '<article class="product"><strong>' + escapeHtml(product.name) + '</strong><div class="price">' + rupiah(product.selling_price) + '</div>' +
-      (product.is_available
+      (product.is_available && gameMeta.checkout_supported
         ? '<button type="button" class="select-product" data-product-index="' + index + '">Pilih nominal</button>'
-        : '<div class="unavailable">Tidak tersedia saat ini</div>') +
+        : (product.is_available
+          ? '<div class="unavailable">Form akun otomatis belum diverifikasi untuk game ini</div>'
+          : '<div class="unavailable">Tidak tersedia saat ini</div>')) +
       '</article>'
     ).join('');
     productsBox.querySelectorAll('button[data-product-index]').forEach((button) => {
@@ -243,6 +288,7 @@
           const quote = result.data;
           lastQuote = quote;
           paymentRequestKey = crypto.randomUUID();
+          $('customer-email-wrap').classList.remove('hidden');
           paymentButton.hidden = !quote.payment_enabled;
           paymentButton.disabled = false;
           showMessage(quote.payment_enabled
@@ -293,7 +339,7 @@
     if (game) showProducts(game);
   });
   $('back').addEventListener('click', showCatalog);
-  $('account-form').addEventListener('submit', validateAccountForm);
+  $('account-form').addEventListener('submit', (event) => event.preventDefault());
   function invalidateQuoteOnAccountChange() {
     accountDataValid = false;
     selectedProduct = null;
@@ -309,8 +355,14 @@
       button.setAttribute('aria-pressed', 'false');
     });
   }
-  $('account-form').addEventListener('input', invalidateQuoteOnAccountChange);
-  $('account-form').addEventListener('change', invalidateQuoteOnAccountChange);
+  $('account-form').addEventListener('input', () => {
+    invalidateQuoteOnAccountChange();
+    scheduleUsernameCheck();
+  });
+  $('account-form').addEventListener('change', () => {
+    invalidateQuoteOnAccountChange();
+    scheduleUsernameCheck();
+  });
 
   Promise.all([getJson('/api/games'), getJson('/api/banners')]).then(([gameResult, bannerResult]) => {
     games = Array.isArray(gameResult.data) ? gameResult.data : [];
