@@ -82,6 +82,53 @@ function banner_remove_local_file(string $url): bool
     return @unlink($path);
 }
 
+function game_icon_local_path(string $url): ?string
+{
+    if (!preg_match('~^/uploads/game-icons/([a-f0-9]{32})\\.(jpg|png|webp)$~D', $url, $matches)) {
+        return null;
+    }
+    return PLUQI_ROOT . '/public/uploads/game-icons/' . $matches[1] . '.' . $matches[2];
+}
+
+function game_icon_store_upload(array $file): string
+{
+    if (!isset($file['error'], $file['tmp_name'], $file['size'])
+        || is_array($file['error']) || (int) $file['error'] !== UPLOAD_ERR_OK) {
+        throw new InvalidArgumentException('Unggahan icon gagal. Pilih gambar kembali.');
+    }
+    if ((int) $file['size'] < 1 || (int) $file['size'] > 5 * 1024 * 1024
+        || !is_uploaded_file((string) $file['tmp_name'])) {
+        throw new InvalidArgumentException('Ukuran icon maksimal 5 MB.');
+    }
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file((string) $file['tmp_name']);
+    $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+    if (!is_string($mime) || !isset($extensions[$mime])) {
+        throw new InvalidArgumentException('Format icon harus JPG, PNG, atau WebP. SVG dan format lain tidak diizinkan.');
+    }
+    $imageInfo = @getimagesize((string) $file['tmp_name']);
+    if (!is_array($imageInfo) || (int) $imageInfo[0] < 1 || (int) $imageInfo[1] < 1
+        || (int) $imageInfo[0] > 4000 || (int) $imageInfo[1] > 4000
+        || (int) $imageInfo[0] * (int) $imageInfo[1] > 10000000) {
+        throw new InvalidArgumentException('Dimensi icon tidak valid atau terlalu besar (maks. 4000×4000 dan 10 megapiksel).');
+    }
+    $directory = PLUQI_ROOT . '/public/uploads/game-icons';
+    if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+        throw new RuntimeException('Direktori icon tidak dapat dibuat.');
+    }
+    $filename = bin2hex(random_bytes(16)) . '.' . $extensions[$mime];
+    if (!move_uploaded_file((string) $file['tmp_name'], $directory . '/' . $filename)) {
+        throw new RuntimeException('Server tidak dapat menyimpan icon. Periksa izin folder uploads.');
+    }
+    return '/uploads/game-icons/' . $filename;
+}
+
+function game_icon_remove_local_file(string $url): bool
+{
+    $path = game_icon_local_path($url);
+    return $path === null || !is_file($path) || @unlink($path);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!admin_csrf_valid($_POST['csrf'] ?? null)) {
         http_response_code(403);
@@ -187,6 +234,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 exit;
             }
+
+            if ($action === 'save_game_icon') {
+                $gameId = filter_var($_POST['game_id'] ?? null, FILTER_VALIDATE_INT);
+                if (!$gameId || $gameId < 1) throw new InvalidArgumentException('Game yang dipilih tidak valid.');
+                $findGame = $pdo->prepare("SELECT id,name,icon_url FROM games WHERE id=:id AND status='ACTIVE' LIMIT 1");
+                $findGame->execute(['id'=>$gameId]);
+                $game = $findGame->fetch(PDO::FETCH_ASSOC);
+                if (!$game) throw new InvalidArgumentException('Game tidak ditemukan atau belum dicentang/diaktifkan pada Game List.');
+                $uploadError = (int) ($_FILES['game_icon_file']['error'] ?? UPLOAD_ERR_NO_FILE);
+                if ($uploadError === UPLOAD_ERR_NO_FILE) throw new InvalidArgumentException('Pilih file icon dari laptop terlebih dahulu.');
+                $newIconUrl = game_icon_store_upload($_FILES['game_icon_file']);
+                try {
+                    $pdo->beginTransaction();
+                    $update = $pdo->prepare('UPDATE games SET icon_url=:icon WHERE id=:id AND status=\'ACTIVE\'');
+                    $update->execute(['icon'=>$newIconUrl,'id'=>$gameId]);
+                    $audit = $pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,details,ip_address) VALUES ('ADMIN',:actor,'GAME_ICON_UPDATED','GAME',:entity,:details,:ip)");
+                    $audit->execute([
+                        'actor'=>$user['id'], 'entity'=>(string)$gameId,
+                        'details'=>json_encode(['game_name'=>$game['name'],'image_source'=>'LOCAL_UPLOAD'], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
+                        'ip'=>substr((string)($_SERVER['REMOTE_ADDR'] ?? ''),0,45),
+                    ]);
+                    $pdo->commit();
+                } catch (Throwable $saveError) {
+                    if ($pdo->inTransaction()) $pdo->rollBack();
+                    game_icon_remove_local_file($newIconUrl);
+                    throw $saveError;
+                }
+                game_icon_remove_local_file((string)($game['icon_url'] ?? ''));
+                header('Location: /admin/template-settings.php?icon_saved=1');
+                exit;
+            }
+            if ($action === 'delete_game_icon') {
+                $gameId = filter_var($_POST['game_id'] ?? null, FILTER_VALIDATE_INT);
+                if (!$gameId || $gameId < 1) throw new InvalidArgumentException('Game yang dipilih tidak valid.');
+                $pdo->beginTransaction();
+                $findGame = $pdo->prepare("SELECT id,name,icon_url FROM games WHERE id=:id AND status='ACTIVE' FOR UPDATE");
+                $findGame->execute(['id'=>$gameId]);
+                $game = $findGame->fetch(PDO::FETCH_ASSOC);
+                if (!$game) throw new InvalidArgumentException('Game tidak ditemukan atau belum dicentang/diaktifkan pada Game List.');
+                if (trim((string)($game['icon_url'] ?? '')) === '') throw new InvalidArgumentException('Game ini belum memiliki icon untuk dihapus.');
+                $update = $pdo->prepare('UPDATE games SET icon_url=NULL WHERE id=:id');
+                $update->execute(['id'=>$gameId]);
+                $audit = $pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,details,ip_address) VALUES ('ADMIN',:actor,'GAME_ICON_DELETED','GAME',:entity,:details,:ip)");
+                $audit->execute([
+                    'actor'=>$user['id'], 'entity'=>(string)$gameId,
+                    'details'=>json_encode(['game_name'=>$game['name'],'local_image'=>game_icon_local_path((string)$game['icon_url']) !== null], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
+                    'ip'=>substr((string)($_SERVER['REMOTE_ADDR'] ?? ''),0,45),
+                ]);
+                $pdo->commit();
+                if (!game_icon_remove_local_file((string)$game['icon_url'])) {
+                    header('Location: /admin/template-settings.php?icon_deleted=1&file_cleanup=failed');
+                } else {
+                    header('Location: /admin/template-settings.php?icon_deleted=1');
+                }
+                exit;
+            }
             throw new InvalidArgumentException('Aksi tidak dikenal.');
         } catch (InvalidArgumentException $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
@@ -200,6 +303,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (($_GET['saved'] ?? '') === '1') $notice = 'Banner berhasil disimpan.';
 if (($_GET['deactivated'] ?? '') === '1') $notice = 'Banner dinonaktifkan dan tidak akan ditampilkan di halaman depan.';
 if (($_GET['deleted'] ?? '') === '1') $notice = (($_GET['file_cleanup'] ?? '') === 'failed') ? 'Banner dihapus dari database, tetapi file gambar lokal gagal dihapus. Periksa folder public/uploads/banners.' : 'Banner dihapus. Jika menggunakan gambar lokal, file gambarnya juga dihapus.';
+if (($_GET['icon_saved'] ?? '') === '1') $notice = 'Icon game berhasil diunggah dan ditampilkan pada katalog.';
+if (($_GET['icon_deleted'] ?? '') === '1') $notice = (($_GET['file_cleanup'] ?? '') === 'failed') ? 'Icon dihapus dari katalog, tetapi file lokal gagal dihapus. Periksa folder public/uploads/game-icons.' : 'Icon game dihapus. Game tetap tampil di katalog tanpa icon khusus.';
+
 if (isset($_GET['edit'])) {
     $id = filter_var($_GET['edit'], FILTER_VALIDATE_INT);
     if ($id && $id > 0) {
@@ -209,6 +315,8 @@ if (isset($_GET['edit'])) {
     }
 }
 $banners = $pdo->query('SELECT id,title,image_url,target_url,sort_order,status FROM banners ORDER BY sort_order,id DESC')->fetchAll(PDO::FETCH_ASSOC);
+$activeGames = $pdo->query("SELECT id,slug,name,icon_url FROM games WHERE status='ACTIVE' ORDER BY sort_order,name")->fetchAll(PDO::FETCH_ASSOC);
+
 $csrf = admin_csrf_token();
 ?>
 <!doctype html>
@@ -216,7 +324,7 @@ $csrf = admin_csrf_token();
 <title>Pengaturan Template · PluQ-I</title>
 <style>
 :root{color-scheme:dark;--bg:#0c0d10;--panel:#15171d;--line:#292d36;--text:#f3f4f6;--muted:#9ca3af;--accent:#a7f3d0}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1150px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}label{display:grid;gap:6px;color:var(--muted)}input,select,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{width:auto}.notice,.error{padding:10px;border-radius:7px;margin:12px 0}.notice{background:#15352b}.error{background:#3b1d22}a{color:var(--accent)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted)}.thumb{width:140px;max-height:70px;object-fit:cover;border-radius:6px;background:#08090b}.small{font-size:12px;overflow-wrap:anywhere;max-width:260px}.inline{display:inline}.inline button{padding:6px 9px;width:auto}@media(max-width:600px){main{padding:12px}.panel{padding:12px}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1150px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}label{display:grid;gap:6px;color:var(--muted)}input,select,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{width:auto}.notice,.error{padding:10px;border-radius:7px;margin:12px 0}.notice{background:#15352b}.error{background:#3b1d22}a{color:var(--accent)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted)}.thumb{width:140px;max-height:70px;object-fit:cover;border-radius:6px;background:#08090b}.game-icon-thumb{width:64px;height:64px;object-fit:contain;border-radius:10px;background:#08090b;padding:4px}.small{font-size:12px;overflow-wrap:anywhere;max-width:260px}.inline{display:inline}.inline button{padding:6px 9px;width:auto}@media(max-width:600px){main{padding:12px}.panel{padding:12px}}
 </style></head><body><main>
 <header class="bar"><div><h1>Pengaturan Template</h1><div class="muted">Kelola banner slider di halaman depan PluQ-I.</div></div><a href="/admin/">Kembali ke panel admin</a></header>
 <?php if ($error !== ''): ?><div class="error"><?=admin_escape($error)?></div><?php endif; ?>
@@ -239,5 +347,16 @@ $csrf = admin_csrf_token();
 <?php if (!$banners): ?><tr><td colspan="5" class="muted">Belum ada banner tersimpan.</td></tr><?php endif; ?>
 <?php foreach ($banners as $banner): ?><tr><td><img class="thumb" src="<?=admin_escape($banner['image_url'])?>" alt="<?=admin_escape($banner['title'])?>" loading="lazy"></td><td><?=admin_escape($banner['title'])?><div class="muted small"><?=admin_escape($banner['image_url'])?></div><div class="muted small">Tujuan: <?=admin_escape($banner['target_url'] ?: 'Tidak ada')?></div></td><td><?=number_format((int)$banner['sort_order'])?></td><td><?=admin_escape($banner['status'])?></td><td><div class="actions"><a href="/admin/template-settings.php?edit=<?=(int)$banner['id']?>">Edit</a><?php if ($canManage): ?><?php if ($banner['status']==='ACTIVE'): ?><form class="inline" method="post" onsubmit="return confirm('Nonaktifkan banner ini?')"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="deactivate"><input type="hidden" name="id" value="<?=(int)$banner['id']?>"><button type="submit">Nonaktifkan</button></form><?php endif; ?><form class="inline" method="post" onsubmit="return confirm('Hapus banner ini secara permanen? File lokal yang terkait juga akan dihapus.')"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?=(int)$banner['id']?>"><button type="submit">Hapus</button></form><?php endif; ?></div></td></tr><?php endforeach; ?>
 </tbody></table></div></section>
-<section class="panel"><h2>Catatan tampilan</h2><ul><li>Gunakan gambar landscape yang responsif untuk banner Mobile Legends, HOK, Free Fire, PUBG, atau promosi lain.</li><li>Slider publik harus menampilkan banner aktif, dengan tombol sebelumnya/berikutnya, indikator slide, perulangan, jeda saat kursor berada di atas slider, dan dukungan geser pada ponsel.</li><li>Unggahan dibatasi ke JPG/PNG/WebP, maksimal 5 MB dan pemeriksaan dimensi; file diberi nama acak dan disimpan di public/uploads/banners.</li><li>Nonaktifkan hanya menyembunyikan banner. Hapus menghapus baris banner dan file lokal yang cocok; gambar pada URL eksternal tidak dihapus dari situs asalnya.</li><li>Pengujian visual slider di browser masih perlu dilakukan setelah perubahan diterapkan.</li></ul></section>
+<section class="panel"><h2>Icon Game List</h2>
+<p class="muted">Hanya game yang dicentang dan tersimpan aktif pada menu <a href="/admin/game-mappings.php">Game List</a> yang tampil di sini. Unggah icon untuk mengisi kolom <code>games.icon_url</code> yang dipakai katalog halaman depan. Format JPG/PNG/WebP, maksimal 5 MB. Hapus hanya menghapus icon, bukan game atau mapping supplier.</p>
+<?php if (!$activeGames): ?><p class="muted">Belum ada game aktif. Pilih dan simpan game terlebih dahulu di Game List.</p><?php else: ?>
+<div class="table-wrap"><table><thead><tr><th>Pratinjau</th><th>Game</th><th>Unggah/Ganti icon</th><th>Aksi</th></tr></thead><tbody>
+<?php foreach ($activeGames as $game): ?><tr>
+<td><?php if (!empty($game['icon_url'])): ?><img class="game-icon-thumb" src="<?=admin_escape($game['icon_url'])?>" alt="<?=admin_escape($game['name'])?>" loading="lazy"><?php else: ?><span class="muted">Belum ada icon</span><?php endif; ?></td>
+<td><strong><?=admin_escape($game['name'])?></strong><div class="muted small"><?=admin_escape($game['slug'])?></div></td>
+<td><?php if ($canManage): ?><form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="save_game_icon"><input type="hidden" name="game_id" value="<?=(int)$game['id']?>"><label>Pilih icon (JPG/PNG/WebP, maks. 5 MB)<input type="file" name="game_icon_file" accept="image/jpeg,image/png,image/webp" required></label><div class="actions"><button type="submit">Unggah/Ganti icon</button></div></form><?php else: ?><span class="muted">Hanya lihat</span><?php endif; ?></td>
+<td><?php if ($canManage && !empty($game['icon_url'])): ?><form method="post" onsubmit="return confirm('Hapus icon game ini? Game tetap ada di Game List.')"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="delete_game_icon"><input type="hidden" name="game_id" value="<?=(int)$game['id']?>"><button type="submit">Hapus icon</button></form><?php else: ?><span class="muted">—</span><?php endif; ?></td>
+</tr><?php endforeach; ?>
+</tbody></table></div><?php endif; ?></section>
+<section class="panel"><h2>Catatan tampilan</h2><ul><li>Gunakan gambar landscape yang responsif untuk banner Mobile Legends, HOK, Free Fire, PUBG, atau promosi lain.</li><li>Slider publik harus menampilkan banner aktif, dengan tombol sebelumnya/berikutnya, indikator slide, perulangan, jeda saat kursor berada di atas slider, dan dukungan geser pada ponsel.</li><li>Unggahan dibatasi ke JPG/PNG/WebP, maksimal 5 MB dan pemeriksaan dimensi; file diberi nama acak dan disimpan di public/uploads/banners.</li><li>Nonaktifkan hanya menyembunyikan banner. Hapus menghapus baris banner dan file lokal yang cocok; gambar pada URL eksternal tidak dihapus dari situs asalnya.</li><li>Game yang dicentang/aktif pada Game List muncul pada bagian Icon Game List. Menghapus icon mengosongkan icon_url tanpa menghapus game.</li><li>Icon lokal berada di public/uploads/game-icons; pastikan PHP dapat menulis folder tersebut. Pengujian visual slider dan icon di browser masih perlu dilakukan.</li></ul></section>
 </main></body></html>
