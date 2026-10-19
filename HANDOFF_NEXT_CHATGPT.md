@@ -1334,3 +1334,14 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Commit kode: `5b551871ba7c151e0a790581e8cafb20eff212ac`.
 - GitHub Actions pada commit ini sedang berjalan ketika catatan ditulis: [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/39319602896), [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/39319602645), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/39319602539). Jangan menganggapnya lulus sampai status final diperiksa. PHP lint lokal serta pengujian halaman di browser/database masih pending.
 - Tetap biarkan pembayaran, pesanan supplier, dan backup Google Drive nonaktif selama pengujian.
+
+
+## Update — 2026-10-20: Upload dan hapus gambar banner lokal
+
+- Memperbarui `public/admin/template-settings.php`: admin dapat memilih gambar dari laptop atau tetap memakai URL HTTPS; saat mengedit, kolom URL yang dikosongkan mempertahankan gambar lama, sedangkan unggahan baru menggantinya setelah penyimpanan berhasil.
+- Format yang diterima: JPG/JPEG, PNG, WebP; maksimum 5 MB; pemeriksaan MIME, dimensi (maksimum 8000×8000 dan 25 megapiksel), nama acak, dan penyimpanan di `public/uploads/banners/`. SVG dan format lain ditolak.
+- Menambahkan `public/uploads/banners/.htaccess` untuk menonaktifkan listing direktori dan menolak akses ke file berekstensi skrip. Folder unggahan harus dapat ditulis oleh PHP di hosting; unggahan tetap dibatasi oleh `upload_max_filesize` dan `post_max_size` PHP.
+- Daftar banner kini memiliki aksi **Hapus** permanen dengan CSRF, role admin, audit log dan transaksi database. Jika gambar berasal dari folder lokal PluQ-I, file ikut dihapus; jika URL eksternal, hanya baris banner yang dihapus. **Nonaktifkan** tetap merupakan tindakan non-destruktif.
+- Commit kode: `f1824eb05e28a9eebc3c41fbe0bf838a75418c4e`; rollback hardening: `1fc141bf71ac435888bf9a9d7bf4703b1eac84d2`; proteksi folder upload: `c78151b34daa8ef3157dce7c039c593f55b54b3a`.
+- Belum mengklaim PHP lint, CI, upload runtime, atau uji browser berhasil. Periksa GitHub Actions setelah commit dokumentasi ini; lalu tarik `main`, jalankan `php -l public/admin/template-settings.php`, dan uji tambah gambar lokal, edit/ganti gambar, nonaktifkan, hapus, serta gambar URL eksternal di database lokal.
+- Jangan aktifkan checkout, pemesanan supplier, atau backup Google Drive selama pengujian.
