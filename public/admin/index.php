@@ -227,7 +227,7 @@ function admin_money(mixed $amount): string {
 </form></section>
 <?php else: ?>
 <header class="bar"><div><h1>Panel Admin PluQ-I</h1><div class="muted">Masuk sebagai <?=admin_escape($user['username'])?> · <?=admin_escape($user['role'])?></div></div>
-<nav><a href="/admin/api-settings.php" style="color:#a7f3d0;margin-right:14px">Pengaturan API</a><a href="/admin/game-mappings.php" style="color:#a7f3d0;margin-right:14px">Pemetaan game supplier</a><?php if (admin_can_manage_settings($user)): ?><a href="/admin/reconcile.php" style="color:#a7f3d0">Rekonsiliasi Duitku</a><?php endif; ?></nav>
+<nav><a href="/admin/api-settings.php" style="color:#a7f3d0;margin-right:14px">Pengaturan API</a><a href="/admin/game-mappings.php" style="color:#a7f3d0;margin-right:14px">Game List</a><?php if (admin_can_manage_settings($user)): ?><a href="/admin/reconcile.php" style="color:#a7f3d0">Rekonsiliasi Duitku</a><?php endif; ?></nav>
 <form method="post"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><button name="logout" value="1" type="submit">Keluar</button></form></header>
 <?php if ($error !== ''): ?><div class="error"><?=admin_escape($error)?></div><?php endif; ?>
 <section class="panel"><div class="bar"><h2>Filter transaksi</h2><span class="muted">Maksimal 200 baris per pencarian</span></div>
