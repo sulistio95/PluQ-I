@@ -1352,3 +1352,13 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Memperketat deteksi file lokal agar penghapusan hanya dapat menyasar URL relatif tepat berbentuk `/uploads/banners/{nama-acak}.{jpg|png|webp}`, bukan URL eksternal yang kebetulan memakai path serupa. Commit: `9ef66075a549a93c361de259a85a0ef05b89271b`.
 - Menyederhanakan `public/uploads/banners/.htaccess` untuk menonaktifkan directory listing dan handler ekstensi skrip. Commit: `5a6802401a36d31c328da92a4e64813bd7648693`.
 - Status CI yang teramati: PHP quality dan syntax lulus pada commit kode `9ef66075`; syntax juga lulus pada commit `5a680240`. Fulfillment safety dan PHP quality pada head terbaru masih berjalan saat catatan ini diperbarui. Upload dan uji browser/database lokal tetap belum diuji.
+
+
+## Update — 2026-10-20: Upload/hapus icon game pada Pengaturan Template
+
+- Memperluas `public/admin/template-settings.php` dengan bagian **Icon Game List**. Bagian ini mengambil hanya `games.status='ACTIVE'`, yaitu game yang memiliki mapping supplier aktif setelah pilihan dicentang/disimpan pada `/admin/game-mappings.php`. Tidak perlu migration baru: icon disimpan pada kolom `games.icon_url` yang sudah digunakan endpoint katalog publik.
+- Admin yang berwenang dapat mengunggah atau mengganti icon lokal (JPG/PNG/WebP, maks. 5 MB, validasi MIME dan dimensi maks. 4000×4000/10 MP). File disimpan dengan nama acak di `public/uploads/game-icons/`; perubahan `icon_url` dan audit log dilakukan dalam transaksi. Icon lokal lama dihapus setelah perubahan berhasil.
+- Tombol **Hapus icon** mengosongkan `games.icon_url`, mencatat audit log dan menghapus file lokal yang dikelola PluQ-I. Game, status game, dan mapping supplier tetap utuh; URL gambar eksternal juga tidak disentuh di server asalnya.
+- Tambah `public/uploads/game-icons/.htaccess` untuk menonaktifkan directory listing dan menghapus handler ekstensi skrip. Folder harus dapat ditulis oleh PHP. Tetap validasi konfigurasi hosting sebelum produksi.
+- Commits: halaman template `41543b6e3cbce9bc97cb196d825f5e09faeef567`; proteksi direktori `7164700e961485fe800a8feb97efd8372aeb9c1d`.
+- Belum mengklaim PHP lint, CI terbaru, upload browser, atau uji homepage. Tarik `main`, jalankan `php -l public/admin/template-settings.php`, uji pilih/simpan game di Game List, unggah/ganti/hapus icon, dan pastikan `GET /api/games`/homepage menampilkan icon baru. Jangan aktifkan pembayaran, supplier ordering, atau backup Google Drive selama pengujian.
