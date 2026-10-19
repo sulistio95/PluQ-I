@@ -62,7 +62,8 @@ try {
     $stmt->execute(['code' => 'BUDGET_' . strtoupper($token)]);
     $providerId = (int)$pdo->lastInsertId();
 
-    $stmt = $pdo->prepare("INSERT INTO games (slug,name,status) VALUES (:slug,'Budget integration fixture','ACTIVE')");
+    // The fixture must use a reviewed account schema now that unknown-game checkout is fail-closed.
+    $stmt = $pdo->prepare("INSERT INTO games (slug,name,status) VALUES (:slug,'Honor of Kings budget integration fixture','ACTIVE')");
     $stmt->execute(['slug' => 'budget-test-' . $token]);
     $gameId = (int)$pdo->lastInsertId();
 
