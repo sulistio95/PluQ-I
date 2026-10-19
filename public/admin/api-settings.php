@@ -40,6 +40,7 @@ foreach ($fields as $groupFields) { foreach ($groupFields as $fieldName => $fiel
 foreach ($optionalFields as $fieldName => $fieldLabel) { $allFields[$fieldName] = $fieldLabel; }
 $message = '';
 $error = '';
+$catalogPreview = null;
 $csrf = admin_csrf_token();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -76,6 +77,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   } catch (Throwable $e) {
    $error = $e->getMessage();
   }
+ } elseif (isset($_POST['delete_api_setting'])) {
+  try {
+   $name = (string) ($_POST['delete_api_setting'] ?? '');
+   if (!array_key_exists($name, $allFields)) throw new RuntimeException('Pilihan konfigurasi API tidak valid.');
+   $pdo->beginTransaction();
+   $stmt = $pdo->prepare('DELETE FROM app_settings WHERE setting_key=:key');
+   $stmt->execute(['key' => 'api_secret_' . $name]);
+   $pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,details,ip_address) VALUES ('ADMIN',:id,'API_CREDENTIAL_DELETED','APP_SETTING','provider_api',:details,:ip)")
+    ->execute(['id' => $user['id'], 'details' => json_encode(['field' => $name, 'deleted_rows' => $stmt->rowCount()], JSON_UNESCAPED_SLASHES), 'ip' => substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45)]);
+   $pdo->commit();
+   $message = $allFields[$name] . ' dihapus dari penyimpanan database. Jika nilai juga diatur pada .env/lingkungan hosting, hapus di sana secara terpisah.';
+  } catch (Throwable $e) {
+   if ($pdo->inTransaction()) $pdo->rollBack();
+   $error = 'Penghapusan konfigurasi gagal: ' . $e->getMessage();
+  }
+ } elseif (isset($_POST['preview_vipayment_catalog'])) {
+  try {
+   require_once PLUQI_ROOT . '/app/services/vipayment.php';
+   $catalogPreview = vipayment_game_services(null, null);
+   if (!is_array($catalogPreview)) throw new RuntimeException('Format katalog VIPayment tidak valid.');
+   $message = 'Daftar layanan VIPayment berhasil diambil untuk pratinjau baca-saja. Database katalog tidak diubah dan tidak ada pesanan dibuat.';
+  } catch (Throwable $e) {
+   $error = 'Pengambilan katalog VIPayment gagal: ' . $e->getMessage();
+  }
  } elseif (isset($_POST['check_duitku'])) {
   try {
    require_once PLUQI_ROOT . '/app/services/duitku.php';
@@ -98,11 +123,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (isset($_GET['saved']) && $_GET['saved'] === '1') $message = 'Pengaturan API terenkripsi berhasil disimpan.';
 
 $statuses = [];
+$storedStatuses = [];
 foreach ($allFields as $name => $label) {
  $stmt = $pdo->prepare('SELECT setting_value FROM app_settings WHERE setting_key=:key LIMIT 1');
  $stmt->execute(['key' => 'api_secret_' . $name]);
  $stored = $stmt->fetchColumn();
- $statuses[$name] = (is_string($stored) && $stored !== '') || trim((string)getenv($name)) !== '';
+ $storedStatuses[$name] = is_string($stored) && $stored !== '';
+ $statuses[$name] = $storedStatuses[$name] || trim((string)getenv($name)) !== '';
 }
 function api_settings_escape(mixed $value): string { return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 ?><!doctype html>
@@ -125,7 +152,48 @@ function api_settings_escape(mixed $value): string { return htmlspecialchars((st
 <section class="panel"><h2>URL API opsional</h2><div class="fields"><?php foreach($optionalFields as $name=>$label): ?><label><?=api_settings_escape($label)?> <span class="muted">(<?=$statuses[$name]?'sudah ada — kosongkan untuk mempertahankan':'default bawaan akan digunakan'?>)</span><input type="url" name="<?=api_settings_escape($name)?>" maxlength="2000" placeholder="https://..."></label><?php endforeach; ?></div></section>
 <section class="panel"><p class="note">Nilai disimpan terenkripsi di database menggunakan APP_KEY. Jangan mengubah APP_KEY setelah menyimpan kredensial karena data tidak dapat dibuka kembali. Kolom kosong mempertahankan nilai lama. Mode Duitku tetap Sandbox; pembayaran, pemesanan supplier, dan backup Drive tidak diaktifkan oleh halaman ini.</p><button type="submit" name="save_api_settings" value="1">Simpan kredensial API</button></section>
 </form>
+<section class="panel"><h2>Hapus API tersimpan</h2>
+<p class="muted">Menghapus nilai terenkripsi dari database PluQ-I. Tindakan ini tidak dapat dibatalkan. Jika kredensial juga diatur di .env atau konfigurasi lingkungan hosting, sumber tersebut harus dihapus terpisah.</p>
+<div class="actions">
+<?php foreach ($allFields as $name => $label): if ($storedStatuses[$name]): ?>
+<form method="post" onsubmit="return confirm('Hapus konfigurasi <?=api_settings_escape($label)?> dari database?');">
+<input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>">
+<button type="submit" name="delete_api_setting" value="<?=api_settings_escape($name)?>">Hapus <?=api_settings_escape($label)?></button>
+</form>
+<?php endif; endforeach; ?>
+</div>
+<?php if (!in_array(true, $storedStatuses, true)): ?><p class="muted">Belum ada kredensial API tersimpan di database untuk dihapus.</p><?php endif; ?>
+</section>
 <section class="panel"><h2>Pemeriksaan koneksi (manual)</h2><p class="muted">Duitku: validasi konfigurasi lokal saja. Tombol supplier mengirim permintaan baca-saldo ke API nyata; gunakan hanya setelah kredensial benar. Tidak ada tombol yang membuat pesanan top-up.</p>
 <form method="post" class="actions"><input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>"><button type="submit" name="check_duitku" value="1">Validasi konfigurasi Duitku</button><button type="submit" name="check_digiflazz" value="1">Periksa saldo Digiflazz</button><button type="submit" name="check_vipayment" value="1">Periksa saldo VIPayment</button></form>
+</section>
+<section class="panel"><h2>Pratinjau katalog VIPayment</h2>
+<p class="muted">Mengambil daftar layanan API secara langsung. Fitur ini hanya menampilkan data; tidak menyimpan/mengubah katalog dan tidak mengirim pesanan.</p>
+<form method="post" class="actions"><input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>"><button type="submit" name="preview_vipayment_catalog" value="1">Ambil daftar game dan layanan</button></form>
+<?php if (is_array($catalogPreview)): ?>
+<?php
+$catalogRows = array_values(array_filter($catalogPreview, 'is_array'));
+$gameNames = [];
+foreach ($catalogRows as $catalogRow) {
+ $gameName = $catalogRow['game'] ?? $catalogRow['category'] ?? $catalogRow['game_name'] ?? null;
+ if (is_scalar($gameName) && trim((string)$gameName) !== '') $gameNames[(string)$gameName] = true;
+}
+?>
+<p><strong>Total layanan:</strong> <?=count($catalogRows)?> &nbsp; <strong>Game/kategori teridentifikasi:</strong> <?=count($gameNames)?></p>
+<?php if (!$catalogRows): ?><p class="muted">API mengembalikan daftar kosong.</p><?php else: ?>
+<div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px">Game/kategori</th><th style="text-align:left;padding:8px">Layanan</th><th style="text-align:left;padding:8px">Kode</th><th style="text-align:left;padding:8px">Status</th><th style="text-align:left;padding:8px">Harga</th></tr></thead><tbody>
+<?php foreach (array_slice($catalogRows, 0, 100) as $catalogRow):
+ $gameName = $catalogRow['game'] ?? $catalogRow['category'] ?? $catalogRow['game_name'] ?? '';
+ $serviceName = $catalogRow['name'] ?? $catalogRow['service'] ?? $catalogRow['layanan'] ?? $catalogRow['product_name'] ?? '';
+ $serviceCode = $catalogRow['code'] ?? $catalogRow['service_code'] ?? $catalogRow['buyer_sku_code'] ?? $catalogRow['id'] ?? '';
+ $serviceStatus = $catalogRow['status'] ?? $catalogRow['service_status'] ?? '';
+ $servicePrice = $catalogRow['price'] ?? $catalogRow['harga'] ?? $catalogRow['cost'] ?? '';
+?>
+<tr><?php foreach ([$gameName,$serviceName,$serviceCode,$serviceStatus,$servicePrice] as $cell): ?><td style="padding:8px;border-top:1px solid var(--line);vertical-align:top"><?=api_settings_escape(is_scalar($cell) ? $cell : json_encode($cell))?></td><?php endforeach; ?></tr>
+<?php endforeach; ?>
+</tbody></table></div>
+<?php if (count($catalogRows)>100): ?><p class="muted">Menampilkan 100 dari <?=count($catalogRows)?> layanan.</p><?php endif; ?>
+<?php endif; ?>
+<?php endif; ?>
 </section>
 </main></body></html>
