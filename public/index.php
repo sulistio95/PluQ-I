@@ -22,6 +22,68 @@ if ($method==='GET' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/fields$#D',$pat
  try { require_once PLUQI_ROOT.'/config/database.php'; require_once PLUQI_ROOT.'/app/services/game_fields.php'; json_response(['data'=>catalog_game_fields(database(),$m[1])]); }
  catch (Throwable $e) { json_response(['error'=>'game_fields_unavailable'],503); }
 }
+if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username$#D',$path,$m)===1) {
+ if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+ $payload = $_POST['payload'] ?? '';
+ if (!is_string($payload) || strlen($payload) > 8000) json_response(['error'=>'invalid_payload'],413);
+ $input = json_decode($payload, true, 16, JSON_BIGINT_AS_STRING);
+ if (!is_array($input) || json_last_error() !== JSON_ERROR_NONE) json_response(['error'=>'invalid_payload'],400);
+ try {
+  require_once PLUQI_ROOT.'/config/database.php';
+  require_once PLUQI_ROOT.'/app/services/game_fields.php';
+  require_once PLUQI_ROOT.'/app/services/vipayment.php';
+  $pdo = database();
+  $schema = catalog_game_account_schema($pdo, $m[1]);
+  if (!$schema['username_check_available']) json_response(['error'=>'username_check_unavailable','message'=>'Pengecekan username belum tersedia untuk game ini.'],409);
+  $account = $input['account'] ?? null;
+  if (!is_array($account) || array_is_list($account)) json_response(['error'=>'invalid_account'],422);
+  $normalized = [];
+  foreach ($schema['fields'] as $field) {
+   $key = (string)$field['field_key'];
+   $value = $account[$key] ?? '';
+   if (!is_scalar($value)) json_response(['error'=>'invalid_account'],422);
+   $value = trim((string)$value);
+   if ($field['is_required'] && $value === '') json_response(['error'=>'missing_account_field','message'=>'Lengkapi semua kolom akun terlebih dahulu.'],422);
+   if (strlen($value) > 190 || ($value !== '' && preg_match('~^(?:'.$field['validation_regex'].')$~uD',$value) !== 1)) json_response(['error'=>'invalid_account_field','message'=>'Format data akun tidak valid.'],422);
+   $normalized[$key] = $value;
+  }
+  foreach (array_keys($account) as $key) if (!is_string($key) || !array_key_exists($key,$normalized)) json_response(['error'=>'unknown_account_field'],422);
+  $fingerprint = hash('sha256', $m[1].'|'.json_encode($normalized,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+  $now = time();
+  $recent = $_SESSION['pluqi_username_checks'] ?? [];
+  if (!is_array($recent)) $recent = [];
+  $recent = array_filter($recent, static fn($stamp) => is_int($stamp) && $stamp > $now-600);
+  if (isset($recent[$fingerprint]) && $now-(int)$recent[$fingerprint] < 5) json_response(['error'=>'username_check_throttled','message'=>'Tunggu beberapa detik sebelum memeriksa ID yang sama lagi.'],429);
+  if (count($recent) >= 20) json_response(['error'=>'username_check_throttled','message'=>'Batas pemeriksaan akun sementara tercapai. Coba lagi beberapa menit.'],429);
+  $_SESSION['pluqi_username_checks'] = $recent + [$fingerprint=>$now];
+  $codeStmt = $pdo->prepare("SELECT p.provider_product_code
+   FROM products p JOIN providers pr ON pr.id=p.provider_id
+   JOIN games g ON g.id=p.game_id
+   WHERE g.slug=:slug AND g.status='ACTIVE' AND p.status='ACTIVE'
+    AND pr.code='VIPAY' AND pr.status IN ('ACTIVE','LOW_BALANCE')
+    AND p.provider_product_code IS NOT NULL AND TRIM(p.provider_product_code)<>''
+    AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%joki%'
+    AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%vilog%'
+   ORDER BY p.base_price ASC,p.id ASC LIMIT 1");
+  $codeStmt->execute(['slug'=>$m[1]]);
+  $serviceCode = trim((string)($codeStmt->fetchColumn() ?: ''));
+  if ($serviceCode === '') json_response(['error'=>'username_check_unavailable','message'=>'Kode layanan untuk cek username belum tersedia.'],409);
+  $userId = (string)($normalized['user_id'] ?? '');
+  $zoneId = (string)($normalized['zone_id'] ?? $normalized['server'] ?? '');
+  $response = vipayment_post('/game-feature', [
+   'type'=>'get-nickname','code'=>$serviceCode,'target'=>$userId,'additional_target'=>$zoneId
+  ]);
+  $username = is_scalar($response['data'] ?? null) ? trim((string)$response['data']) : '';
+  if ($username === '') json_response(['error'=>'username_not_found','message'=>'Username tidak dapat diverifikasi. Periksa kembali ID game dan server/zone.'],422);
+  json_response(['data'=>['username'=>$username,'verified'=>true]]);
+ } catch (DomainException $e) {
+  json_response(['error'=>'game_unavailable','message'=>'Game tidak tersedia.'],404);
+ } catch (InvalidArgumentException $e) {
+  json_response(['error'=>'invalid_account','message'=>'Data akun tidak valid.'],422);
+ } catch (Throwable $e) {
+  json_response(['error'=>'username_check_failed','message'=>'Pengecekan username sedang tidak tersedia. Anda dapat mencoba lagi nanti.'],503);
+ }
+}
 if ($method==='GET' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/products$#D',$path,$m)===1) {
  try { require_once PLUQI_ROOT.'/config/database.php'; require_once PLUQI_ROOT.'/app/services/catalog.php'; json_response(['data'=>catalog_products(database(),$m[1])]); }
  catch (Throwable $e) { json_response(['error'=>'catalog_unavailable'],503); }
