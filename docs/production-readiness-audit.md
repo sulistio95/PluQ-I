@@ -1337,3 +1337,12 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Jika game (termasuk Free Fire dan HOK saat ini) memang tidak mendukung lookup, area status tetap kosong dan field ID game tetap ada; kondisi tidak didukung tidak dilaporkan sebagai kegagalan permintaan yang tidak pernah dilakukan.
 - Perubahan kode ada pada branch `fix/username-status-without-label`. PHP/JS lint dan uji browser belum dikonfirmasi.
 - Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Koreksi kode khusus VIPayment Get Nickname
+
+- Pengguna memberikan daftar kode resmi dari komentar fitur VIPayment Get Nickname. Kode lookup Free Fire adalah `free-fire`, bukan kode produk top-up `ff5-s13`; daftar juga mencantumkan `mobile-legends`, `mobile-legends-region`, `pubgm`, `valorant`, `genshin-impact`, `honkai-star-rail`, dan `pointblank`.
+- Mengganti pemetaan cek nickname agar memakai kode khusus Game Feature berdasarkan game, bukan memilih kode produk VIPAY termurah dari tabel katalog. Kode lookup dipisahkan dari kode top-up. Honor of Kings tetap tidak didukung karena tidak tercantum pada daftar yang diberikan.
+- Endpoint tetap memakai `type=get-nickname`, `target=user_id`, dan `additional_target=zone_id/server` (kosong untuk game yang hanya memerlukan User ID). Pengecekan nickname tidak membuat order supplier.
+- Menambahkan tes unit pemetaan kode untuk delapan kode yang tersedia dalam daftar. Tes lokal dan panggilan API VIPayment live belum dijalankan pada saat commit; hasil nickname Free Fire perlu diuji dari browser dan log server setelah update.
+- Tetap jangan aktifkan pembayaran, pemesanan supplier, atau backup Google Drive selama pengujian.
