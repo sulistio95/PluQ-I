@@ -1328,3 +1328,12 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Perubahan hanya menyentuh label UI. Field akun yang dihasilkan dari `game_account_fields_for_game()` (termasuk User ID Free Fire) tidak dihapus dan aturan pengecekan nickname opsional untuk Free Fire/HOK tetap berlaku.
 - Hasil nickname Free Fire dapat kosong sampai kode lookup VIPayment yang valid dikonfirmasi. Tidak ada teks helper yang dipulihkan, dan tidak ada perubahan pembayaran, supplier ordering, atau backup Drive.
 - Status verifikasi: perubahan HTML dikirim melalui branch `fix/restore-username-label`; PHP lint, tes schema, dan pemeriksaan browser lokal masih menunggu.
+
+
+## Koreksi tampilan status username — 2026-10-20
+
+- Menghapus teks label `Username` dari area status form pelanggan. Elemen area status dan `username-result` tetap dipertahankan agar hasil pengecekan dapat ditampilkan.
+- Jika lookup nickname benar-benar dicoba dan gagal karena ID tidak tervalidasi, API error, atau koneksi gagal, area status menampilkan teks `Pengecekan username gagal` tanpa label atau helper tambahan.
+- Jika game (termasuk Free Fire dan HOK saat ini) memang tidak mendukung lookup, area status tetap kosong dan field ID game tetap ada; kondisi tidak didukung tidak dilaporkan sebagai kegagalan permintaan yang tidak pernah dilakukan.
+- Perubahan kode ada pada branch `fix/username-status-without-label`. PHP/JS lint dan uji browser belum dikonfirmasi.
+- Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
