@@ -1,3 +1,10 @@
+## Admin catalog sync — 2026-10-19
+
+- Added explicit admin actions to persist VIPayment or Digiflazz catalog data after supplier game mappings have been saved.
+- Added rollback protection: a full supplier snapshot with zero matches to active game mappings no longer commits stale/unavailable flags over existing catalog entries.
+- CI results observed so far: PHP quality and PHP/JavaScript syntax passed on commits `3f4cb21f` and `21715ee4`; fulfillment safety was still running when checked. The latest handoff/docs commit also triggered new workflow runs, which must finish before final CI status is declared.
+- Local database/browser verification remains pending. No customer checkout, supplier order, or payment is triggered by catalog sync.
+
 ## 2026-10-19 — Assertion kapasitas kedua mengikuti tampilan Habis
 
 - Run fulfillment safety pada commit `d247a811c3c9e4e048e9bf610d441d481483a598` melewati assertion pertama setelah koreksi, lalu menemukan assertion kedua yang masih mengharapkan katalog kosong ketika reservasi kedua menghabiskan kapasitas. Ini juga ekspektasi lama yang bertentangan dengan keputusan nominal tetap tampil.
