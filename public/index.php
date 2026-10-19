@@ -58,18 +58,8 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
   if (count($recent) >= 20) json_response(['error'=>'username_check_throttled','message'=>'Batas pemeriksaan akun sementara tercapai. Coba lagi beberapa menit.'],429);
   $recent[$fingerprint] = $now;
   $_SESSION['pluqi_username_checks'] = $recent;
-  $codeStmt = $pdo->prepare("SELECT p.provider_product_code
-   FROM products p JOIN providers pr ON pr.id=p.provider_id
-   JOIN games g ON g.id=p.game_id
-   WHERE g.slug=:slug AND g.status='ACTIVE' AND p.status='ACTIVE'
-    AND pr.code='VIPAY' AND pr.status IN ('ACTIVE','LOW_BALANCE')
-    AND p.provider_product_code IS NOT NULL AND TRIM(p.provider_product_code)<>''
-    AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%joki%'
-    AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%vilog%'
-   ORDER BY p.base_price ASC,p.id ASC LIMIT 1");
-  $codeStmt->execute(['slug'=>$m[1]]);
-  $serviceCode = trim((string)($codeStmt->fetchColumn() ?: ''));
-  if ($serviceCode === '') json_response(['error'=>'username_check_unavailable','message'=>'Kode layanan untuk cek username belum tersedia.'],409);
+  $serviceCode = game_account_username_check_code((string)$schema['game']['slug'], (string)$schema['game']['name']);
+  if ($serviceCode === null) json_response(['error'=>'username_check_unavailable','message'=>'Kode khusus pengecekan username belum tersedia untuk game ini.'],409);
   $userId = (string)($normalized['user_id'] ?? '');
   $zoneId = (string)($normalized['zone_id'] ?? $normalized['server'] ?? '');
   $response = vipayment_post('/game-feature', [
