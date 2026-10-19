@@ -1184,3 +1184,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Risiko/kelanjutan: verifikasi format respons VIPayment aktual agar pemetaan kolom game/nama/kode/harga sesuai API. Pertahankan pembayaran checkout, pesanan supplier, backup Drive, dan deployment tetap nonaktif.
 
 - GitHub Actions subsequently passed on commit `6a1527b2496f20207a626cdaa3f8071e089441de`: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/39234587186), [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/39234586979), and [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/39234586947). CI success is not a live VIPayment/browser/database deletion test.
+
+## 2026-10-19 — Panel konfigurasi form akun per game
+
+- Commit `4a17016b8d2cf7b7b97cbbff34f102743208184a` menambahkan `public/admin/game-fields.php`; commit `be413cf13c8f9c621f8fee98b8acab5b0dcbb7cf` menambahkan tautan navigasi admin.
+- Fitur mendukung CRUD praktis kolom teks/angka/dropdown, label/kunci/placeholder, wajib diisi, regex opsional, urutan, status aktif/nonaktif, dan opsi dropdown. Pengubahan melalui POST + CSRF + role check ADMIN/SUPER_ADMIN + prepared statements + transaksi + audit log.
+- Migration 002 sudah mendefinisikan `game_fields` dan `game_field_options`; tidak ada migration baru yang diperlukan untuk panel ini.
+- Verifikasi yang masih harus dilakukan: `php -l public/admin/game-fields.php`, `php -l public/admin/index.php`, pengujian UI di browser lokal, validasi CSRF/role, serta memastikan field tersimpan dan tampil pada `/api/games/{slug}/fields`. Implementasi belum dianggap lulus pengujian hanya karena commit ada di GitHub.
+- Batasan penting: regex dan required pada panel belum menggantikan validasi server yang ketat untuk request checkout, pengecekan username game, maupun pemetaan field khusus Digiflazz/VIPayment. Pertahankan pembayaran, pesanan supplier, dan backup Drive nonaktif sampai alur tersebut diuji secara terkontrol.
