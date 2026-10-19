@@ -190,6 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             throw new InvalidArgumentException('Aksi tidak dikenal.');
         } catch (InvalidArgumentException $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
             $error = $e->getMessage();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
