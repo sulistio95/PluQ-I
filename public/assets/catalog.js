@@ -194,7 +194,7 @@
             return;
           }
           accountDataValid = false;
-          resultBox.textContent = data.message || 'Username belum dapat diverifikasi. Periksa ID game dan server/zone.';
+          resultBox.textContent = 'Pengecekan username gagal';
           return;
         }
         accountDataValid = true;
@@ -203,7 +203,7 @@
       } catch (_) {
         if (requestId !== usernameRequestId) return;
         accountDataValid = false;
-        resultBox.textContent = 'Pengecekan username gagal terhubung. Coba lagi setelah beberapa saat.';
+        resultBox.textContent = 'Pengecekan username gagal';
       }
     }, 800);
   }
