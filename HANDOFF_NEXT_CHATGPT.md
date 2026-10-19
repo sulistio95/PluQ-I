@@ -1410,3 +1410,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Perubahan UI pada branch `fix/restore-username-label` mengembalikan label `Username` di area hasil pemeriksaan pada `public/index.php`, tanpa memulihkan teks helper. Field User ID dan schema akun otomatis tetap dipertahankan; lookup Free Fire tetap opsional sampai kode VIPayment yang valid diketahui.
 - Verifikasi browser dan lint lokal belum dilakukan. Setelah merge, tarik `main`, jalankan `php -l public/index.php`, lalu buka Free Fire untuk memastikan label Username dan kolom ID tampil sementara area hasil username tetap kosong tanpa teks penjelas.
 - Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Hapus teks Username, pertahankan area hasil
+
+- Klarifikasi pengguna: hapus tulisan `Username` dan teks penjelas, tetapi jangan hapus area/kolom hasil; jika pengecekan gagal, tampilkan `Pengecekan username gagal`.
+- Pada branch `fix/username-status-without-label`, `public/index.php` menghapus label `Username` tetapi mempertahankan `#username-check` dan `#username-result`. `public/assets/catalog.js` menampilkan pesan generik `Pengecekan username gagal` untuk kegagalan lookup yang dicoba.
+- Untuk Free Fire/HOK yang lookup-nya dinonaktifkan karena kode/dukungan belum dikonfirmasi, area status tetap kosong; User ID dan form tetap tampil.
+- Lint PHP/JS dan uji browser belum dilakukan. Jangan aktifkan pembayaran, pesanan supplier, atau backup Drive.
