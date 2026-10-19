@@ -161,17 +161,17 @@
     const account = readAccount();
     const resultBox = $('username-result');
     if (!localAccountIsReady(account)) {
-      resultBox.textContent = 'Lengkapi semua kolom akun yang wajib diisi.';
+      resultBox.textContent = '';
       return;
     }
     if (!gameMeta.checkout_supported) {
       accountDataValid = true;
-      resultBox.textContent = 'Form akun game ini belum dipetakan dengan aman. Transaksi dinonaktifkan sampai kebutuhan ID dan server/zone diverifikasi.';
+      resultBox.textContent = '';
       return;
     }
     if (!gameMeta.username_check_available) {
       accountDataValid = true;
-      resultBox.textContent = 'Pengecekan username belum didukung oleh supplier untuk game ini. Pastikan ID dan server/zone benar.';
+      resultBox.textContent = '';
       return;
     }
     resultBox.textContent = 'Memeriksa username secara otomatis...';
@@ -220,7 +220,7 @@
     fieldsBox.innerHTML = '<p class="muted">Memuat formulir...</p>';
     $('field-message').classList.add('hidden');
     $('customer-email-wrap').classList.add('hidden');
-    $('username-result').textContent = 'Isi data akun; username akan diperiksa otomatis jika API mendukungnya.';
+    $('username-result').textContent = '';
     $('checkout-note').textContent = 'Pilih game dan isi data akun. Pembayaran sandbox belum dimulai.';
     paymentButton.hidden = true;
     paymentButton.disabled = false;
