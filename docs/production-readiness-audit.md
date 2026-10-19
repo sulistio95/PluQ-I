@@ -1,3 +1,11 @@
+## 2026-10-19 — Nominal tetap terlihat saat semua supplier tidak tersedia
+
+- Keputusan produk diperbarui atas persetujuan pengguna: jika beberapa supplier menawarkan nominal yang sama, pilih supplier termurah yang memenuhi syarat. Jika tidak ada supplier yang dapat melayani, nominal tetap terlihat sebagai **Habis**.
+- Kode katalog memilih penawaran tersedia terlebih dahulu; jika semuanya tidak tersedia, memilih cache termurah sebagai baris tampilan dengan `is_available=false`. Frontend menampilkan label `Habis`, bukan tombol pilih.
+- Ketersediaan tampilan tidak mengizinkan transaksi. Quote/checkout tetap harus memvalidasi ulang status produk, supplier, saldo, reservasi, dan aturan harga di server.
+- Tes regresi katalog diperbarui; hasil eksekusi tes dan CI setelah commit masih menunggu. Ini bukan uji browser atau database lokal.
+- Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif selama pengujian.
+
 ## 2026-10-19 — VIPayment dipaksa menggunakan IPv4
 
 - Commit `e034368f646d6689448b19f392903d52945bf7bc` menambahkan `CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4` pada helper bersama `vipayment_post()`. Semua request VIPayment yang memakai helper ini dipaksa memilih IPv4, bukan IPv6.
