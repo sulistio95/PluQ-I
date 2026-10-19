@@ -16,13 +16,16 @@ schema_test(array_column($mobileLegends, 'field_key') === ['user_id', 'zone_id']
 
 $honorOfKings = game_account_fields_for_game('honor-of-kings', 'Honor of Kings');
 schema_test(array_column($honorOfKings, 'field_key') === ['user_id'], 'Honor of Kings should request only User ID');
+schema_test(game_account_schema_is_supported('honor-of-kings', 'Honor of Kings', $honorOfKings), 'Reviewed Honor of Kings schema should allow checkout');
 
 $serverTitle = game_account_fields_for_game('example-region-game', 'Example Region Game');
 schema_test(array_column($serverTitle, 'field_key') === ['user_id', 'server'], 'Titles whose metadata names a server/region should show a server field');
+schema_test(!game_account_schema_is_supported('example-region-game', 'Example Region Game', $serverTitle), 'Unmapped server fields must block checkout');
 schema_test(preg_match('~^(?:' . $serverTitle[1]['validation_regex'] . ')$~uD', 'North America') === 1, 'Server names may contain spaces');
 
 $unknown = game_account_fields_for_game('unknown-game', 'Unknown Game');
 schema_test(array_column($unknown, 'field_key') === ['user_id'], 'Unknown games should use the safe User ID fallback');
+schema_test(!game_account_schema_is_supported('unknown-game', 'Unknown Game', $unknown), 'Unknown game schemas must block checkout');
 schema_test($unknown[0]['is_required'] === true, 'User ID must be required');
 schema_test(preg_match('~^(?:' . $unknown[0]['validation_regex'] . ')$~uD', 'Player123') === 1, 'Generated User ID regex should accept ordinary IDs');
 schema_test(preg_match('~^(?:' . $unknown[0]['validation_regex'] . ')$~uD', 'Player 123') !== 1, 'Generated User ID regex should reject whitespace');
