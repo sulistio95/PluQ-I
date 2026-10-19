@@ -110,3 +110,9 @@ Do not schedule overlapping worker invocations or add parallel workers before co
 Dynamic game input forms, username/account validation where supported, Digiflazz/VIPayment catalog synchronization, lowest-price selection, Duitku payment creation/callbacks, idempotent order queue, bounded retries, separate payment/order statuses, provider balance reserves, admin panel, icon management, pricing rules, manual review/refunds, audit logs and health checks.
 
 Each feature must be implemented and tested before being marked complete.
+
+## Invoice expiry reconciliation
+
+- Default Duitku invoice expiry is 30 minutes and can be set by an admin in **Pengaturan API → Duitku → Masa berlaku invoice** (5–1440 minutes). The same setting drives the gateway request and local deadline.
+- After the deadline, use the CLI script `php bin/reconcile-expired-payments.php` from cron. It queries Duitku sandbox status and only marks a pending invoice expired when the gateway confirms failed/expired; it never triggers supplier fulfillment. Keep it out of the public web root/URL and use a protected CLI cron job.
+- Runtime verification is pending. Keep checkout, supplier ordering, and Drive backup disabled while testing.
