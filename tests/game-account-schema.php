@@ -19,6 +19,7 @@ schema_test(array_column($honorOfKings, 'field_key') === ['user_id'], 'Honor of 
 
 $serverTitle = game_account_fields_for_game('example-region-game', 'Example Region Game');
 schema_test(array_column($serverTitle, 'field_key') === ['user_id', 'server'], 'Titles whose metadata names a server/region should show a server field');
+schema_test(preg_match('~^(?:' . $serverTitle[1]['validation_regex'] . ')$~uD', 'North America') === 1, 'Server names may contain spaces');
 
 $unknown = game_account_fields_for_game('unknown-game', 'Unknown Game');
 schema_test(array_column($unknown, 'field_key') === ['user_id'], 'Unknown games should use the safe User ID fallback');
