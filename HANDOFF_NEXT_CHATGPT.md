@@ -1362,3 +1362,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Tambah `public/uploads/game-icons/.htaccess` untuk menonaktifkan directory listing dan menghapus handler ekstensi skrip. Folder harus dapat ditulis oleh PHP. Tetap validasi konfigurasi hosting sebelum produksi.
 - Commits: halaman template `41543b6e3cbce9bc97cb196d825f5e09faeef567`; proteksi direktori `7164700e961485fe800a8feb97efd8372aeb9c1d`.
 - Belum mengklaim PHP lint, CI terbaru, upload browser, atau uji homepage. Tarik `main`, jalankan `php -l public/admin/template-settings.php`, uji pilih/simpan game di Game List, unggah/ganti/hapus icon, dan pastikan `GET /api/games`/homepage menampilkan icon baru. Jangan aktifkan pembayaran, supplier ordering, atau backup Google Drive selama pengujian.
+
+
+## Pengaturan Template — matriks icon dan saran ukuran gambar — 2026-10-20
+
+- `public/admin/template-settings.php` mengubah daftar Icon Game List dari tabel memanjang menjadi grid/matriks kartu responsif, sehingga banyak game lebih mudah dipindai dan dikelola. Setiap kartu tetap menyediakan pratinjau, unggah/ganti, dan hapus icon.
+- Menu banner kini menampilkan saran ukuran **1200 × 400 px (3:1, landscape)**. Bagian Icon Game List menampilkan saran **512 × 512 px (1:1, persegi)**. Keduanya hanya rekomendasi, bukan batas validasi; batas upload tetap 5 MB dan format JPG/PNG/WebP.
+- Commit kode: `7ee62fc3741ea01a0efcdb210246cd08a85f6ed5`.
+- Belum ada klaim bahwa PHP lint, GitHub Actions, browser, atau unggah/hapus file lokal sudah lolos untuk perubahan ini. Setelah pull, jalankan `php -l public/admin/template-settings.php`, lalu cek matriks pada desktop dan ponsel serta uji unggah/ganti/hapus icon dan banner. Checkout, supplier ordering, backup Google Drive, dan deployment tetap nonaktif selama pengujian.
