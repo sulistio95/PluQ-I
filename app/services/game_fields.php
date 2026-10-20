@@ -121,12 +121,15 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
     // Nickname lookup is independent from supplier catalogue, balance, and product codes.
     $usernameCheckSupported = game_account_username_check_supported((string)$game['slug'], (string)$game['name']);
     $usernameCheckerConfigured = trim((string) (getenv('GAME_CHECK_API_KEY') ?: '')) !== '';
+    $gopayFallbackEnabled = filter_var(getenv('GAME_CHECK_GOPAY_FALLBACK_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+    $lookupCode = game_account_username_check_code((string)$game['slug'], (string)$game['name']);
+    $gopaySupported = game_account_gopay_check_supported((string)$game['slug'], (string)$game['name']);
 
     return [
         'game' => ['slug' => (string)$game['slug'], 'name' => (string)$game['name']],
         'fields' => $fields,
         'checkout_supported' => $checkoutSupported,
-        'username_check_available' => $usernameCheckSupported && ($usernameCheckerConfigured || game_account_gopay_check_supported((string)$game['slug'], (string)$game['name'])),
+        'username_check_available' => ($lookupCode !== null && $usernameCheckerConfigured) || ($gopaySupported && $gopayFallbackEnabled),
     ];
 }
 
