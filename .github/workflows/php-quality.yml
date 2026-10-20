@@ -46,7 +46,7 @@ jobs:
         run: php tests/fulfillment-mapping.php
       - name: Test automatically generated game account fields
         run: php tests/game-account-schema.php
-      - name: Test GoPay nickname fallback adapter with mocked responses
+      - name: Test VIPayment nickname lookup parameters
         run: php tests/game-username-fallback.php
       - name: Test provider budget capacity boundaries
         run: php tests/provider-budget-capacity.php
