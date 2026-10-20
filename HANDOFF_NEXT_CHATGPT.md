@@ -1,3 +1,9 @@
+## Verifikasi CI — pelacakan transaksi admin (2026-10-20)
+
+- GitHub Actions **PHP quality checks** lulus pada commit dokumentasi dc49bfc3a504cb4dc82f90b966589d52c03f014d, run [#828](https://github.com/sulistio95/PluQ-I/actions/runs/39395576680). Job mencakup pemeriksaan sintaks JavaScript, lint seluruh file PHP, dan tes regresi yang ada.
+- Hasil ini mengonfirmasi lint PHP/sintaks pada snapshot tersebut, bukan uji browser atau integrasi query terhadap database MySQL/MariaDB nyata. Uji halaman pencarian/detail masih perlu dilakukan lokal setelah database dan migration aktif.
+- Workflow CI lain yang tidak ditampilkan pada run ini belum dinyatakan lulus. Fitur tetap hanya baca dan tidak menjalankan pembayaran atau order supplier.
+
 ## Update — 2026-10-20: Pencarian dan detail transaksi admin
 
 - Menambahkan halaman **Cari Transaksi** di `public/admin/transaction-search.php`. Pencarian dapat memakai ID publik pesanan, nomor merchant Duitku, referensi gateway, atau referensi transaksi supplier; hasil dibatasi 200 baris.
