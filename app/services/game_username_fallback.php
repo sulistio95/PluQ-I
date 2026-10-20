@@ -199,5 +199,4 @@ function game_username_check_with_fallback(PDO $pdo, string $gameCode, string $u
             throw new RuntimeException('No fallback provider is configured for this game.', 0, $primaryError);
         }
         throw new RuntimeException('Nickname providers are temporarily unavailable.', 0, $primaryError);
-    }
 }
