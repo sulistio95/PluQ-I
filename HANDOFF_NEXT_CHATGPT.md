@@ -1503,3 +1503,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - `git diff --check` bersih; `php -l app/services/catalog.php` tidak menemukan kesalahan sintaks.
 - `php -d error_reporting=E_ALL tests/catalog-availability.php` lulus **6/6** tanpa peringatan `Undefined array key "base_price"`. Normalisasi `base_price`, `selling_price`, dan `is_available` kini aman terhadap field opsional yang tidak tersedia.
 - Berikutnya: lanjutkan pemeriksaan kualitas lintas tes dan validasi sintaks JavaScript. Mesin lokal pengguna belum memiliki Node.js; jangan menyatakan pemeriksaan JS lokal lulus tanpa alat validasi. Jangan gabungkan branch ini ke `main` dulu. File banner JPG lokal yang tidak dilacak harus dipertahankan; pembayaran, pemesanan supplier, dan backup Drive tetap nonaktif.
+
+
+## Regresi menyeluruh lokal — 2026-10-20
+
+- Pengguna menarik pembaruan catatan terbaru dari branch `audit/php-valid-game-provider` dengan fast-forward.
+- `php bin/preflight.php`: **48/48 checks passed**; koneksi DB, tabel, dan migrasi terdeteksi. Pembayaran, order supplier, dan backup settlement tetap nonaktif.
+- Seluruh 12 kelompok tes berikut lulus tanpa output warning yang terlihat: `duitku-callback-result-state.php`, `duitku-transaction-status.php`, `reconcile-cooldown-regression.php`, `checkout-request-fingerprint.php`, `fulfillment-mapping.php`, `provider-budget-capacity.php`, `catalog-availability.php` (6/6), `pricing-hybrid.php`, `admin-authorization.php`, `admin-login-throttle-clear.php`, `game-account-schema.php`, dan `game-username-fallback.php`.
+- Batasan: ini tes lokal/preflight, bukan bukti kredensial eksternal atau transaksi sandbox/produksi berfungsi. Validasi sintaks JS dan hasil CI branch terbaru masih perlu dicek. Jangan merge ke `main` atau mengaktifkan pembayaran/order/backup sebelum verifikasi tambahan.
