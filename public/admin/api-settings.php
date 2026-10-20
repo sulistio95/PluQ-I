@@ -41,6 +41,7 @@ foreach ($optionalFields as $fieldName => $fieldLabel) { $allFields[$fieldName] 
 $message = '';
 $error = '';
 $catalogPreview = null;
+$catalogPreviewProvider = 'VIPayment';
 $catalogSyncResult = null;
 $csrf = admin_csrf_token();
 
@@ -168,14 +169,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   } catch (Throwable $e) {
    $error = 'Sinkronisasi katalog gagal: ' . $e->getMessage();
   }
- } elseif (isset($_POST['preview_vipayment_catalog'])) {
+ } elseif (isset($_POST['preview_provider_catalog'])) {
   try {
-   require_once PLUQI_ROOT . '/app/services/vipayment.php';
-   $catalogPreview = vipayment_game_services(null, null);
-   if (!is_array($catalogPreview)) throw new RuntimeException('Format katalog VIPayment tidak valid.');
-   $message = 'Daftar layanan VIPayment berhasil diambil untuk pratinjau baca-saja. Database katalog tidak diubah dan tidak ada pesanan dibuat.';
+   $previewProvider = strtoupper(trim((string)($_POST['preview_catalog_provider'] ?? 'VIPAY')));
+   if ($previewProvider === 'VIPAY') {
+    require_once PLUQI_ROOT . '/app/services/vipayment.php';
+    $catalogPreview = vipayment_game_services(null, null);
+    $catalogPreviewProvider = 'VIPayment';
+   } elseif ($previewProvider === 'DIGI') {
+    require_once PLUQI_ROOT . '/app/services/digiflazz.php';
+    $catalogPreview = digiflazz_price_list();
+    $catalogPreviewProvider = 'Digiflazz';
+   } else {
+    throw new RuntimeException('Penyedia katalog tidak valid. API custom memerlukan adapter katalog yang sesuai dengan dokumentasi API-nya.');
+   }
+   if (!is_array($catalogPreview)) throw new RuntimeException('Format katalog ' . $catalogPreviewProvider . ' tidak valid.');
+   $message = 'Daftar layanan ' . $catalogPreviewProvider . ' berhasil diambil untuk pratinjau baca-saja. Database katalog tidak diubah dan tidak ada pesanan dibuat.';
   } catch (Throwable $e) {
-   $error = 'Pengambilan katalog VIPayment gagal: ' . $e->getMessage();
+   $error = 'Pengambilan katalog gagal: ' . $e->getMessage();
   }
  } elseif (isset($_POST['check_duitku'])) {
   try {
@@ -296,9 +307,12 @@ function api_settings_escape(mixed $value): string { return htmlspecialchars((st
 <p><strong>Hasil:</strong> <?=api_settings_escape($catalogSyncResult['provider'] ?? '')?> — <?= (int)($catalogSyncResult['seen'] ?? 0) ?> layanan diproses, <?= (int)($catalogSyncResult['mapped'] ?? 0) ?> dipetakan ke game.</p>
 <?php endif; ?>
 </section>
-<section class="panel"><h2>Pratinjau katalog VIPayment</h2>
-<p class="muted">Mengambil daftar layanan API secara langsung. Fitur ini hanya menampilkan data; tidak menyimpan/mengubah katalog dan tidak mengirim pesanan.</p>
-<form method="post" class="actions"><input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>"><button type="submit" name="preview_vipayment_catalog" value="1">Ambil daftar game dan layanan</button></form>
+<section class="panel"><h2>Pratinjau daftar game dan layanan</h2>
+<p class="muted">Pilih supplier untuk mengambil daftar layanan secara langsung. Fitur ini hanya menampilkan pratinjau; tidak menyimpan/mengubah katalog dan tidak mengirim pesanan. Untuk memasukkan harga ke katalog toko, gunakan sinkronisasi katalog di atas setelah pemetaan game disiapkan.</p>
+<form method="post" class="actions"><input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>">
+<label>Supplier katalog<select name="preview_catalog_provider" required><option value="VIPAY">VIPayment</option><option value="DIGI">Digiflazz</option></select></label>
+<button type="submit" name="preview_provider_catalog" value="1">Ambil daftar game dan layanan</button></form>
+<p class="muted note">API custom belum bisa dipratinjau otomatis karena format endpoint, autentikasi, dan struktur respons berbeda-beda. Perlu adapter khusus berdasarkan dokumentasi resmi masing-masing API; profil custom yang tersimpan saat ini hanya menyimpan kredensial dan base URL.</p>
 <?php if (is_array($catalogPreview)): ?>
 <?php
 $catalogRows = array_values(array_filter($catalogPreview, 'is_array'));
@@ -308,14 +322,14 @@ foreach ($catalogRows as $catalogRow) {
  if (is_scalar($gameName) && trim((string)$gameName) !== '') $gameNames[(string)$gameName] = true;
 }
 ?>
-<p><strong>Total layanan:</strong> <?=count($catalogRows)?> &nbsp; <strong>Game/kategori teridentifikasi:</strong> <?=count($gameNames)?></p>
+<p><strong>Penyedia:</strong> <?=api_settings_escape($catalogPreviewProvider)?> &nbsp; <strong>Total layanan:</strong> <?=count($catalogRows)?> &nbsp; <strong>Game/kategori teridentifikasi:</strong> <?=count($gameNames)?></p>
 <?php if (!$catalogRows): ?><p class="muted">API mengembalikan daftar kosong.</p><?php else: ?>
 <div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px">Game/kategori</th><th style="text-align:left;padding:8px">Layanan</th><th style="text-align:left;padding:8px">Kode</th><th style="text-align:left;padding:8px">Status</th><th style="text-align:left;padding:8px">Harga</th></tr></thead><tbody>
 <?php foreach (array_slice($catalogRows, 0, 100) as $catalogRow):
  $gameName = $catalogRow['game'] ?? $catalogRow['category'] ?? $catalogRow['game_name'] ?? '';
  $serviceName = $catalogRow['name'] ?? $catalogRow['service'] ?? $catalogRow['layanan'] ?? $catalogRow['product_name'] ?? '';
  $serviceCode = $catalogRow['code'] ?? $catalogRow['service_code'] ?? $catalogRow['buyer_sku_code'] ?? $catalogRow['id'] ?? '';
- $serviceStatus = $catalogRow['status'] ?? $catalogRow['service_status'] ?? '';
+ $serviceStatus = $catalogRow['status'] ?? $catalogRow['service_status'] ?? (($catalogRow['buyer_product_status'] ?? false) && ($catalogRow['seller_product_status'] ?? false) ? 'available' : 'unavailable');
  $servicePrice = $catalogRow['price'] ?? $catalogRow['harga'] ?? $catalogRow['cost'] ?? '';
 ?>
 <tr><?php foreach ([$gameName,$serviceName,$serviceCode,$serviceStatus,$servicePrice] as $cell): ?><td style="padding:8px;border-top:1px solid var(--line);vertical-align:top"><?=api_settings_escape(is_scalar($cell) ? $cell : json_encode($cell))?></td><?php endforeach; ?></tr>
