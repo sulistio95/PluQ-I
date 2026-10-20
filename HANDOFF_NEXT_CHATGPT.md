@@ -1519,3 +1519,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - GitHub Actions `PHP quality checks` pada commit `e9628ffff1ea12221f63c7629f34e7cefbb960ae` (head branch `audit/php-valid-game-provider`, PR #8) berstatus `completed / success`.
 - CI hijau ini mencakup workflow PHP quality yang ada; jangan menyimpulkan bahwa JavaScript atau alur browser end-to-end sudah diverifikasi hanya dari nama/status workflow tersebut. Validasi JS eksplisit dan browser masih perlu dipastikan.
 - Tidak ada merge atau perubahan konfigurasi keamanan: checkout pembayaran, order supplier, dan backup Drive tetap nonaktif.
+
+
+## 2026-10-20 — Tambahkan validasi sintaks JavaScript ke CI
+
+- Pengguna mengonfirmasi `node` dan `nodejs` tidak tersedia di Puppy Bookworm64, dan APT tidak menemukan paket `nodejs` pada indeks yang aktif. Karena itu pemeriksaan JavaScript lokal belum dapat dijalankan.
+- Commit workflow `d50d8eddb4ec4c19b2127bdf53a1b1c819531497` pada branch `audit/php-valid-game-provider` menambahkan setup Node.js 22 khusus GitHub Actions dan `node --check public/assets/catalog.js` ke workflow PHP quality. Ini hanya runtime CI; arsitektur hosting PluQ-I tetap PHP + MySQL dan tidak membutuhkan Node.js di shared hosting.
+- Hasil workflow setelah commit ini masih harus diperiksa. Jangan menyebut validasi JavaScript lulus sebelum run baru selesai sukses.
+- Preflight lokal sebelumnya 48/48 dan 12 kelompok tes regresi PHP lulus. Ini tidak menggantikan pemeriksaan browser, uji API staging, atau uji Duitku sandbox.
+- Pertahankan tiga banner JPG lokal yang belum terlacak. Jangan merge ke `main`; pembayaran, supplier ordering, `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false`, dan backup Google Drive tetap nonaktif.
