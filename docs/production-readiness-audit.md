@@ -1591,3 +1591,9 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Checkout tetap wajib memeriksa ketersediaan dan kapasitas supplier di server; perubahan ini hanya menyaring katalog yang ditampilkan.
 - Perlu uji lokal setelah sinkronisasi katalog: produk `available` dengan saldo cukup dapat dipesan; produk `available` dengan saldo tidak cukup terlihat namun tidak dapat dibeli; produk `empty` tidak muncul.
 - Belum menjalankan pengujian lokal atau CI dari perubahan ini. Perubahan hanya pada branch `feature/admin-left-sidebar`; tidak di-merge ke `main`.
+
+
+## 2026-10-20 — UI ikon game berbentuk lingkaran
+- Ditambahkan wrapper `.game-icon-frame` dengan crop lingkaran, bingkai dekoratif bernuansa emas, dan aksen bulan sabit kecil di tepi kanan atas.
+- Rendering ikon tetap menggunakan `icon_url` dari katalog. Tidak ada perubahan pada penyimpanan unggahan, database, API, atau mekanisme admin.
+- Validasi visual desktop/seluler dan placeholder ikon masih perlu dilakukan secara lokal; belum ada klaim pengujian lulus.
