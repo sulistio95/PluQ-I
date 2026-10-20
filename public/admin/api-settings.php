@@ -232,8 +232,10 @@ function api_settings_escape(mixed $value): string { return htmlspecialchars((st
 <style>
 :root{color-scheme:dark;--bg:#0c0d10;--panel:#15171d;--line:#292d36;--text:#f3f4f6;--muted:#9ca3af;--accent:#a7f3d0}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}a{color:var(--accent)}.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}label{display:grid;gap:6px;color:var(--muted)}input,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.notice{padding:10px;border-radius:7px;margin:12px 0;background:#183329}.error{padding:10px;border-radius:7px;margin:12px 0;background:#3b1d22}.status{font-size:12px;padding:3px 7px;border:1px solid var(--line);border-radius:5px}.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}.note{font-size:13px}@media(max-width:600px){main{padding:12px}.panel{padding:12px}}
-</style></head><body><main>
-<header class="bar"><div><h1>Pengaturan API</h1><div class="muted">Kredensial gateway dan supplier — akun <?=api_settings_escape($user['username'])?></div></div><a href="/admin/">Kembali ke panel admin</a></header>
+</style>
+<link rel="stylesheet" href="/assets/admin-sidebar.css"></head><body class="admin-layout">
+<?php require PLUQI_ROOT . '/app/views/admin_sidebar.php'; ?><main>
+<header class="bar"><div><h1>Pengaturan API</h1><div class="muted">Kredensial gateway dan supplier — akun <?=api_settings_escape($user['username'])?></div></div></header>
 <?php if ($message !== ''): ?><div class="notice"><?=api_settings_escape($message)?></div><?php endif; ?>
 <?php if ($error !== ''): ?><div class="error"><?=api_settings_escape($error)?></div><?php endif; ?>
 <section class="panel"><h2>Status konfigurasi</h2><p class="muted">Status hanya menunjukkan apakah nilai tersedia, bukan apakah kredensial diterima oleh layanan.</p>
