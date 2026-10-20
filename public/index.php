@@ -60,12 +60,20 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
    json_response(['data'=>['username'=>$cachedUsername,'verified'=>true,'cached'=>true]]);
   }
   $serviceCode = game_account_username_check_code((string)$schema['game']['slug'], (string)$schema['game']['name']);
-  if (game_username_gopay_fallback_enabled()) {
-   game_username_check_enforce_provider_limits($pdo, $fingerprint);
-  }
   $userId = (string)($normalized['user_id'] ?? '');
   $zoneId = (string)($normalized['zone_id'] ?? $normalized['server'] ?? '');
-  $username = game_username_check_with_fallback($pdo, (string)($serviceCode ?? ''), $userId, $zoneId, (string)$schema['game']['slug'], (string)$schema['game']['name']);
+  $checkerApiKey = trim((string)(getenv('GAME_CHECK_API_KEY') ?: ''));
+  if ($serviceCode !== null && $checkerApiKey !== '') {
+   // Prefer the dedicated nickname-check API when credentials are configured.
+   game_username_check_enforce_provider_limits($pdo, $fingerprint);
+   $username = game_username_check($serviceCode, $userId, $zoneId);
+  } elseif (game_username_gopay_fallback_enabled()) {
+   // The public GoPay endpoint is undocumented; only use it after explicit opt-in.
+   // Pass an empty service code so the fallback's per-account cooldown is enforced.
+   $username = game_username_check_with_fallback($pdo, '', $userId, $zoneId, (string)$schema['game']['slug'], (string)$schema['game']['name']);
+  } else {
+   throw new RuntimeException('No enabled nickname-check provider is configured.');
+  }
   game_username_check_cache_success($pdo, $fingerprint, (string)$schema['game']['slug'], $username);
   // Opportunistic cleanup is bounded so this stays suitable for shared hosting.
   $pdo->exec('DELETE FROM game_username_check_cache WHERE expires_at <= UTC_TIMESTAMP() LIMIT 100');
