@@ -1565,3 +1565,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - GitHub Actions **PHP quality checks** untuk commit `6415ccc59e62060abffcab86863ad41e6b40d955` selesai dengan status **success**, run #819: https://github.com/sulistio95/PluQ-I/actions/runs/39391595762.
 - Ini hanya hasil workflow yang dikonfigurasi; belum membuktikan request API live untuk kedua supplier atau perilaku browser. Uji lokal dengan kredensial valid dan pemeriksaan tampilan masih diperlukan.
 - Dukungan API custom tetap memerlukan adapter katalog berdasarkan dokumentasi provider; tidak ada endpoint custom yang dipanggil. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+## 2026-10-20 — Verifikasi lokal halaman Cari Transaksi dan Detail Transaksi
+
+- Branch `feature/admin-left-sidebar`, commit lokal setelah fast-forward: `f2421cb`. Kedua file halaman transaksi lolos `php -l`.
+- Pengujian HTTP tanpa login menghasilkan HTTP 302 menuju `/admin/` untuk halaman pencarian dan detail; ini konsisten dengan gate autentikasi admin.
+- Pengguna mengonfirmasi kedua halaman dapat diuji melalui browser setelah login. Log PHP built-in server menunjukkan HTTP 200 untuk `GET /admin/transaction-detail.php` serta `GET /assets/admin-sidebar.css`.
+- Database saat ini belum berisi transaksi. Oleh sebab itu, keberhasilan akses/tampilan dasar sudah dikonfirmasi, tetapi pencarian transaksi berisi data dan query detail lintas tabel belum terbukti dengan fixture transaksi.
+- Tidak ada transaksi Duitku, pemesanan supplier, atau backup Google Drive yang dipicu. Pertahankan semua fitur operasional tersebut nonaktif sampai staging terkontrol.
