@@ -1684,3 +1684,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Perubahan hanya pada `public/assets/catalog.css` dan markup ikon di `public/assets/catalog.js`.
 - Wajib uji lokal setelah pull: buka halaman depan, pastikan ikon lama dan ikon yang diunggah tampil bulat, bingkai tidak menutupi nama game, placeholder tanpa ikon tetap rapi, serta tampilan desktop dan seluler tidak terpotong.
 - Belum diuji di browser/CI dan belum di-merge ke `main`.
+
+## Update 2026-10-20 — Perataan kartu katalog game
+
+- CSS `public/assets/catalog.css` diperbarui agar kartu game tersusun vertikal dengan tinggi minimum konsisten; area nama game menyediakan ruang dua baris dan membungkus kata panjang. Tujuannya menjaga ikon tetap sejajar walau nama game berbeda panjang.
+- Bingkai ikon bulat bermotif bulan sabit tetap digunakan. Tidak ada perubahan JavaScript, upload icon/banner, database, atau checkout.
+- Commit CSS: `97750176d2eba70379f6571e21744e2d42d90805` pada `feature/admin-left-sidebar`.
+- Belum diuji visual browser/CI. Setelah pull, periksa kartu dengan nama pendek dan panjang pada desktop dan ponsel. Jangan merge ke `main` tanpa audit berikutnya; pertahankan tiga banner JPG lokal yang belum terlacak.
