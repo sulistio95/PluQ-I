@@ -81,10 +81,15 @@ function game_username_check_cache_success(PDO $pdo, string $fingerprint, string
  * documented default rate limit. The caller should check cache before calling
  * this function so cache hits do not consume provider quota.
  */
-function game_username_check_enforce_provider_limits(PDO $pdo, string $clientIp, string $fingerprint): void
+function game_username_check_enforce_client_limit(PDO $pdo, string $clientIp): void
 {
     $ipHash = hash('sha256', $clientIp !== '' ? $clientIp : 'unknown-client');
-    game_username_check_apply_limit($pdo, 'ip:' . $ipHash, 10, 60);
+    game_username_check_apply_limit($pdo, 'ip:' . $ipHash, 20, 60);
+}
+
+/** Called only on cache misses, immediately before the external API request. */
+function game_username_check_enforce_provider_limits(PDO $pdo, string $fingerprint): void
+{
     game_username_check_apply_limit($pdo, 'fingerprint:' . $fingerprint, 1, 5);
     game_username_check_apply_limit($pdo, 'global-provider', 50, 60);
 }
