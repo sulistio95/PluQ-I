@@ -1547,3 +1547,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Perubahan kode/env: `public/index.php` commit `23508598100b75080f70d61a94a93c097671e525`; `app/services/game_fields.php` commit `e0ca6bf234cecda1fe3f4653baf67ef994c0278b`; `.env.example` commit `4bb1c72bce77959be62f7e01e0f853041dbe9e2d`. Tes regresi/CI setelah perubahan ini masih harus diverifikasi sebelum dianggap lulus.
 - Pengguna dapat menguji lokal setelah pull, tetapi pengujian ID nyata membutuhkan `GAME_CHECK_API_KEY` yang sah untuk dedicated API, atau konfirmasi izin GoPay sebelum mengaktifkan fallback. Kredensial VIPayment saja tidak otomatis menjadi kredensial `GAME_CHECK_API_KEY`. Jangan masukkan API key ke GitHub/percakapan; isi hanya di `.env` lokal.
 - Payment checkout, supplier orders, GoPay fallback, dan Google Drive backup tetap disabled. Jangan merge ke `main`; pertahankan tiga banner JPG lokal yang belum terlacak.
+
+
+## 2026-10-20 — CI pascaperbaikan username checker
+
+- GitHub Actions `PHP quality checks` lulus untuk commit routing `23508598100b75080f70d61a94a93c097671e525` (run #791), perubahan skema `e0ca6bf234cecda1fe3f4653baf67ef994c0278b` (run #792), dan `.env.example` `4bb1c72bce77959be62f7e01e0f853041dbe9e2d` (run #793).
+- Ini membuktikan pemeriksaan otomatis dalam workflow lulus, bukan bahwa API username eksternal bekerja dengan ID nyata. Pengujian live masih menunggu konfigurasi provider resmi/berizin.
+- Setelah pengguna pull, jalankan preflight dan tes `game-account-schema.php`, `game-username-fallback.php`, `git diff --check`, lalu uji endpoint lokal. Dengan `GAME_CHECK_API_KEY` kosong dan fallback false, hasil aman yang diharapkan adalah pengecekan username tidak tersedia (bukan request ke GoPay). Jangan set fallback true sebelum otorisasi endpoint dikonfirmasi.
