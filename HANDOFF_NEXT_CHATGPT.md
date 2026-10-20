@@ -1,3 +1,11 @@
+## Update — 2026-10-20: Pencarian dan detail transaksi admin
+
+- Menambahkan halaman **Cari Transaksi** di `public/admin/transaction-search.php`. Pencarian dapat memakai ID publik pesanan, nomor merchant Duitku, referensi gateway, atau referensi transaksi supplier; hasil dibatasi 200 baris.
+- Menambahkan halaman **Detail Transaksi** di `public/admin/transaction-detail.php`, yang menampilkan ringkasan pesanan, status pembayaran/pesanan, error terakhir, catatan gateway, referensi supplier, refund, dan linimasa dari cap waktu/status yang memang tersedia di database.
+- Menambahkan tautan **Cari Transaksi** ke navigasi admin melalui `app/views/admin_sidebar.php`. Halaman pencarian dan detail memerlukan sesi admin; keluaran dinamis di-escape dan query memakai prepared statements.
+- Batasan yang disengaja: linimasa ini belum merupakan audit trail lengkap untuk setiap callback, permintaan HTTP, atau percobaan retry. Beberapa status gateway/refund tidak memiliki waktu kejadian yang ditampilkan oleh skema saat ini. Belum ada tindakan retry/refund dari halaman detail.
+- Verifikasi PHP lint, integrasi database, tampilan browser, dan GitHub Actions untuk commit ini belum dilakukan pada saat catatan ditulis. Uji lokal dengan migration database yang sudah diterapkan sebelum digunakan. Jangan mengaktifkan pembayaran, pemesanan supplier, atau backup Drive selama pengujian awal.
+
 ## Update — 2026-10-19: Sinkronisasi katalog dari panel admin
 
 - Menambahkan tombol **Sinkronkan katalog VIPayment** dan **Sinkronkan katalog Digiflazz** pada Pengaturan API. Berbeda dari tombol pratinjau VIPayment, tombol sinkronisasi memanggil service katalog dan menyimpan produk/harga yang cocok dengan pemetaan game aktif ke database.
