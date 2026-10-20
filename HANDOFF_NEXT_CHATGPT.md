@@ -1528,3 +1528,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Hasil workflow setelah commit ini masih harus diperiksa. Jangan menyebut validasi JavaScript lulus sebelum run baru selesai sukses.
 - Preflight lokal sebelumnya 48/48 dan 12 kelompok tes regresi PHP lulus. Ini tidak menggantikan pemeriksaan browser, uji API staging, atau uji Duitku sandbox.
 - Pertahankan tiga banner JPG lokal yang belum terlacak. Jangan merge ke `main`; pembayaran, supplier ordering, `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false`, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — CI sintaks JavaScript terverifikasi
+
+- GitHub Actions run #788 (`39374900076`) pada head branch `audit/php-valid-game-provider` selesai `success`: https://github.com/sulistio95/PluQ-I/actions/runs/39374900076.
+- Workflow yang dijalankan mencakup `node --check public/assets/catalog.js`; dengan demikian pemeriksaan sintaks file JavaScript tersebut lulus di runner GitHub Actions. Node.js tetap hanya dipakai di CI, bukan dibutuhkan pada shared hosting.
+- Ini bukan bukti perilaku JavaScript saat runtime di browser. Uji browser, API provider staging, Duitku sandbox, dan deployment hosting masih belum selesai.
+- Pembaruan catatan ini dibuat setelah hasil CI sukses. Pembayaran, supplier ordering, fallback GoPay, dan backup Drive tetap nonaktif; jangan merge ke `main` tanpa tahap audit berikutnya.
