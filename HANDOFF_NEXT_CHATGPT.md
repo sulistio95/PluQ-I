@@ -1698,3 +1698,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Bingkai ikon diperbesar dari 70px ke 92px. Motif bulan sabit dan area nama dua baris dipertahankan.
 - Commit CSS: `c0bf54d1f6264c12bd4ecf89437c2077d55afa12` pada branch `feature/admin-left-sidebar`.
 - Belum ada uji visual browser/CI. Setelah pull, cek desktop/tablet/ponsel. Jangan merge ke `main` tanpa audit lanjutan dan pertahankan tiga banner JPG lokal yang belum terlacak.
+
+
+## Update 2026-10-20 — Menghapus aksen lingkaran kecil pada ikon game
+
+- Menghapus pseudo-element bulan sabit/lingkaran kecil di pojok kanan atas bingkai ikon melalui `public/assets/catalog.css`, karena tampak mengganggu setelah ukuran ikon diperbesar.
+- Bingkai lingkaran dan warna emas gelap tetap dipertahankan; ukuran ikon 92px, grid desktop lima kolom, dan breakpoint tablet/ponsel tidak diubah.
+- Commit CSS: `8a2cb4ac6efa6e67a97770fb066382dba95c4c90` pada branch `feature/admin-left-sidebar`.
+- Belum diuji visual di browser dan belum merge ke `main`. Setelah pull, lakukan hard refresh dan periksa ikon di desktop serta ponsel.
