@@ -1489,3 +1489,13 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Migration yang seharusnya membuat tabel ini sudah tersedia: `database/migrations/013_game_username_check_protection.sql`. Migration tersebut membuat `game_username_check_limits` dan `game_username_check_cache`; kemungkinan database lokal belum menerapkannya.
 - Memperbarui `bin/preflight.php` agar memeriksa kedua tabel serta catatan migration `013_game_username_check_protection`, sehingga kondisi database seperti ini terdeteksi sebelum pengujian endpoint.
 - Tindakan lokal: terapkan SQL migration 013 pada database pengujian yang benar, lalu jalankan preflight dan tes username. Jangan menghapus rate limit/cache. Panggilan API VIPayment live tetap belum terverifikasi; pembayaran dan pemesanan supplier tetap nonaktif.
+
+
+## 2026-10-20 — Navigasi panel admin dipindahkan ke sidebar kiri
+
+- Menambahkan komponen bersama `app/views/admin_sidebar.php` dan stylesheet `public/assets/admin-sidebar.css` agar menu admin konsisten pada Dashboard/Transaksi, Pengaturan API, Game List, Pengaturan Template, Pengaturan Keuntungan, Harga Modal Supplier, dan Rekonsiliasi Duitku.
+- Sidebar berada di sisi kiri pada layar desktop. Pada layar sempit, menu berubah menjadi bar navigasi horizontal yang dapat digulir agar tetap dapat digunakan di ponsel tanpa JavaScript tambahan.
+- Menu aktif diberi penanda `aria-current="page"`; tautan Rekonsiliasi Duitku hanya ditampilkan jika akun lolos `admin_can_manage_settings()`. Kredensial, alur otorisasi, dan endpoint transaksi tidak diubah oleh pekerjaan tata letak ini.
+- Link menu atas yang duplikat di dashboard dan link “kembali ke panel” pada halaman pengaturan dihapus karena navigasi bersama sekarang tersedia melalui sidebar.
+- Perubahan ada pada branch `feature/admin-left-sidebar`, diturunkan dari `fix/vipayment-nickname-lookup`. Belum digabung ke `main`. Lakukan PHP lint, `php bin/preflight.php`, tes regresi terkait admin, dan `git diff --check` setelah branch ditarik. Pemeriksaan visual browser masih diperlukan.
+- Tidak ada perubahan atau aktivasi pembayaran, supplier ordering, maupun backup Google Drive. Pertahankan tiga banner JPG lokal yang belum terlacak; jangan menjalankan perintah reset/clean yang menghapus file lokal.
