@@ -1570,3 +1570,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Uji lokal menemukan deklarasi ganda `game_username_check()` di `app/services/game_username_check.php` (implementasi VIPayment di baris awal dan implementasi Game Check lama di bagian bawah), yang menyebabkan HTTP 500 sebelum request keluar.
 - Menghapus implementasi Game Check lama dan mempertahankan satu implementasi VIPayment. Rate limit dan cache MySQL tetap dipertahankan.
 - Ulangi `php -l app/services/game_username_check.php`, `php tests/game-username-vipayment.php`, `php tests/game-account-schema.php`, serta uji endpoint lokal. Uji API live masih harus dikonfirmasi terpisah.
+
+
+## 2026-10-20 — Database lokal belum menerapkan migration proteksi nickname
+- Pengguna melaporkan HTTP 503 pada `POST /api/games/free-fire/check-username`: `SQLSTATE[42S02]` karena `pluqi_local_test.game_username_check_limits` tidak ditemukan.
+- Penyebabnya adalah database lokal belum memiliki tabel yang didefinisikan oleh `database/migrations/013_game_username_check_protection.sql`; migration ini membuat `game_username_check_limits` dan `game_username_check_cache`.
+- Memperbarui `bin/preflight.php` untuk mewajibkan dua tabel tersebut dan memeriksa migration `013_game_username_check_protection`. Commit perbaikan preflight: `934d2d3a78f8ae06a90e53667ee1509a27463fdf` pada branch `fix/vipayment-nickname-lookup`.
+- Langkah berikutnya: tarik branch, terapkan migration 013 pada database `pluqi_local_test`, jalankan `php bin/preflight.php` dan `php tests/game-username-vipayment.php`, lalu coba lagi endpoint. Jangan aktifkan pembayaran atau supplier order. API nickname live belum dinyatakan berhasil.
