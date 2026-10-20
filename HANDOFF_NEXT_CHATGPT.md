@@ -1554,3 +1554,13 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - GitHub Actions `PHP quality checks` lulus untuk commit routing `23508598100b75080f70d61a94a93c097671e525` (run #791), perubahan skema `e0ca6bf234cecda1fe3f4653baf67ef994c0278b` (run #792), dan `.env.example` `4bb1c72bce77959be62f7e01e0f853041dbe9e2d` (run #793).
 - Ini membuktikan pemeriksaan otomatis dalam workflow lulus, bukan bahwa API username eksternal bekerja dengan ID nyata. Pengujian live masih menunggu konfigurasi provider resmi/berizin.
 - Setelah pengguna pull, jalankan preflight dan tes `game-account-schema.php`, `game-username-fallback.php`, `git diff --check`, lalu uji endpoint lokal. Dengan `GAME_CHECK_API_KEY` kosong dan fallback false, hasil aman yang diharapkan adalah pengecekan username tidak tersedia (bukan request ke GoPay). Jangan set fallback true sebelum otorisasi endpoint dikonfirmasi.
+
+
+## 2026-10-20 — Kembali ke VIPayment Get Nickname
+
+- Sesuai keputusan pengguna, jalur GoPay dan checker pihak ketiga dihapus dari alur customer. Pemeriksaan username kembali memakai VIPayment Game Feature type=get-nickname dengan kredensial API ID/API key VIPayment yang sudah dikonfigurasi di panel admin.
+- Pemetaan kode lookup mengikuti daftar VIPayment: mobile-legends, mobile-legends-region, free-fire, pubgm, valorant, genshin-impact, honkai-star-rail, pointblank. Kode lookup bukan kode produk top-up.
+- Route hanya mengirim type, code, target, additional_target ke endpoint /game-feature. Tidak ada order supplier yang dibuat oleh lookup username.
+- Flag dan kredensial GAME_CHECK_API_KEY serta GAME_CHECK_GOPAY_FALLBACK_ENABLED dihapus dari .env.example; adaptor GoPay dihapus dan tes diganti dengan tes pemetaan parameter VIPayment.
+- Metadata form hanya mengiklankan pengecekan otomatis jika game masuk daftar kode yang didukung dan kredensial VIPayment tersedia. Game di luar daftar tetap dapat memakai alur manual sesuai aturan schema yang ada.
+- CI dan tes lokal setelah perubahan ini harus dijalankan sebelum menyatakan selesai. Belum ada klaim bahwa panggilan nickname live berhasil. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
