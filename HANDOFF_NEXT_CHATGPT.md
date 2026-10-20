@@ -1734,3 +1734,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Commit kode: `9697591a5d02badfe267e1c515952bd99719eadc` (brand/footer) dan `4d2f1cc2ebc94f17df6e1f937608cd14957a574a` (alignment), branch `feature/admin-left-sidebar`.
 - Belum diverifikasi visual di browser; setelah pull, lakukan hard refresh dan periksa alignment desktop serta mobile.
 - Belum merge ke `main`; jangan mengaktifkan pembayaran atau supplier ordering.
+
+
+## Update — 2026-10-21: Perataan lebar banner homepage
+
+- Berdasarkan tangkapan layar pengguna, banner tampak lebih sempit dan tidak segaris dengan kolom pencarian. `public/assets/catalog.css` kini memberi margin horizontal 12px pada `.hero` agar tepi banner sejajar dengan area input pencarian yang memakai padding horizontal 24px di dalam `main`.
+- Perubahan hanya tata letak banner; rasio 16:5, pergantian banner, katalog, dan alur transaksi tidak diubah.
+- Commit CSS: a52ecee9b9be5daa4497abc8cb50d1b39a13dd5e. Belum diverifikasi visual di browser; setelah pull lakukan hard refresh dan cek desktop serta ponsel. Belum merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif. Pertahankan tiga banner JPG lokal yang belum terlacak.
