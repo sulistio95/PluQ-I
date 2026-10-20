@@ -60,7 +60,9 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
    json_response(['data'=>['username'=>$cachedUsername,'verified'=>true,'cached'=>true]]);
   }
   $serviceCode = game_account_username_check_code((string)$schema['game']['slug'], (string)$schema['game']['name']);
-  if ($serviceCode !== null) game_username_check_enforce_provider_limits($pdo, $fingerprint);
+  if (game_username_gopay_fallback_enabled()) {
+   game_username_check_enforce_provider_limits($pdo, $fingerprint);
+  }
   $userId = (string)($normalized['user_id'] ?? '');
   $zoneId = (string)($normalized['zone_id'] ?? $normalized['server'] ?? '');
   $username = game_username_check_with_fallback($pdo, (string)($serviceCode ?? ''), $userId, $zoneId, (string)$schema['game']['slug'], (string)$schema['game']['name']);
