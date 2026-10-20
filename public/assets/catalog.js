@@ -98,6 +98,8 @@
     gameMeta = {username_check_available:false,checkout_supported:false};
     $('catalog-view').classList.remove('hidden');
     $('product-view').classList.add('hidden');
+    $('hero-copy').classList.remove('hidden');
+    $('search-row').classList.remove('hidden');
     $('customer-email-wrap').classList.add('hidden');
     search.disabled = false;
     activeGame = null;
@@ -216,6 +218,9 @@
     accountDataValid = false;
     $('catalog-view').classList.add('hidden');
     $('product-view').classList.remove('hidden');
+    // Keep the banner visible, but hide homepage-only intro and game search on the account/nominal view.
+    $('hero-copy').classList.add('hidden');
+    $('search-row').classList.add('hidden');
     $('selected-game').textContent = game.name;
     search.disabled = true;
     productsBox.innerHTML = '<div class="notice">Memuat produk...</div>';
