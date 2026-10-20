@@ -1447,3 +1447,14 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Dokumentasi Evo Game Store menyatakan layanan mereka memakai primary source + automatic fallback chain dan smart cache TTL 10 menit; integrasi PluQ-I menggunakan cache 5 menit sendiri sebagai lapisan tambahan. Ini bukan jaminan uptime 100%, dan cakupan API tetap 8 game. Sumber: https://game-check.evogamestore.com/.
 - Sumber publik isan.eu.org tidak dipasang sebagai fallback produksi karena repositori yang ditemukan mencantumkan lisensi CC BY-NC-SA 4.0; penggunaan komersial PluQ-I perlu izin yang sesuai. Jangan menambahkannya tanpa pemeriksaan lisensi dan kontrak API yang jelas.
 - Status: perubahan dikirim ke branch PR #7; cek GitHub Actions untuk head terbaru sebelum menyatakan tes lulus. Migration 013 harus diterapkan sebelum endpoint baru diuji. Belum ada panggilan API live karena API key belum disetel. Pembayaran, order supplier, dan backup Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: Audit kandidat validasi nickname tambahan
+
+- Membuat branch terpisah `audit/php-valid-game-provider` dari `fix/vipayment-dedicated-nickname-codes`; PR #7 tidak diubah dan belum digabung.
+- Audit statis awal paket `triyatna/php-valid-game` dicatat di `docs/game-username-check-provider-evaluation.md`.
+- Paket upstream mencantumkan 22 game, tetapi tidak semua game memiliki fallback: tabel upstream menunjukkan 6 game dengan dua provider, 12 Codashop saja, dan 4 GoPay Games saja. Dukungan harus dipetakan per game, bukan dianggap semua 22 memiliki fallback.
+- Ketergantungan paket adalah PHP ^8.1, Guzzle ^7, dan PSR Log. PluQ-I tidak memiliki `composer.json`/`composer.lock` root; integrasi perlu keputusan dependensi/adaptor.
+- Transport upstream belum memaksa IPv4, timeout default 15 detik, dan redirect diizinkan. Ini harus ditangani sebelum uji hosting, mengingat kendala IPv6 yang pernah terjadi.
+- Belum ada API live request, Composer install, uji lokal, atau perubahan kode customer untuk kandidat ini. Tidak ada pembayaran, pesanan supplier, atau backup Drive yang dijalankan.
+- Tahap berikutnya: implementasi adaptor terisolasi dengan IPv4 dan timeout terbatas, unit tests dengan respons tiruan, lalu CI. Jangan mengganti Evo atau menggabungkan branch sebelum hasil tes dan keputusan dependensi jelas.
