@@ -1459,3 +1459,10 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Commits: `public/index.php` `23508598100b75080f70d61a94a93c097671e525`; `app/services/game_fields.php` `e0ca6bf234cecda1fe3f4653baf67ef994c0278b`; `.env.example` `4bb1c72bce77959be62f7e01e0f853041dbe9e2d`. Regression/CI after these changes still needs verification.
 - User can test locally after pulling, but a real ID lookup requires a valid `GAME_CHECK_API_KEY` for the dedicated service or confirmation that GoPay authorizes this fallback before enabling it. VIPayment credentials do not automatically serve as `GAME_CHECK_API_KEY`. Keep secrets only in local `.env`, never in GitHub or chat.
 - Payment checkout, supplier ordering, GoPay fallback, and Drive backup remain disabled. Do not merge to `main`; preserve three untracked local banner JPGs.
+
+
+## 2026-10-20 — CI after username checker routing fix
+
+- GitHub Actions `PHP quality checks` succeeded for routing commit `23508598100b75080f70d61a94a93c097671e525` (run #791), schema availability commit `e0ca6bf234cecda1fe3f4653baf67ef994c0278b` (run #792), and `.env.example` commit `4bb1c72bce77959be62f7e01e0f853041dbe9e2d` (run #793).
+- This proves the configured workflow checks pass, not that an external nickname API returns real account names. Live verification awaits an authorized provider configuration.
+- After the user pulls, run preflight, `game-account-schema.php`, `game-username-fallback.php`, and `git diff --check`, then test the local endpoint. With `GAME_CHECK_API_KEY` empty and fallback false, safe expected behavior is that username checking is unavailable (and no GoPay request is made). Do not enable fallback before authorization is confirmed.
