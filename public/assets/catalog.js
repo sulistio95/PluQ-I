@@ -91,7 +91,16 @@
     }).join('');
   }
 
-  function showCatalog() {
+  function updateGameUrl(slug, replace = false) {
+    const url = new URL(window.location.href);
+    if (slug) url.searchParams.set('game', slug);
+    else url.searchParams.delete('game');
+    const method = replace ? 'replaceState' : 'pushState';
+    window.history[method]({gameSlug: slug || null}, '', url.pathname + url.search + url.hash);
+  }
+
+  function showCatalog(updateHistory = true) {
+    if (updateHistory) updateGameUrl(null, true);
     if (usernameTimer) clearTimeout(usernameTimer);
     usernameRequestId++;
     gameFields = [];
@@ -210,7 +219,8 @@
     }, 800);
   }
 
-  async function showProducts(game) {
+  async function showProducts(game, updateHistory = true) {
+    if (updateHistory) updateGameUrl(game.slug);
     if (usernameTimer) clearTimeout(usernameTimer);
     usernameRequestId++;
     activeGame = game;
@@ -345,7 +355,13 @@
     const game = games.find((item) => item.slug === button.dataset.slug);
     if (game) showProducts(game);
   });
-  $('back').addEventListener('click', showCatalog);
+  $('back').addEventListener('click', () => showCatalog());
+  window.addEventListener('popstate', () => {
+    const slug = new URL(window.location.href).searchParams.get('game');
+    const game = slug ? games.find((item) => item.slug === slug) : null;
+    if (game) showProducts(game, false);
+    else showCatalog(false);
+  });
   $('account-form').addEventListener('submit', (event) => event.preventDefault());
   function invalidateQuoteOnAccountChange() {
     accountDataValid = false;
@@ -375,6 +391,10 @@
     games = Array.isArray(gameResult.data) ? gameResult.data : [];
     banners = Array.isArray(bannerResult.data) ? bannerResult.data : [];
     renderGames();
+    const requestedSlug = new URL(window.location.href).searchParams.get('game');
+    const requestedGame = requestedSlug ? games.find((item) => item.slug === requestedSlug) : null;
+    if (requestedGame) showProducts(requestedGame, false);
+    else if (requestedSlug) updateGameUrl(null, true);
     if (banners.length) {
       setBanner();
       if (banners.length > 1) bannerTimer = setInterval(setBanner, 3000);
