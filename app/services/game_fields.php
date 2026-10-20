@@ -60,7 +60,7 @@ function game_account_schema_is_supported(string $slug, string $name, array $fie
 }
 
 /**
- * Return the game code used by the separate Game Check API, not a supplier product code.
+ * Return the VIPayment Game Feature nickname code, separate from supplier product codes.
  */
 function game_account_username_check_code(string $slug, string $name): ?string
 {
