@@ -1632,3 +1632,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - API custom belum bisa dipratinjau secara generik. Profil custom saat ini hanya menyimpan base URL dan kredensial; endpoint katalog, autentikasi spesifik, dan bentuk respons memerlukan adapter terpisah dari dokumentasi resmi provider. UI menjelaskan batasan ini dan tidak mengirim request spekulatif ke endpoint custom.
 - Commit kode: `6415ccc59e62060abffcab86863ad41e6b40d955` pada branch `feature/admin-left-sidebar`; belum merge ke `main`.
 - CI, lint, dan tes browser belum diverifikasi untuk commit ini. Setelah pull, jalankan `php -l public/admin/api-settings.php`, `php bin/preflight.php`, tes regresi terkait, dan `git diff --check`; uji pratinjau kedua supplier dengan kredensial valid. Jangan mengaktifkan pembayaran, supplier ordering, atau backup Google Drive.
+
+
+## Verifikasi CI — pratinjau katalog supplier (2026-10-20)
+
+- GitHub Actions **PHP quality checks** untuk commit `6415ccc59e62060abffcab86863ad41e6b40d955` selesai dengan status **success**, run #819: https://github.com/sulistio95/PluQ-I/actions/runs/39391595762.
+- Ini hanya hasil workflow yang dikonfigurasi; belum membuktikan request API live untuk kedua supplier atau perilaku browser. Uji lokal dengan kredensial valid dan pemeriksaan tampilan masih diperlukan.
+- Dukungan API custom tetap memerlukan adapter katalog berdasarkan dokumentasi provider; tidak ada endpoint custom yang dipanggil. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
