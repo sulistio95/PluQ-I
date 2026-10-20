@@ -1597,3 +1597,10 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Ditambahkan wrapper `.game-icon-frame` dengan crop lingkaran, bingkai dekoratif bernuansa emas, dan aksen bulan sabit kecil di tepi kanan atas.
 - Rendering ikon tetap menggunakan `icon_url` dari katalog. Tidak ada perubahan pada penyimpanan unggahan, database, API, atau mekanisme admin.
 - Validasi visual desktop/seluler dan placeholder ikon masih perlu dilakukan secara lokal; belum ada klaim pengujian lulus.
+
+## 2026-10-20 — Perataan posisi ikon saat nama game panjang
+
+- Kartu game pada katalog pelanggan kini menggunakan susunan kolom flex dengan lebar penuh dan tinggi minimum yang konsisten. Bingkai ikon tidak ikut bergeser akibat panjang teks nama game.
+- Area nama game memiliki tinggi minimum untuk dua baris, perataan tengah, dan pemenggalan kata panjang agar nama yang panjang tidak mendorong ikon atau membuat tata letak horizontal berantakan. Pada layar sempit, kartu tetap mengikuti grid responsif yang sudah ada.
+- Perubahan hanya pada `public/assets/catalog.css`; bingkai lingkaran dan motif bulan sabit tetap dipertahankan. Tidak mengubah data game, ikon unggahan, database, atau proses checkout.
+- Belum diuji visual di browser atau CI. Setelah pull, periksa beberapa game dengan nama pendek dan panjang di desktop serta ponsel; pastikan semua ikon sejajar, teks tidak terpotong, dan tombol kartu tetap dapat diklik. Belum merge ke `main`.
