@@ -1577,3 +1577,13 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Penyebabnya adalah database lokal belum memiliki tabel yang didefinisikan oleh `database/migrations/013_game_username_check_protection.sql`; migration ini membuat `game_username_check_limits` dan `game_username_check_cache`.
 - Memperbarui `bin/preflight.php` untuk mewajibkan dua tabel tersebut dan memeriksa migration `013_game_username_check_protection`. Commit perbaikan preflight: `934d2d3a78f8ae06a90e53667ee1509a27463fdf` pada branch `fix/vipayment-nickname-lookup`.
 - Langkah berikutnya: tarik branch, terapkan migration 013 pada database `pluqi_local_test`, jalankan `php bin/preflight.php` dan `php tests/game-username-vipayment.php`, lalu coba lagi endpoint. Jangan aktifkan pembayaran atau supplier order. API nickname live belum dinyatakan berhasil.
+
+
+## 2026-10-20 — Navigasi panel admin dipindahkan ke sidebar kiri
+
+- Menambahkan komponen bersama `app/views/admin_sidebar.php` dan stylesheet `public/assets/admin-sidebar.css` agar menu admin konsisten pada Dashboard/Transaksi, Pengaturan API, Game List, Pengaturan Template, Pengaturan Keuntungan, Harga Modal Supplier, dan Rekonsiliasi Duitku.
+- Sidebar berada di sisi kiri pada layar desktop. Pada layar sempit, menu berubah menjadi bar navigasi horizontal yang dapat digulir agar tetap dapat digunakan di ponsel tanpa JavaScript tambahan.
+- Menu aktif diberi penanda `aria-current="page"`; tautan Rekonsiliasi Duitku hanya ditampilkan jika akun lolos `admin_can_manage_settings()`. Kredensial, alur otorisasi, dan endpoint transaksi tidak diubah oleh pekerjaan tata letak ini.
+- Link menu atas yang duplikat di dashboard dan link “kembali ke panel” pada halaman pengaturan dihapus karena navigasi bersama sekarang tersedia melalui sidebar.
+- Perubahan ada pada branch `feature/admin-left-sidebar`, diturunkan dari `fix/vipayment-nickname-lookup`. Belum digabung ke `main`. Lakukan PHP lint, `php bin/preflight.php`, tes regresi terkait admin, dan `git diff --check` setelah branch ditarik. Pemeriksaan visual browser masih diperlukan.
+- Tidak ada perubahan atau aktivasi pembayaran, supplier ordering, maupun backup Google Drive. Pertahankan tiga banner JPG lokal yang belum terlacak; jangan menjalankan perintah reset/clean yang menghapus file lokal.
