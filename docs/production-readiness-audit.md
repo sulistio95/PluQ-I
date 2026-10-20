@@ -1355,3 +1355,14 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Cakupan awal yang dipetakan: Mobile Legends, Mobile Legends Region, Free Fire/Free Fire MAX, PUBG Mobile, Valorant, Genshin Impact, Honkai: Star Rail, dan Point Blank. Game lain—termasuk Honor of Kings—belum didukung oleh layanan ini dan harus menampilkan kondisi tidak tersedia, bukan mengklaim semua game dapat diverifikasi.
 - Metadata cek nickname kini tidak bergantung pada katalog produk, saldo, atau status supplier. Kode game checker dipisahkan dari kode produk top-up. Tambahan `GAME_CHECK_API_KEY=` dimasukkan ke `.env.example`.
 - Tes pemetaan schema diperbarui. Belum ada panggilan API live karena API key pengguna belum dikonfigurasi; PHP lint, browser, serta workflow CI perlu diverifikasi setelah perubahan. Tidak ada order supplier, pembayaran, atau backup Drive yang dibuat/diaktifkan.
+
+
+## 2026-10-20 — Proteksi trafik pemeriksaan nickname (branch PR #7)
+
+- Migration baru: `database/migrations/013_game_username_check_protection.sql` menambah `game_username_check_cache` dan `game_username_check_limits`, menggunakan MySQL/InnoDB sehingga bekerja lintas sesi/proses PHP tanpa Redis.
+- Cache hanya menyimpan hasil nickname sukses, dengan TTL 5 menit dan fingerprint SHA-256 dari slug game + data akun. ID akun mentah tidak disimpan pada tabel cache; cache gagal/tidak-ditemukan tidak dibuat.
+- Batas per IP: 20 request/60 detik; batas fingerprint akun yang sama untuk upstream: 1 request/5 detik; batas upstream global: 50 request/60 detik untuk menyisakan headroom terhadap rate limit provider. Semua cache hit tetap dikenai pembatasan IP.
+- Panggilan eksternal menggunakan HTTPS, validasi TLS, IPv4, connect timeout 5 detik dan total timeout 8 detik. Rate limit dipetakan ke HTTP 429. Pembersihan cache/limit dilakukan opportunistic dalam batch maksimum 100 baris per request.
+- Evo Game Store mendokumentasikan primary source + automatic fallback chain serta cache 10 menit di sisi layanan; cache lokal 5 menit mengurangi request berulang. Ini tidak menjamin semua 20–25 game: endpoint yang dipilih hanya mendokumentasikan 8 game. Perlu sumber checker yang sah/teruji untuk judul lainnya.
+- API isan.eu.org tidak dipasang sebagai fallback produksi pada tahap ini karena repositori publik yang diperiksa menyebut lisensi CC BY-NC-SA 4.0; perlu izin sebelum dipakai pada situs komersial.
+- Verifikasi masih perlu: pastikan workflow CI untuk head branch terbaru, terapkan migration 013 di database pengujian, uji concurrency/cache/rate limit, lalu uji dengan API key resmi. Belum ada API live call. Pembayaran, pemesanan supplier, dan backup Drive tetap nonaktif.
