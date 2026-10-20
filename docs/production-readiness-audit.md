@@ -1374,3 +1374,13 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Matriks README upstream mencantumkan 22 game: 6 dengan Codashop + GoPay, 12 Codashop saja, dan 4 GoPay saja. Jumlah judul tidak sama dengan jumlah judul yang memiliki fallback.
 - Paket membutuhkan Guzzle ^7 dan PSR Log; repository PluQ-I tidak memiliki `composer.json` atau `composer.lock` di root. Transport upstream tidak memaksa IPv4, timeout default 15 detik, dan redirect diizinkan.
 - Belum ada request live, install dependency, atau perubahan jalur customer. Temuan dan rencana mitigasi lengkap ada pada dokumen evaluasi. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Adaptor fallback GoPay Games (belum live)
+
+- Pada branch `audit/php-valid-game-provider`, ditambahkan adaptor cURL mandiri di `app/services/game_username_fallback.php` untuk menghindari ketergantungan Guzzle/Composer. Host dan path GoPay ditetapkan konstan; HTTPS/TLS verification aktif, IPv4 dipaksa, redirect nonaktif, timeout koneksi 3 detik dan total 5 detik.
+- Evo tetap primary jika tersedia. GoPay fallback dipanggil hanya saat flag `GAME_CHECK_GOPAY_FALLBACK_ENABLED=true`; default `false`. ID yang dinyatakan tidak valid oleh primary tidak dicoba ulang melalui fallback. Respons GoPay ambigu/HTTP error/network error dianggap provider unavailable, bukan invalid account.
+- GoPay fallback memiliki limit global terpisah 25 request/60 detik dan cooldown fingerprint akun 1 request/5 detik pada judul GoPay-only. Cache sukses dan rate limit pelanggan di route tetap dipakai. Kode provider dipisahkan dari kode supplier.
+- Tes mock `tests/game-username-fallback.php` ditambahkan ke workflow PHP quality; hasil CI belum dikonfirmasi pada pencatatan ini. Tidak ada request live, dependency install, atau pengujian hosting. Audit izin/ketentuan endpoint GoPay belum selesai, jadi jangan aktifkan flag di produksi.
+- Cakupan ini bukan pengganti penuh paket upstream 22 game: adaptor GoPay hanya memakai pemetaan eksplisit dan tidak mengimplementasikan provider Codashop. Beberapa judul dalam daftar upstream hanya Codashop; mereka tetap bergantung pada Evo atau tidak memiliki pemeriksaan.
+- PR #7, main, dan supplier/payment flow tidak diubah/di-merge. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
