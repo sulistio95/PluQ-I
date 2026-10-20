@@ -1691,3 +1691,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Bingkai ikon bulat bermotif bulan sabit tetap digunakan. Tidak ada perubahan JavaScript, upload icon/banner, database, atau checkout.
 - Commit CSS: `97750176d2eba70379f6571e21744e2d42d90805` pada `feature/admin-left-sidebar`.
 - Belum diuji visual browser/CI. Setelah pull, periksa kartu dengan nama pendek dan panjang pada desktop dan ponsel. Jangan merge ke `main` tanpa audit berikutnya; pertahankan tiga banner JPG lokal yang belum terlacak.
+
+## Update 2026-10-20 — Grid desktop lima kolom dan ikon lebih besar
+
+- `public/assets/catalog.css` mengatur grid game desktop menjadi lima kartu per baris; sisa game otomatis turun ke baris berikutnya. Pada lebar layar di bawah 900px dipakai tiga kolom, dan breakpoint ponsel yang ada tetap aktif.
+- Bingkai ikon diperbesar dari 70px ke 92px. Motif bulan sabit dan area nama dua baris dipertahankan.
+- Commit CSS: `c0bf54d1f6264c12bd4ecf89437c2077d55afa12` pada branch `feature/admin-left-sidebar`.
+- Belum ada uji visual browser/CI. Setelah pull, cek desktop/tablet/ponsel. Jangan merge ke `main` tanpa audit lanjutan dan pertahankan tiga banner JPG lokal yang belum terlacak.
