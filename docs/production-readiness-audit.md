@@ -1535,3 +1535,12 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Mengganti teks footer halaman storefront dari `PluQ · Katalog shared-hosting` menjadi `PluQ.I Official Store` di `public/index.php`.
 - Commit kode: `8588cd6654ed510c3d58aa55132812224a360f28` pada branch `feature/admin-left-sidebar`.
 - Perubahan hanya teks footer; alur katalog, akun, nominal, banner, dan pembayaran tidak diubah. Belum merge ke `main`; hasil CI dan tampilan browser perlu diverifikasi.
+
+
+## Update — 2026-10-20: Pratinjau katalog dapat memilih supplier
+
+- Panel **Pengaturan API → Pratinjau daftar game dan layanan** kini menyediakan pilihan VIPayment atau Digiflazz. VIPayment menggunakan `vipayment_game_services()`; Digiflazz menggunakan `digiflazz_price_list()` dan menampilkan field produk yang dikembalikan API, termasuk status buyer/seller bila tersedia.
+- Pratinjau tetap baca-saja: tidak menulis katalog database, tidak mengubah pemetaan, dan tidak membuat pesanan. Untuk menyimpan harga ke katalog toko, gunakan tombol **Sinkronkan katalog VIPayment/Digiflazz** setelah mapping aktif di Game List disiapkan.
+- API custom belum bisa dipratinjau secara generik. Profil custom saat ini hanya menyimpan base URL dan kredensial; endpoint katalog, autentikasi spesifik, dan bentuk respons memerlukan adapter terpisah dari dokumentasi resmi provider. UI menjelaskan batasan ini dan tidak mengirim request spekulatif ke endpoint custom.
+- Commit kode: `6415ccc59e62060abffcab86863ad41e6b40d955` pada branch `feature/admin-left-sidebar`; belum merge ke `main`.
+- CI, lint, dan tes browser belum diverifikasi untuk commit ini. Setelah pull, jalankan `php -l public/admin/api-settings.php`, `php bin/preflight.php`, tes regresi terkait, dan `git diff --check`; uji pratinjau kedua supplier dengan kredensial valid. Jangan mengaktifkan pembayaran, supplier ordering, atau backup Google Drive.
