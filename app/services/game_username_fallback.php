@@ -187,6 +187,8 @@ function game_username_check_with_fallback(PDO $pdo, string $gameCode, string $u
         // Separate global budget: fallback requests are counted independently from Evo.
         game_username_check_apply_limit($pdo, 'global-gopay-fallback', 25, 60);
         $fallback = game_username_gopay_validate($gameSlug, $gameName, $userId, $zone);
+    } catch (GameUsernameInvalidException $e) {
+        throw $e;
     } catch (GameUsernameRateLimitException $e) {
         throw $e;
     } catch (Throwable $e) {
