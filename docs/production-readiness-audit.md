@@ -1,3 +1,9 @@
+## 2026-10-20 — Hasil CI untuk pelacakan transaksi admin
+
+- GitHub Actions **PHP quality checks** lulus pada commit dc49bfc3a504cb4dc82f90b966589d52c03f014d, run [#828](https://github.com/sulistio95/PluQ-I/actions/runs/39395576680). Langkah lint PHP dan pemeriksaan sintaks JavaScript sukses.
+- Ini belum memverifikasi query dengan database yang sudah dimigrasi, sesi login di browser, tampilan responsif, atau kelengkapan log transaksi. Pengujian lokal/integrasi tersebut tetap pending.
+- Jangan menyimpulkan seluruh workflow lulus berdasarkan satu run. Pembayaran, supplier fulfillment, dan backup Drive tetap nonaktif.
+
 ## 2026-10-20 — Admin transaction search and detail
 
 - Added `public/admin/transaction-search.php`: authenticated search across the public order ID, payment merchant ID, gateway reference, and supplier references, with a bounded 200-row result set.
