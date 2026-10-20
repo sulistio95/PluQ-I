@@ -1650,3 +1650,9 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 
 - Tangkapan layar pengguna menunjukkan banner tampak tidak berada di tengah terhadap kolom pencarian. Aturan `.hero` pada `public/assets/catalog.css` diberi margin horizontal 12px (commit a52ecee9b9be5daa4497abc8cb50d1b39a13dd5e) agar batas kiri/kanan lebih mendekati input pencarian.
 - Perubahan visual saja; belum diverifikasi dengan browser dan perlu dicek pada desktop/mobile setelah branch ditarik. Tidak ada perubahan pada banner source, katalog, pembayaran, atau supplier ordering.
+
+
+## 2026-10-21 — Koreksi lebar banner agar sejajar dengan input pencarian
+
+- Koreksi sebelumnya dengan margin 12px belum menyamakan tepi banner dan input karena .search-row memiliki padding horizontal 24px pada desktop. .hero kini memakai margin 24px di desktop dan 14px di ponsel, mengikuti padding pencarian pada breakpoint masing-masing.
+- Kode CSS commit 48835eefe64b62babffd5200df55d1e9946c9d44. Perlu hard refresh dan uji visual browser; belum dinyatakan terverifikasi dan belum merge ke main.
