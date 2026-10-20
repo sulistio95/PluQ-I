@@ -1440,3 +1440,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - CI outcome for the new workflow commit is pending verification; do not mark JS syntax validation passed until the run finishes successfully.
 - The user's previously reported local checks remain: preflight 48/48 and 12 PHP regression groups passed. These results do not prove browser E2E, live provider checks, Duitku sandbox, or production readiness.
 - Preserve three untracked local banner JPGs. Do not merge to `main`; payment, supplier ordering, GoPay fallback flag (`GAME_CHECK_GOPAY_FALLBACK_ENABLED=false`), and Drive backup remain disabled.
+
+
+## 2026-10-20 — JavaScript syntax CI passed
+
+- GitHub Actions run #788 (`39374900076`) for the current `audit/php-valid-game-provider` branch completed successfully: https://github.com/sulistio95/PluQ-I/actions/runs/39374900076.
+- The workflow now runs `node --check public/assets/catalog.js`; its syntax check therefore passed on the GitHub runner. Node.js is CI-only and is not a runtime requirement for shared hosting.
+- This validates JavaScript parsing, not browser behavior, API provider staging, Duitku sandbox transactions, or deployment readiness. Those checks remain outstanding.
+- Payment checkout, supplier ordering, GoPay fallback, and Google Drive backup remain disabled. Do not merge to `main` as part of this syntax-only change.
