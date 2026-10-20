@@ -1520,3 +1520,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Memisahkan area banner promosi dari teks “Top up game lebih praktis” dan “Pilih game dan temukan nominal yang tersedia.”; teks kini berada tepat di bawah banner, bukan di atas gambar.
 - Area banner menggunakan rasio 16:5, tinggi minimum untuk layar kecil dan batas tinggi maksimum agar gambar tidak menutupi konten. Banner tetap dapat diklik jika konfigurasi memiliki target URL; pergantian banner 3 detik tidak diubah.
 - Perubahan pada `public/index.php` dan `public/assets/catalog.css`, branch `feature/admin-left-sidebar`. Catatan handoff dan audit diperbarui. Perlu lint/CI serta pemeriksaan visual desktop dan ponsel; belum merge ke `main`.
+
+
+## Update — 2026-10-20: Banner saja pada form akun dan pemilihan nominal
+
+- Pada tampilan setelah pelanggan memilih game, banner promosi tetap berada di bagian atas. Kolom pencarian game dan teks intro homepage disembunyikan selama form data akun dan nominal ditampilkan.
+- Saat pelanggan menekan **Kembali ke game**, teks intro dan pencarian ditampilkan kembali. Tidak mengubah alur pemuatan form, produk, pergantian banner otomatis 3 detik, atau logika harga.
+- Implementasi pada `public/index.php` dan `public/assets/catalog.js` di branch `feature/admin-left-sidebar`; commit kode: `45d4a5b02042acab0210de60e420e1fd7c1a0ee2` dan `adf7e95db84d3e9af154f23888444a113aa27ee8`.
+- Belum menjalankan lint/CI atau pemeriksaan visual browser untuk perubahan ini. Setelah pull, uji memilih game, pastikan hanya banner yang tersisa di bagian atas form akun/nominal, lalu tekan kembali dan pastikan pencarian serta intro muncul lagi. Belum merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
