@@ -169,6 +169,11 @@ function game_username_gopay_validate(
     throw new RuntimeException('GoPay Games fallback could not verify this account.');
 }
 
+function game_username_gopay_fallback_enabled(): bool
+{
+    return filter_var(getenv('GAME_CHECK_GOPAY_FALLBACK_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+}
+
 /** Try the primary Evo checker first; only transport/provider failures trigger fallback. */
 function game_username_check_with_fallback(PDO $pdo, string $gameCode, string $userId, string $zone, string $gameSlug, string $gameName): string
 {
@@ -182,6 +187,9 @@ function game_username_check_with_fallback(PDO $pdo, string $gameCode, string $u
         } catch (RuntimeException $e) {
             $primaryError = $e;
         }
+    }
+    if (!game_username_gopay_fallback_enabled()) {
+        throw new RuntimeException('GoPay Games fallback is disabled by configuration.', 0, $primaryError);
     }
     try {
         // GoPay-only titles need their own per-account cooldown because no Evo limit ran.
