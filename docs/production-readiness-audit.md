@@ -1,3 +1,11 @@
+## 2026-10-20 — Admin transaction search and detail
+
+- Added `public/admin/transaction-search.php`: authenticated search across the public order ID, payment merchant ID, gateway reference, and supplier references, with a bounded 200-row result set.
+- Added `public/admin/transaction-detail.php`: order summary, current payment/order statuses, last stored error, gateway records, supplier transaction records, refund statuses, and a chronological view of known timestamps.
+- Added the **Cari Transaksi** navigation item in `app/views/admin_sidebar.php`. SQL queries use prepared statements; displayed values are escaped; these pages do not mutate orders or call payment/supplier APIs.
+- Coverage limitation: this is a best-effort timeline assembled from existing records, not a full immutable event log. The current display does not capture every callback/HTTP attempt/retry with a timestamp, and some gateway/refund status rows lack event timestamps. No retry/refund action is exposed.
+- PHP lint, schema-backed integration testing, browser verification, and CI for these commits remain pending. Do not describe this as fully verified until those checks pass. Payment checkout, supplier fulfillment, and Drive backup remain disabled.
+
 ## Admin catalog sync — 2026-10-19
 
 - Added explicit admin actions to persist VIPayment or Digiflazz catalog data after supplier game mappings have been saved.
