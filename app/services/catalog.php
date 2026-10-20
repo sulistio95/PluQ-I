@@ -57,7 +57,7 @@ function catalog_products(PDO $pdo, string $slug): array
         JOIN games g ON g.id=p.game_id
         JOIN providers pr ON pr.id=p.provider_id
         LEFT JOIN excluded_services ex ON ex.provider_id=p.provider_id AND ex.service_code=p.provider_product_code
-        WHERE g.slug=:slug AND g.status='ACTIVE' AND ex.id IS NULL
+        WHERE g.slug=:slug AND g.status='ACTIVE' AND p.status='ACTIVE' AND ex.id IS NULL
           AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%joki%'
           AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%vilog%'
         ORDER BY selling_price,p.name,p.id";
@@ -68,10 +68,9 @@ function catalog_products(PDO $pdo, string $slug): array
 
 /**
  * Collapse equivalent supplier offers to one customer-facing product.
- * Prefer the cheapest eligible offer when at least one supplier can fulfill it.
- * If none are eligible, keep the cheapest cached offer visible with is_available=false
- * so the storefront can show the denomination as "Habis". Checkout must independently
- * reject unavailable products; visibility is not permission to purchase.
+ * The SQL caller includes only supplier SKUs whose latest catalog status is ACTIVE/available.
+ * Offers remain visible with is_available=false when local fulfillment checks fail, such as
+ * insufficient usable supplier balance. Checkout independently rejects unavailable products.
  */
 function catalog_select_customer_products(array $rows): array
 {
@@ -93,8 +92,8 @@ function catalog_select_customer_products(array $rows): array
         }
     }
 
-    // Keep one row per denomination even when every supplier is unavailable.
-    // The frontend labels these rows "Habis"; checkout must still validate availability server-side.
+    // Keep one row per denomination when supplier SKUs are available in the provider catalog,
+    // even if local balance/reservation checks make every offer temporarily unpurchasable.
     $out = array_values($chosen);
     foreach ($out as &$row) {
         // Some cached/test offers may omit optional numeric fields; normalize safely without warnings.
