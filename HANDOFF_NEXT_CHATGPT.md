@@ -1436,3 +1436,14 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Cakupan awal yang dipetakan: Mobile Legends, Mobile Legends Region, Free Fire/Free Fire MAX, PUBG Mobile, Valorant, Genshin Impact, Honkai: Star Rail, dan Point Blank. Game lain—termasuk Honor of Kings—belum didukung oleh layanan ini dan harus menampilkan kondisi tidak tersedia, bukan mengklaim semua game dapat diverifikasi.
 - Metadata cek nickname kini tidak bergantung pada katalog produk, saldo, atau status supplier. Kode game checker dipisahkan dari kode produk top-up. Tambahan `GAME_CHECK_API_KEY=` dimasukkan ke `.env.example`.
 - Tes pemetaan schema diperbarui. Belum ada panggilan API live karena API key pengguna belum dikonfigurasi; PHP lint, browser, serta workflow CI perlu diverifikasi setelah perubahan. Tidak ada order supplier, pembayaran, atau backup Drive yang dibuat/diaktifkan.
+
+
+## Update — 2026-10-20: Proteksi trafik pemeriksaan nickname
+
+- Pada branch `fix/vipayment-dedicated-nickname-codes`, menambahkan migration `013_game_username_check_protection.sql` untuk cache hasil sukses dan fixed-window rate limit berbasis MySQL/InnoDB. Tidak membutuhkan Redis atau worker permanen, sesuai target shared hosting.
+- Endpoint pemeriksaan kini membatasi 20 request per IP per 60 detik, 1 panggilan upstream untuk fingerprint akun yang sama per 5 detik, dan maksimal 50 panggilan upstream global per 60 detik. IP dan fingerprint disimpan sebagai hash; ID akun mentah tidak dimasukkan ke tabel cache.
+- Hasil nickname yang berhasil di-cache selama 5 menit dengan kunci yang mencakup game dan semua field akun (termasuk zone/server). Hasil ID tidak ditemukan dan error provider tidak di-cache. Request cache-hit tetap dikenai rate limit IP tetapi tidak menghabiskan kuota API eksternal.
+- Timeout API diturunkan menjadi 8 detik (connect timeout 5 detik), koneksi tetap HTTPS/TLS-verified dan dipaksa IPv4. Respons rate-limit lokal/provider dipetakan ke HTTP 429.
+- Dokumentasi Evo Game Store menyatakan layanan mereka memakai primary source + automatic fallback chain dan smart cache TTL 10 menit; integrasi PluQ-I menggunakan cache 5 menit sendiri sebagai lapisan tambahan. Ini bukan jaminan uptime 100%, dan cakupan API tetap 8 game. Sumber: https://game-check.evogamestore.com/.
+- Sumber publik isan.eu.org tidak dipasang sebagai fallback produksi karena repositori yang ditemukan mencantumkan lisensi CC BY-NC-SA 4.0; penggunaan komersial PluQ-I perlu izin yang sesuai. Jangan menambahkannya tanpa pemeriksaan lisensi dan kontrak API yang jelas.
+- Status: perubahan dikirim ke branch PR #7; cek GitHub Actions untuk head terbaru sebelum menyatakan tes lulus. Migration 013 harus diterapkan sebelum endpoint baru diuji. Belum ada panggilan API live karena API key belum disetel. Pembayaran, order supplier, dan backup Drive tetap nonaktif.
