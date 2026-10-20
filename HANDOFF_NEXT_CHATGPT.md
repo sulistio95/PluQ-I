@@ -1616,3 +1616,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Saat pelanggan menekan **Kembali ke game**, teks intro dan pencarian ditampilkan kembali. Tidak mengubah alur pemuatan form, produk, pergantian banner otomatis 3 detik, atau logika harga.
 - Implementasi pada `public/index.php` dan `public/assets/catalog.js` di branch `feature/admin-left-sidebar`; commit kode: `45d4a5b02042acab0210de60e420e1fd7c1a0ee2` dan `adf7e95db84d3e9af154f23888444a113aa27ee8`.
 - Belum menjalankan lint/CI atau pemeriksaan visual browser untuk perubahan ini. Setelah pull, uji memilih game, pastikan hanya banner yang tersisa di bagian atas form akun/nominal, lalu tekan kembali dan pastikan pencarian serta intro muncul lagi. Belum merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: Branding footer toko
+
+- Mengganti teks footer halaman storefront dari `PluQ · Katalog shared-hosting` menjadi `PluQ.I Official Store` di `public/index.php`.
+- Commit kode: `8588cd6654ed510c3d58aa55132812224a360f28` pada branch `feature/admin-left-sidebar`.
+- Perubahan hanya teks footer; alur katalog, akun, nominal, banner, dan pembayaran tidak diubah. Belum merge ke `main`; hasil CI dan tampilan browser perlu diverifikasi.
