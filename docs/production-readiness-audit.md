@@ -1507,3 +1507,9 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Scrollbar atas disinkronkan dua arah dengan tabel utama; pengguna dapat menggeser kolom ke kiri/kanan tanpa harus turun sampai bagian bawah tabel. Tabel mempertahankan scrollbar bawaan sebagai alternatif.
 - Lebar penggeser menyesuaikan lebar tabel saat ukuran layar berubah. Tidak mengubah query harga, filter, urutan harga, otorisasi, atau proses transaksi.
 - Perubahan dikirim ke branch `feature/admin-left-sidebar`; belum di-merge ke `main`. Perlu lint PHP, pemeriksaan CI, dan uji visual desktop/mobile sebelum dinyatakan terverifikasi. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Verifikasi CI — penggeser Harga Modal Supplier (2026-10-20)
+
+- GitHub Actions `PHP quality checks` pada commit `45d9016a8a7216ff12467c03fafc740ec06a38ec` selesai dengan status **success**.
+- Hasil CI tidak menggantikan uji visual browser. Perlu pengguna memeriksa penggeser horizontal atas pada halaman Harga Modal Supplier, termasuk saat halaman digulir vertikal dan pada layar sempit.
