@@ -1601,3 +1601,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 
 - GitHub Actions `PHP quality checks` pada commit `45d9016a8a7216ff12467c03fafc740ec06a38ec` selesai dengan status **success**.
 - Hasil CI tidak menggantikan uji visual browser. Perlu pengguna memeriksa penggeser horizontal atas pada halaman Harga Modal Supplier, termasuk saat halaman digulir vertikal dan pada layar sempit.
+
+
+## Update — 2026-10-20: Perbaikan teks intro yang bertumpuk dengan banner homepage
+
+- Memisahkan area banner promosi dari teks “Top up game lebih praktis” dan “Pilih game dan temukan nominal yang tersedia.”; teks kini berada tepat di bawah banner, bukan di atas gambar.
+- Area banner menggunakan rasio 16:5, tinggi minimum untuk layar kecil dan batas tinggi maksimum agar gambar tidak menutupi konten. Banner tetap dapat diklik jika konfigurasi memiliki target URL; pergantian banner 3 detik tidak diubah.
+- Perubahan pada `public/index.php` dan `public/assets/catalog.css`, branch `feature/admin-left-sidebar`. Catatan handoff dan audit diperbarui. Perlu lint/CI serta pemeriksaan visual desktop dan ponsel; belum merge ke `main`.
