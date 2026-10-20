@@ -1487,3 +1487,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Pemeriksaan `command -v node`, `nodejs`, `js`, `qjs`, dan `quickjs` tidak menemukan runtime yang tersedia (tidak ada path yang dicetak). Karena itu `node --check public/assets/catalog.js` belum dijalankan dan sintaks JS belum dapat dinyatakan lulus/gagal.
 - Status check GitHub untuk `c494ef0` tidak mengembalikan status, dan pencarian workflow PR-triggered untuk short SHA juga tidak menemukan run. Ini bukan bukti tes gagal maupun lulus; hasil CI head terbaru perlu diperiksa dari GitHub Actions secara langsung.
 - Langkah berikutnya: pertahankan branch dan banner, jalankan ulang pemeriksaan PHP yang tersedia (`php bin/preflight.php`, tes PHP terkait, dan `git diff --check`), lalu lakukan pemeriksaan JS menggunakan runtime/parser yang memang tersedia atau CI yang berjalan pada head branch. Jangan merge ke `main`; `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false` tetap dipertahankan. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: katalog lulus dengan peringatan PHP, perbaikan dibuat
+
+- Hasil lokal pengguna: `php bin/preflight.php` lulus 48/48; tes `game-account-schema`, `game-username-fallback`, dan seluruh 10 kelompok tes regresi yang dijalankan lulus. `tests/catalog-availability.php` lulus 6/6 tetapi menghasilkan tiga warning `Undefined array key "base_price"` dari `app/services/catalog.php` baris 100 karena fixture penawaran tertentu tidak menyertakan field opsional.
+- Perbaikan dibuat pada branch `audit/php-valid-game-provider`, commit `4d61d7c9d8eec675bea0e59876237b9716803e1d`: normalisasi `base_price`, `selling_price`, dan `is_available` memakai nilai default aman agar row yang tidak menyertakan key opsional tidak menimbulkan warning. Belum diverifikasi di mesin lokal pengguna; wajib pull branch dan ulangi tes katalog serta `git diff --check`.
+- JavaScript `public/assets/catalog.js` masih belum diperiksa karena Node.js/alternatif runtime tidak ditemukan di mesin pengguna. Jangan mengklaim JS lint lulus sampai ada CI atau parser yang dapat menjalankannya.
+- Tiga banner lokal tetap tidak terlacak dan harus dipertahankan. Jangan merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
