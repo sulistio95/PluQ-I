@@ -1417,3 +1417,10 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - `php -l app/services/catalog.php` lulus.
 - `php -d error_reporting=E_ALL tests/catalog-availability.php` lulus 6/6 tanpa warning setelah normalisasi field opsional menggunakan nilai default.
 - Masih perlu pemeriksaan regresi lintas tes dan validasi sintaks JavaScript. Node.js belum tersedia di lingkungan lokal yang dilaporkan; jangan menandai validasi JS lokal sebagai lulus tanpa menjalankannya. Tidak ada pembayaran, order supplier, atau backup Drive yang dijalankan.
+
+
+## 2026-10-20 — Preflight dan suite regresi lokal lulus
+
+- Preflight lokal: 48/48 checks passed; database connection, required tables, and listed migrations passed. Payment checkout, supplier ordering, and settlement backup remain disabled.
+- Seluruh 12 tes regresi yang dilaporkan pengguna lulus: Duitku callback state, Duitku transaction status, cooldown regression, checkout fingerprint, fulfillment mapping, provider budget capacity, catalog availability (6/6), hybrid pricing, admin authorization, login throttle cleanup, game account schema, dan username fallback.
+- Belum termasuk bukti transaksi Duitku sandbox, kredensial supplier eksternal, browser end-to-end, atau kesiapan produksi. Validasi JavaScript/CI terbaru masih perlu diperiksa.
