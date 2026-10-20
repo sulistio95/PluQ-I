@@ -1458,3 +1458,14 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Transport upstream belum memaksa IPv4, timeout default 15 detik, dan redirect diizinkan. Ini harus ditangani sebelum uji hosting, mengingat kendala IPv6 yang pernah terjadi.
 - Belum ada API live request, Composer install, uji lokal, atau perubahan kode customer untuk kandidat ini. Tidak ada pembayaran, pesanan supplier, atau backup Drive yang dijalankan.
 - Tahap berikutnya: implementasi adaptor terisolasi dengan IPv4 dan timeout terbatas, unit tests dengan respons tiruan, lalu CI. Jangan mengganti Evo atau menggabungkan branch sebelum hasil tes dan keputusan dependensi jelas.
+
+
+## Update — 2026-10-20: adaptor fallback nickname GoPay (branch audit)
+
+- Implementasi awal adaptor terisolasi ditambahkan di `app/services/game_username_fallback.php`; tidak memakai Composer/Guzzle dan tidak mengubah pembayaran atau pemesanan supplier. Request hanya ke host tetap `https://gopay.co.id/games/v1/order/user-account`, POST JSON, IPv4 dipaksa, TLS diverifikasi, redirect dimatikan, connect timeout 3 detik dan total timeout 5 detik.
+- Adapter memetakan kode lookup GoPay terpisah dari kode produk supplier. Cakupan pemetaan termasuk Mobile Legends, Free Fire, Genshin Impact (region harus dikenali), VALORANT, Honor of Kings, PUBG Mobile, FC Mobile, Magic Chess: Go Go, Arena of Valor, dan Call of Duty Mobile. Ketersediaan aktual tetap mengikuti skema checkout dan respons provider; ini bukan jaminan semua 22 game validasi.
+- Primary Evo tetap dipakai lebih dahulu bila kode tersedia dan API key dikonfigurasi. Fallback hanya dicoba pada kegagalan teknis/provider; respons primary yang secara eksplisit menyatakan ID tidak ditemukan tidak diteruskan ke fallback. Respons GoPay yang ambigu diperlakukan sebagai layanan tidak tersedia, bukan ID salah.
+- Proteksi database yang sudah ada tetap dipakai; GoPay memiliki budget terpisah maksimal 25 request/menit dan cooldown akun 1 request/5 detik untuk judul GoPay-only. Cache sukses 5 menit tetap di jalur route. Flag `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false` ditambahkan dan **default mati**; metadata tidak mengiklankan cek GoPay-only sebelum flag diaktifkan.
+- Tes baru `tests/game-username-fallback.php` memakai respons tiruan dan ditambahkan ke workflow PHP quality. Belum ada PHP lint/CI aktual, API live call, atau uji hosting. Sebelum staging: cek seluruh workflow, verifikasi izin/ketentuan sumber GoPay, aktifkan flag hanya pada staging, dan periksa respons nyata tanpa membuat order.
+- File yang diubah: `app/services/game_username_fallback.php`, `app/services/game_fields.php`, `public/index.php`, `.env.example`, `tests/game-username-fallback.php`, `.github/workflows/php-quality.yml`, serta catatan evaluasi/audit ini.
+- Branch kerja tetap `audit/php-valid-game-provider`; PR #7 dan branch utama tidak diubah/di-merge. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
