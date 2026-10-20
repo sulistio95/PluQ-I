@@ -1476,3 +1476,9 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Menggunakan API ID/key VIPayment yang sudah tersimpan di Pengaturan API. Request lookup tidak memanggil type=order dan tidak membuat transaksi top-up.
 - Ditambahkan tes parameter untuk memastikan type, code, target, dan additional_target benar; tes ini tidak menggantikan uji API live dengan kredensial pemilik.
 - Referensi dokumentasi: https://vip-reseller.co.id/page/api/game-feature. Setelah branch diperbarui, jalankan CI, preflight dan tes PHP lokal. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+### Temuan pengujian lokal — deklarasi fungsi ganda
+- Log lokal 20 Oktober 2026 menunjukkan `Cannot redeclare game_username_check()` pada baris 139 setelah deklarasi pertama pada baris 46. Akar masalah: implementasi Game Check lama tertinggal setelah implementasi VIPayment ditambahkan.
+- Dihapus blok implementasi Game Check lama; fungsi `game_username_check()` yang tersisa menggunakan VIPayment `/game-feature` dan `get-nickname`. Rate limit/cache tidak dihapus.
+- Status perbaikan: sudah dikomit ke branch `fix/vipayment-nickname-lookup`; perlu jalankan ulang syntax check, tes regresi, dan tes endpoint lokal sebelum menyatakan lolos.
