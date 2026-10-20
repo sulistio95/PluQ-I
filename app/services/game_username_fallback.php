@@ -109,7 +109,7 @@ function game_username_gopay_validate(
         $failed = $body === false || curl_errno($handle) !== 0;
         curl_close($handle);
         if ($failed) {
-            throw new RuntimeException('GoPay Games fallback network request failed.');
+            throw new RuntimeException('GoPay Games network request failed.');
         }
         $response = ['status' => $statusCode, 'body' => (string) $body];
     }
@@ -117,15 +117,15 @@ function game_username_gopay_validate(
     $httpStatus = (int) ($response['status'] ?? 0);
     $body = (string) ($response['body'] ?? '');
     if ($httpStatus < 200 || $httpStatus >= 300) {
-        throw new RuntimeException('GoPay Games fallback returned HTTP ' . $httpStatus . '.');
+        throw new RuntimeException('GoPay Games returned HTTP ' . $httpStatus . '.');
     }
     try {
         $data = json_decode($body, true, 32, JSON_THROW_ON_ERROR);
     } catch (JsonException $e) {
-        throw new RuntimeException('GoPay Games fallback returned invalid JSON.', 0, $e);
+        throw new RuntimeException('GoPay Games returned invalid JSON.', 0, $e);
     }
     if (!is_array($data)) {
-        throw new RuntimeException('GoPay Games fallback returned an unexpected response.');
+        throw new RuntimeException('GoPay Games returned an unexpected response.');
     }
 
     $username = '';
@@ -151,7 +151,7 @@ function game_username_gopay_validate(
     }
     if ($success) {
         // A positive response without a nickname is not strong enough to verify.
-        throw new RuntimeException('GoPay Games fallback did not return a nickname.');
+        throw new RuntimeException('GoPay Games did not return a nickname.');
     }
 
     $message = '';
@@ -166,7 +166,7 @@ function game_username_gopay_validate(
     }
 
     // Ambiguous provider errors must never be presented as a confirmed invalid ID.
-    throw new RuntimeException('GoPay Games fallback could not verify this account.');
+    throw new RuntimeException('GoPay Games could not verify this account.');
 }
 
 function game_username_gopay_fallback_enabled(): bool
@@ -181,12 +181,12 @@ function game_username_check_with_fallback(PDO $pdo, string $gameCode, string $u
         throw new RuntimeException('GoPay Games nickname lookup is disabled by configuration.');
     }
     try {
-        // GoPay-only titles need their own per-account cooldown because no Evo limit ran.
+        // Apply a per-account cooldown for every GoPay lookup.
         if ($gameCode === '') {
             $accountKey = hash('sha256', $gameSlug . '|' . $userId . '|' . $zone);
             game_username_check_apply_limit($pdo, 'gopay-account:' . $accountKey, 1, 5);
         }
-        // Separate global budget: fallback requests are counted independently from Evo.
+        // Keep a separate global budget for GoPay traffic.
         game_username_check_apply_limit($pdo, 'global-gopay-fallback', 25, 60);
         $fallback = game_username_gopay_validate($gameSlug, $gameName, $userId, $zone);
     } catch (GameUsernameInvalidException $e) {
@@ -194,7 +194,7 @@ function game_username_check_with_fallback(PDO $pdo, string $gameCode, string $u
     } catch (GameUsernameRateLimitException $e) {
         throw $e;
     } catch (Throwable $e) {
-        throw new RuntimeException('GoPay Games fallback is temporarily unavailable.', 0, $primaryError ?? $e);
+        throw new RuntimeException('GoPay Games nickname lookup is temporarily unavailable.', 0, $e);
     }
         if ($fallback['status'] === 'valid' && isset($fallback['username'])) {
             return $fallback['username'];
