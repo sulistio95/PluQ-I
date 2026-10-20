@@ -184,6 +184,11 @@ function game_username_check_with_fallback(PDO $pdo, string $gameCode, string $u
         }
     }
     try {
+        // GoPay-only titles need their own per-account cooldown because no Evo limit ran.
+        if ($gameCode === '') {
+            $accountKey = hash('sha256', $gameSlug . '|' . $userId . '|' . $zone);
+            game_username_check_apply_limit($pdo, 'gopay-account:' . $accountKey, 1, 5);
+        }
         // Separate global budget: fallback requests are counted independently from Evo.
         game_username_check_apply_limit($pdo, 'global-gopay-fallback', 25, 60);
         $fallback = game_username_gopay_validate($gameSlug, $gameName, $userId, $zone);
