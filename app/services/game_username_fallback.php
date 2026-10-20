@@ -170,15 +170,28 @@ function game_username_gopay_validate(
 }
 
 /** Try the primary Evo checker first; only transport/provider failures trigger fallback. */
-function game_username_check_with_fallback(string $gameCode, string $userId, string $zone, string $gameSlug, string $gameName): string
+function game_username_check_with_fallback(PDO $pdo, string $gameCode, string $userId, string $zone, string $gameSlug, string $gameName): string
 {
+    $primaryError = null;
+    if ($gameCode !== '') {
+        try {
+            return game_username_check($gameCode, $userId, $zone);
+        } catch (DomainException $e) {
+            // A definitive invalid/not-found response from the primary provider is not retried.
+            throw $e;
+        } catch (RuntimeException $e) {
+            $primaryError = $e;
+        }
+    }
     try {
-        return game_username_check($gameCode, $userId, $zone);
-    } catch (DomainException $e) {
-        // A definitive invalid/not-found response from the primary provider is not retried.
-        throw $e;
-    } catch (RuntimeException $primaryError) {
+        // Separate global budget: fallback requests are counted independently from Evo.
+        game_username_check_apply_limit($pdo, 'global-gopay-fallback', 25, 60);
         $fallback = game_username_gopay_validate($gameSlug, $gameName, $userId, $zone);
+    } catch (GameUsernameRateLimitException $e) {
+        throw $e;
+    } catch (Throwable $e) {
+        throw new RuntimeException('GoPay Games fallback is temporarily unavailable.', 0, $primaryError ?? $e);
+    }
         if ($fallback['status'] === 'valid' && isset($fallback['username'])) {
             return $fallback['username'];
         }
