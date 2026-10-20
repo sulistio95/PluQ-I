@@ -1466,3 +1466,13 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - GitHub Actions `PHP quality checks` succeeded for routing commit `23508598100b75080f70d61a94a93c097671e525` (run #791), schema availability commit `e0ca6bf234cecda1fe3f4653baf67ef994c0278b` (run #792), and `.env.example` commit `4bb1c72bce77959be62f7e01e0f853041dbe9e2d` (run #793).
 - This proves the configured workflow checks pass, not that an external nickname API returns real account names. Live verification awaits an authorized provider configuration.
 - After the user pulls, run preflight, `game-account-schema.php`, `game-username-fallback.php`, and `git diff --check`, then test the local endpoint. With `GAME_CHECK_API_KEY` empty and fallback false, safe expected behavior is that username checking is unavailable (and no GoPay request is made). Do not enable fallback before authorization is confirmed.
+
+
+## 2026-10-20 — Keputusan menghapus GoPay/Evo dan kembali ke VIPayment
+
+- Menghapus jalur GoPay yang memakai endpoint tidak terdokumentasi serta jalur Game Check pihak ketiga yang memerlukan API key terpisah.
+- Pengecekan username kembali diarahkan ke dokumentasi VIPayment Game Feature: POST /api/game-feature, type=get-nickname, code, target, additional_target. Respons sukses yang didokumentasikan mengembalikan nickname pada data.
+- Kode lookup yang dipetakan: mobile-legends, mobile-legends-region, free-fire, pubgm, valorant, genshin-impact, honkai-star-rail, pointblank. Honor of Kings dan judul lain di luar daftar tidak diiklankan sebagai auto-check.
+- Menggunakan API ID/key VIPayment yang sudah tersimpan di Pengaturan API. Request lookup tidak memanggil type=order dan tidak membuat transaksi top-up.
+- Ditambahkan tes parameter untuk memastikan type, code, target, dan additional_target benar; tes ini tidak menggantikan uji API live dengan kredensial pemilik.
+- Referensi dokumentasi: https://vip-reseller.co.id/page/api/game-feature. Setelah branch diperbarui, jalankan CI, preflight dan tes PHP lokal. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
