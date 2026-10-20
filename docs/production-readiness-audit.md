@@ -1499,3 +1499,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Link menu atas yang duplikat di dashboard dan link “kembali ke panel” pada halaman pengaturan dihapus karena navigasi bersama sekarang tersedia melalui sidebar.
 - Perubahan ada pada branch `feature/admin-left-sidebar`, diturunkan dari `fix/vipayment-nickname-lookup`. Belum digabung ke `main`. Lakukan PHP lint, `php bin/preflight.php`, tes regresi terkait admin, dan `git diff --check` setelah branch ditarik. Pemeriksaan visual browser masih diperlukan.
 - Tidak ada perubahan atau aktivasi pembayaran, supplier ordering, maupun backup Google Drive. Pertahankan tiga banner JPG lokal yang belum terlacak; jangan menjalankan perintah reset/clean yang menghapus file lokal.
+
+
+## Update — 2026-10-20: Penggeser horizontal tabel Harga Modal Supplier
+
+- Menambahkan scrollbar horizontal kedua di bagian atas tabel Harga Modal Supplier (`public/admin/supplier-prices.php`), dengan posisi sticky agar tetap mudah dijangkau saat halaman digulir vertikal.
+- Scrollbar atas disinkronkan dua arah dengan tabel utama; pengguna dapat menggeser kolom ke kiri/kanan tanpa harus turun sampai bagian bawah tabel. Tabel mempertahankan scrollbar bawaan sebagai alternatif.
+- Lebar penggeser menyesuaikan lebar tabel saat ukuran layar berubah. Tidak mengubah query harga, filter, urutan harga, otorisasi, atau proses transaksi.
+- Perubahan dikirim ke branch `feature/admin-left-sidebar`; belum di-merge ke `main`. Perlu lint PHP, pemeriksaan CI, dan uji visual desktop/mobile sebelum dinyatakan terverifikasi. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
