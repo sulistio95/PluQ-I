@@ -21,6 +21,12 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, curl, pdo_mysql
           coverage: none
+      - name: Set up Node.js for JavaScript syntax validation
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check storefront JavaScript syntax
+        run: node --check public/assets/catalog.js
       - name: Lint PHP files
         shell: bash
         run: |
@@ -40,6 +46,8 @@ jobs:
         run: php tests/fulfillment-mapping.php
       - name: Test automatically generated game account fields
         run: php tests/game-account-schema.php
+      - name: Test GoPay nickname fallback adapter with mocked responses
+        run: php tests/game-username-fallback.php
       - name: Test provider budget capacity boundaries
         run: php tests/provider-budget-capacity.php
       - name: Test customer catalog supplier availability filtering

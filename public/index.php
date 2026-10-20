@@ -32,6 +32,7 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
   require_once PLUQI_ROOT.'/config/database.php';
   require_once PLUQI_ROOT.'/app/services/game_fields.php';
   require_once PLUQI_ROOT.'/app/services/game_username_check.php';
+  require_once PLUQI_ROOT.'/app/services/game_username_fallback.php';
   $pdo = database();
   $schema = catalog_game_account_schema($pdo, $m[1]);
   if (!$schema['checkout_supported']) json_response(['error'=>'account_schema_unverified','message'=>'Pemetaan akun game ini belum diverifikasi.'],409);
@@ -58,17 +59,28 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
   if ($cachedUsername !== null) {
    json_response(['data'=>['username'=>$cachedUsername,'verified'=>true,'cached'=>true]]);
   }
-  game_username_check_enforce_provider_limits($pdo, $fingerprint);
   $serviceCode = game_account_username_check_code((string)$schema['game']['slug'], (string)$schema['game']['name']);
-  if ($serviceCode === null) json_response(['error'=>'username_check_unavailable','message'=>'API pengecekan username belum mendukung game ini.'],409);
   $userId = (string)($normalized['user_id'] ?? '');
   $zoneId = (string)($normalized['zone_id'] ?? $normalized['server'] ?? '');
-  $username = game_username_check($serviceCode, $userId, $zoneId);
+  $checkerApiKey = trim((string)(getenv('GAME_CHECK_API_KEY') ?: ''));
+  if ($serviceCode !== null && $checkerApiKey !== '') {
+   // Prefer the dedicated nickname-check API when credentials are configured.
+   game_username_check_enforce_provider_limits($pdo, $fingerprint);
+   $username = game_username_check($serviceCode, $userId, $zoneId);
+  } elseif (game_username_gopay_fallback_enabled()) {
+   // The public GoPay endpoint is undocumented; only use it after explicit opt-in.
+   // Pass an empty service code so the fallback's per-account cooldown is enforced.
+   $username = game_username_check_with_fallback($pdo, '', $userId, $zoneId, (string)$schema['game']['slug'], (string)$schema['game']['name']);
+  } else {
+   throw new RuntimeException('No enabled nickname-check provider is configured.');
+  }
   game_username_check_cache_success($pdo, $fingerprint, (string)$schema['game']['slug'], $username);
   // Opportunistic cleanup is bounded so this stays suitable for shared hosting.
   $pdo->exec('DELETE FROM game_username_check_cache WHERE expires_at <= UTC_TIMESTAMP() LIMIT 100');
   $pdo->exec('DELETE FROM game_username_check_limits WHERE updated_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 DAY) LIMIT 100');
   json_response(['data'=>['username'=>$username,'verified'=>true,'cached'=>false]]);
+ } catch (GameUsernameInvalidException $e) {
+  json_response(['error'=>'invalid_game_account','message'=>'ID atau server akun game tidak ditemukan.'],422);
  } catch (GameUsernameRateLimitException $e) {
   json_response(['error'=>'username_check_throttled','message'=>'Pengecekan terlalu sering. Tunggu sebentar lalu coba lagi.'],429);
  } catch (DomainException $e) {

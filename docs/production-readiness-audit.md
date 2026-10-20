@@ -1366,3 +1366,103 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Evo Game Store mendokumentasikan primary source + automatic fallback chain serta cache 10 menit di sisi layanan; cache lokal 5 menit mengurangi request berulang. Ini tidak menjamin semua 20–25 game: endpoint yang dipilih hanya mendokumentasikan 8 game. Perlu sumber checker yang sah/teruji untuk judul lainnya.
 - API isan.eu.org tidak dipasang sebagai fallback produksi pada tahap ini karena repositori publik yang diperiksa menyebut lisensi CC BY-NC-SA 4.0; perlu izin sebelum dipakai pada situs komersial.
 - Verifikasi masih perlu: pastikan workflow CI untuk head branch terbaru, terapkan migration 013 di database pengujian, uji concurrency/cache/rate limit, lalu uji dengan API key resmi. Belum ada API live call. Pembayaran, pemesanan supplier, dan backup Drive tetap nonaktif.
+
+
+## 2026-10-20 — Audit kandidat validasi nickname tambahan
+
+- Audit statis `triyatna/php-valid-game` ditulis di `docs/game-username-check-provider-evaluation.md` pada branch `audit/php-valid-game-provider`.
+- Matriks README upstream mencantumkan 22 game: 6 dengan Codashop + GoPay, 12 Codashop saja, dan 4 GoPay saja. Jumlah judul tidak sama dengan jumlah judul yang memiliki fallback.
+- Paket membutuhkan Guzzle ^7 dan PSR Log; repository PluQ-I tidak memiliki `composer.json` atau `composer.lock` di root. Transport upstream tidak memaksa IPv4, timeout default 15 detik, dan redirect diizinkan.
+- Belum ada request live, install dependency, atau perubahan jalur customer. Temuan dan rencana mitigasi lengkap ada pada dokumen evaluasi. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Adaptor fallback GoPay Games (belum live)
+
+- Pada branch `audit/php-valid-game-provider`, ditambahkan adaptor cURL mandiri di `app/services/game_username_fallback.php` untuk menghindari ketergantungan Guzzle/Composer. Host dan path GoPay ditetapkan konstan; HTTPS/TLS verification aktif, IPv4 dipaksa, redirect nonaktif, timeout koneksi 3 detik dan total 5 detik.
+- Evo tetap primary jika tersedia. GoPay fallback dipanggil hanya saat flag `GAME_CHECK_GOPAY_FALLBACK_ENABLED=true`; default `false`. ID yang dinyatakan tidak valid oleh primary tidak dicoba ulang melalui fallback. Respons GoPay ambigu/HTTP error/network error dianggap provider unavailable, bukan invalid account.
+- GoPay fallback memiliki limit global terpisah 25 request/60 detik dan cooldown fingerprint akun 1 request/5 detik pada judul GoPay-only. Cache sukses dan rate limit pelanggan di route tetap dipakai. Kode provider dipisahkan dari kode supplier.
+- Tes mock `tests/game-username-fallback.php` ditambahkan ke workflow PHP quality. GitHub Actions run #765 (`39355548027`) sukses; PHP lint dan semua tes workflow lulus. Tidak ada request live, dependency install, atau pengujian hosting. Audit izin/ketentuan endpoint GoPay belum selesai, jadi jangan aktifkan flag di produksi. [Run #765](https://github.com/sulistio95/PluQ-I/actions/runs/39355548027).
+- Cakupan ini bukan pengganti penuh paket upstream 22 game: adaptor GoPay hanya memakai pemetaan eksplisit dan tidak mengimplementasikan provider Codashop. Beberapa judul dalam daftar upstream hanya Codashop; mereka tetap bergantung pada Evo atau tidak memiliki pemeriksaan.
+- PR #7, main, dan supplier/payment flow tidak diubah/di-merge. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## 2026-10-20 — Manual nickname validation without Evo registration
+
+- The public account form no longer advertises automatic lookup unless the optional GoPay adapter is explicitly enabled. No Evo API key/account is needed for ordinary local testing.
+- The route now calls the GoPay-only adapter rather than trying Evo first. `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false` remains the safe default, so unsupported games use manual ID entry when their account schema is reviewed, and no external nickname request is made in the default local configuration.
+- This does not make unknown account schemas safe for checkout: unreviewed game/server mappings remain blocked. Nickname verification is optional; account-field validation and server-side product/checkout validation remain separate controls.
+- GoPay endpoint terms and live API response remain unverified. Do not enable the flag in production or claim that automatic nickname lookup works until an authorized staging test is completed. No payment, supplier order, or Drive backup was triggered.
+
+
+## Update — 2026-10-20: hasil pemeriksaan lokal setelah handoff
+
+- Pengguna mengonfirmasi branch lokal `audit/php-valid-game-provider`, HEAD `c494ef0` (`Record manual nickname fallback decision in readiness audit`), sinkron dengan `origin/audit/php-valid-game-provider`.
+- `git status --short` hanya menunjukkan tiga banner JPG baru yang belum dilacak di `public/uploads/banners/`: `3415d24f42be590c29d176df0f32acf6.jpg`, `f1bdb42a7c23d2c0b084d2bffdee282c.jpg`, dan `fe03270365bd04633c47bc8794da2dd6.jpg`. File tersebut harus dipertahankan; jangan menjalankan `git clean`, reset, atau menghapusnya.
+- Pemeriksaan `command -v node`, `nodejs`, `js`, `qjs`, dan `quickjs` tidak menemukan runtime yang tersedia (tidak ada path yang dicetak). Karena itu `node --check public/assets/catalog.js` belum dijalankan dan sintaks JS belum dapat dinyatakan lulus/gagal.
+- Status check GitHub untuk `c494ef0` tidak mengembalikan status, dan pencarian workflow PR-triggered untuk short SHA juga tidak menemukan run. Ini bukan bukti tes gagal maupun lulus; hasil CI head terbaru perlu diperiksa dari GitHub Actions secara langsung.
+- Langkah berikutnya: pertahankan branch dan banner, jalankan ulang pemeriksaan PHP yang tersedia (`php bin/preflight.php`, tes PHP terkait, dan `git diff --check`), lalu lakukan pemeriksaan JS menggunakan runtime/parser yang memang tersedia atau CI yang berjalan pada head branch. Jangan merge ke `main`; `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false` tetap dipertahankan. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: katalog lulus dengan peringatan PHP, perbaikan dibuat
+
+- Hasil lokal pengguna: `php bin/preflight.php` lulus 48/48; tes `game-account-schema`, `game-username-fallback`, dan seluruh 10 kelompok tes regresi yang dijalankan lulus. `tests/catalog-availability.php` lulus 6/6 tetapi menghasilkan tiga warning `Undefined array key "base_price"` dari `app/services/catalog.php` baris 100 karena fixture penawaran tertentu tidak menyertakan field opsional.
+- Perbaikan dibuat pada branch `audit/php-valid-game-provider`, commit `4d61d7c9d8eec675bea0e59876237b9716803e1d`: normalisasi `base_price`, `selling_price`, dan `is_available` memakai nilai default aman agar row yang tidak menyertakan key opsional tidak menimbulkan warning. Belum diverifikasi di mesin lokal pengguna; wajib pull branch dan ulangi tes katalog serta `git diff --check`.
+- JavaScript `public/assets/catalog.js` masih belum diperiksa karena Node.js/alternatif runtime tidak ditemukan di mesin pengguna. Jangan mengklaim JS lint lulus sampai ada CI atau parser yang dapat menjalankannya.
+- Tiga banner lokal tetap tidak terlacak dan harus dipertahankan. Jangan merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Verifikasi lokal regresi katalog
+
+- Pengguna menarik branch audit terbaru dengan fast-forward; `git diff --check` bersih.
+- `php -l app/services/catalog.php` lulus.
+- `php -d error_reporting=E_ALL tests/catalog-availability.php` lulus 6/6 tanpa warning setelah normalisasi field opsional menggunakan nilai default.
+- Masih perlu pemeriksaan regresi lintas tes dan validasi sintaks JavaScript. Node.js belum tersedia di lingkungan lokal yang dilaporkan; jangan menandai validasi JS lokal sebagai lulus tanpa menjalankannya. Tidak ada pembayaran, order supplier, atau backup Drive yang dijalankan.
+
+
+## 2026-10-20 — Preflight dan suite regresi lokal lulus
+
+- Preflight lokal: 48/48 checks passed; database connection, required tables, and listed migrations passed. Payment checkout, supplier ordering, and settlement backup remain disabled.
+- Seluruh 12 tes regresi yang dilaporkan pengguna lulus: Duitku callback state, Duitku transaction status, cooldown regression, checkout fingerprint, fulfillment mapping, provider budget capacity, catalog availability (6/6), hybrid pricing, admin authorization, login throttle cleanup, game account schema, dan username fallback.
+- Belum termasuk bukti transaksi Duitku sandbox, kredensial supplier eksternal, browser end-to-end, atau kesiapan produksi. Validasi JavaScript/CI terbaru masih perlu diperiksa.
+
+
+## 2026-10-20 — GitHub Actions PHP quality
+
+- GitHub Actions `PHP quality checks` pada commit `e9628ffff1ea12221f63c7629f34e7cefbb960ae` selesai dengan kesimpulan `success` (PR #8 / branch audit).
+- Hasil ini mendukung status workflow PHP quality, bukan bukti otomatis validasi JavaScript atau browser end-to-end. Pastikan ada pemeriksaan JS eksplisit sebelum menandai bagian itu selesai.
+- Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## 2026-10-20 — JavaScript syntax validation added to CI
+
+- Local environment check: `node` and `nodejs` are absent, and `apt-cache policy nodejs` reports that the package cannot be located in the active APT indexes. Local JS syntax validation remains unrun.
+- Workflow commit `d50d8eddb4ec4c19b2127bdf53a1b1c819531497` adds Node.js 22 setup and `node --check public/assets/catalog.js` to the GitHub Actions PHP quality workflow. Node is used by CI only; no Node runtime or package dependency is added to the PHP shared-hosting application.
+- CI outcome for the new workflow commit is pending verification; do not mark JS syntax validation passed until the run finishes successfully.
+- The user's previously reported local checks remain: preflight 48/48 and 12 PHP regression groups passed. These results do not prove browser E2E, live provider checks, Duitku sandbox, or production readiness.
+- Preserve three untracked local banner JPGs. Do not merge to `main`; payment, supplier ordering, GoPay fallback flag (`GAME_CHECK_GOPAY_FALLBACK_ENABLED=false`), and Drive backup remain disabled.
+
+
+## 2026-10-20 — JavaScript syntax CI passed
+
+- GitHub Actions run #788 (`39374900076`) for the current `audit/php-valid-game-provider` branch completed successfully: https://github.com/sulistio95/PluQ-I/actions/runs/39374900076.
+- The workflow now runs `node --check public/assets/catalog.js`; its syntax check therefore passed on the GitHub runner. Node.js is CI-only and is not a runtime requirement for shared hosting.
+- This validates JavaScript parsing, not browser behavior, API provider staging, Duitku sandbox transactions, or deployment readiness. Those checks remain outstanding.
+- Payment checkout, supplier ordering, GoPay fallback, and Google Drive backup remain disabled. Do not merge to `main` as part of this syntax-only change.
+
+
+## 2026-10-20 — Audit legal/teknis endpoint username dan koreksi routing provider
+
+- Public search did not find official API documentation for `https://gopay.co.id/games/v1/order/user-account`; opening the endpoint did not expose a documented API contract. Endpoint behavior, response schema, stability, and commercial-use authorization remain unverified.
+- Official GoPay terms state that access from third-party platforms that are not Official/Authorized Platform Partners may be restricted for security, data protection, or commercial data-collection concerns. This does not itself prove that this particular game endpoint is prohibited, but it does not grant authorization to use an undocumented endpoint. References: https://gopay.co.id/syarat-dan-ketentuan and https://gopay.co.id/terms-and-condition/gopay.
+- Code audit found the username POST route always called the GoPay adapter even when `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false`, and did not use the dedicated checker when `GAME_CHECK_API_KEY` was present.
+- Branch changes: `public/index.php` now prefers the dedicated checker when a supported game code and `GAME_CHECK_API_KEY` are configured; the GoPay adapter is called only when its explicit opt-in flag is true; otherwise the route fails safely when no checker is configured. The fallback receives an empty service code to enforce its existing per-account cooldown. `app/services/game_fields.php` advertises checking only when a matching provider is configured. `.env.example` documents `GAME_CHECK_API_KEY` and keeps GoPay fallback false pending authorization.
+- Commits: `public/index.php` `23508598100b75080f70d61a94a93c097671e525`; `app/services/game_fields.php` `e0ca6bf234cecda1fe3f4653baf67ef994c0278b`; `.env.example` `4bb1c72bce77959be62f7e01e0f853041dbe9e2d`. Regression/CI after these changes still needs verification.
+- User can test locally after pulling, but a real ID lookup requires a valid `GAME_CHECK_API_KEY` for the dedicated service or confirmation that GoPay authorizes this fallback before enabling it. VIPayment credentials do not automatically serve as `GAME_CHECK_API_KEY`. Keep secrets only in local `.env`, never in GitHub or chat.
+- Payment checkout, supplier ordering, GoPay fallback, and Drive backup remain disabled. Do not merge to `main`; preserve three untracked local banner JPGs.
+
+
+## 2026-10-20 — CI after username checker routing fix
+
+- GitHub Actions `PHP quality checks` succeeded for routing commit `23508598100b75080f70d61a94a93c097671e525` (run #791), schema availability commit `e0ca6bf234cecda1fe3f4653baf67ef994c0278b` (run #792), and `.env.example` commit `4bb1c72bce77959be62f7e01e0f853041dbe9e2d` (run #793).
+- This proves the configured workflow checks pass, not that an external nickname API returns real account names. Live verification awaits an authorized provider configuration.
+- After the user pulls, run preflight, `game-account-schema.php`, `game-username-fallback.php`, and `git diff --check`, then test the local endpoint. With `GAME_CHECK_API_KEY` empty and fallback false, safe expected behavior is that username checking is unavailable (and no GoPay request is made). Do not enable fallback before authorization is confirmed.

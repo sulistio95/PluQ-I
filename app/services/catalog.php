@@ -97,9 +97,10 @@ function catalog_select_customer_products(array $rows): array
     // The frontend labels these rows "Habis"; checkout must still validate availability server-side.
     $out = array_values($chosen);
     foreach ($out as &$row) {
-        $row['base_price'] = (float) $row['base_price'];
-        $row['selling_price'] = (float) $row['selling_price'];
-        $row['is_available'] = (bool) $row['is_available'];
+        // Some cached/test offers may omit optional numeric fields; normalize safely without warnings.
+        $row['base_price'] = (float) ($row['base_price'] ?? 0);
+        $row['selling_price'] = (float) ($row['selling_price'] ?? 0);
+        $row['is_available'] = (bool) ($row['is_available'] ?? false);
     }
     unset($row);
 

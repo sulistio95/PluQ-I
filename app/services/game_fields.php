@@ -94,9 +94,16 @@ function game_account_username_check_code(string $slug, string $name): ?string
     return null;
 }
 
+function game_account_gopay_check_supported(string $slug, string $name): bool
+{
+    $identity = strtolower(trim($slug . ' ' . $name));
+    return preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|free[\\s_-]*fire(?:[\\s_-]*max)?|genshin[\\s_-]*impact|valorant|honor[\\s_-]*of[\\s_-]*kings?|\\bhok\\b|pubg[\\s_-]*mobile|\\bpubgm\\b|fc[\\s_-]*mobile|magic[\\s_-]*chess.*go[\\s_-]*go|\\bmcgg\\b|arena[\\s_-]*of[\\s_-]*valor|\\baov\\b|call[\\s_-]*of[\\s_-]*duty|\\bcodm?\\b/i', $identity) === 1;
+}
+
 function game_account_username_check_supported(string $slug, string $name): bool
 {
-    return game_account_username_check_code($slug, $name) !== null;
+    return game_account_username_check_code($slug, $name) !== null
+        || game_account_gopay_check_supported($slug, $name);
 }
 
 /** Return generated fields and whether a reviewed VIPayment nickname lookup is available. */
@@ -112,14 +119,18 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
     $fields = game_account_fields_for_game((string)$game['slug'], (string)$game['name']);
     $checkoutSupported = game_account_schema_is_supported((string)$game['slug'], (string)$game['name'], $fields);
     // Nickname lookup is independent from supplier catalogue, balance, and product codes.
-    $usernameCheckSupported = game_account_username_check_supported((string)$game['slug'], (string)$game['name']);
-    $usernameCheckerConfigured = trim((string) (getenv('GAME_CHECK_API_KEY') ?: '')) !== '';
+    $lookupCode = game_account_username_check_code((string)$game['slug'], (string)$game['name']);
+    $checkerApiKey = trim((string)(getenv('GAME_CHECK_API_KEY') ?: ''));
+    $gopayFallbackEnabled = filter_var(getenv('GAME_CHECK_GOPAY_FALLBACK_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+    $gopaySupported = game_account_gopay_check_supported((string)$game['slug'], (string)$game['name']);
 
     return [
         'game' => ['slug' => (string)$game['slug'], 'name' => (string)$game['name']],
         'fields' => $fields,
         'checkout_supported' => $checkoutSupported,
-        'username_check_available' => $usernameCheckSupported && $usernameCheckerConfigured,
+        // Advertise checks only when a supported, configured provider can actually be called.
+        'username_check_available' => ($lookupCode !== null && $checkerApiKey !== '')
+            || ($gopaySupported && $gopayFallbackEnabled),
     ];
 }
 
