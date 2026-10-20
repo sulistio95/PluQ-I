@@ -1604,3 +1604,10 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Area nama game memiliki tinggi minimum untuk dua baris, perataan tengah, dan pemenggalan kata panjang agar nama yang panjang tidak mendorong ikon atau membuat tata letak horizontal berantakan. Pada layar sempit, kartu tetap mengikuti grid responsif yang sudah ada.
 - Perubahan hanya pada `public/assets/catalog.css`; bingkai lingkaran dan motif bulan sabit tetap dipertahankan. Tidak mengubah data game, ikon unggahan, database, atau proses checkout.
 - Belum diuji visual di browser atau CI. Setelah pull, periksa beberapa game dengan nama pendek dan panjang di desktop serta ponsel; pastikan semua ikon sejajar, teks tidak terpotong, dan tombol kartu tetap dapat diklik. Belum merge ke `main`.
+
+## 2026-10-20 — Lima kartu per baris desktop dan ikon diperbesar
+
+- Grid katalog game pada desktop kini memakai lima kolom tetap; game berikutnya mengalir ke baris di bawahnya. Pada layar lebih kecil, grid beralih ke tiga kolom, sedangkan aturan layar ponsel yang sudah ada tetap berlaku.
+- Ukuran bingkai ikon dinaikkan dari 70×70 menjadi 92×92 piksel, termasuk penyesuaian jarak dan aksen bulan sabit. Ruang nama game tetap terpisah agar nama panjang tidak menggeser ikon.
+- Perubahan CSS saja pada `public/assets/catalog.css`; tidak mengubah data game, unggahan ikon/banner, database, atau alur checkout.
+- Belum diverifikasi secara visual di browser/CI. Setelah pull, uji desktop lebar, jendela tablet, dan ponsel; pastikan lima kolom tampil pada desktop, ikon lebih besar, dan tidak terjadi overflow. Belum merge ke `main`.
