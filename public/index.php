@@ -50,20 +50,25 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
   }
   foreach (array_keys($account) as $key) if (!is_string($key) || !array_key_exists($key,$normalized)) json_response(['error'=>'unknown_account_field'],422);
   $fingerprint = hash('sha256', $m[1].'|'.json_encode($normalized,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
-  $now = time();
-  $recent = $_SESSION['pluqi_username_checks'] ?? [];
-  if (!is_array($recent)) $recent = [];
-  $recent = array_filter($recent, static fn($stamp) => is_int($stamp) && $stamp > $now-600);
-  if (isset($recent[$fingerprint]) && $now-(int)$recent[$fingerprint] < 5) json_response(['error'=>'username_check_throttled','message'=>'Tunggu beberapa detik sebelum memeriksa ID yang sama lagi.'],429);
-  if (count($recent) >= 20) json_response(['error'=>'username_check_throttled','message'=>'Batas pemeriksaan akun sementara tercapai. Coba lagi beberapa menit.'],429);
-  $recent[$fingerprint] = $now;
-  $_SESSION['pluqi_username_checks'] = $recent;
+  // A successful cached check is safe to reuse briefly and avoids duplicate provider traffic.
+  $cachedUsername = game_username_check_cached($pdo, $fingerprint);
+  if ($cachedUsername !== null) {
+   json_response(['data'=>['username'=>$cachedUsername,'verified'=>true,'cached'=>true]]);
+  }
+  $clientIp = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+  game_username_check_enforce_provider_limits($pdo, $clientIp, $fingerprint);
   $serviceCode = game_account_username_check_code((string)$schema['game']['slug'], (string)$schema['game']['name']);
   if ($serviceCode === null) json_response(['error'=>'username_check_unavailable','message'=>'API pengecekan username belum mendukung game ini.'],409);
   $userId = (string)($normalized['user_id'] ?? '');
   $zoneId = (string)($normalized['zone_id'] ?? $normalized['server'] ?? '');
   $username = game_username_check($serviceCode, $userId, $zoneId);
-  json_response(['data'=>['username'=>$username,'verified'=>true]]);
+  game_username_check_cache_success($pdo, $fingerprint, (string)$schema['game']['slug'], $username);
+  // Opportunistic cleanup is bounded so this stays suitable for shared hosting.
+  $pdo->exec('DELETE FROM game_username_check_cache WHERE expires_at <= UTC_TIMESTAMP() LIMIT 100');
+  $pdo->exec('DELETE FROM game_username_check_limits WHERE updated_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 DAY) LIMIT 100');
+  json_response(['data'=>['username'=>$username,'verified'=>true,'cached'=>false]]);
+ } catch (GameUsernameRateLimitException $e) {
+  json_response(['error'=>'username_check_throttled','message'=>'Pengecekan terlalu sering. Tunggu sebentar lalu coba lagi.'],429);
  } catch (DomainException $e) {
   json_response(['error'=>'game_unavailable','message'=>'Game tidak tersedia.'],404);
  } catch (InvalidArgumentException $e) {
