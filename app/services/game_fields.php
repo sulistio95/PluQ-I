@@ -94,9 +94,16 @@ function game_account_username_check_code(string $slug, string $name): ?string
     return null;
 }
 
+function game_account_gopay_check_supported(string $slug, string $name): bool
+{
+    $identity = strtolower(trim($slug . ' ' . $name));
+    return preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|free[\\s_-]*fire(?:[\\s_-]*max)?|genshin[\\s_-]*impact|valorant|honor[\\s_-]*of[\\s_-]*kings?|\\bhok\\b|pubg[\\s_-]*mobile|\\bpubgm\\b|fc[\\s_-]*mobile|magic[\\s_-]*chess.*go[\\s_-]*go|\\bmcgg\\b|arena[\\s_-]*of[\\s_-]*valor|\\baov\\b|call[\\s_-]*of[\\s_-]*duty|\\bcodm?\\b/i', $identity) === 1;
+}
+
 function game_account_username_check_supported(string $slug, string $name): bool
 {
-    return game_account_username_check_code($slug, $name) !== null;
+    return game_account_username_check_code($slug, $name) !== null
+        || game_account_gopay_check_supported($slug, $name);
 }
 
 /** Return generated fields and whether a reviewed VIPayment nickname lookup is available. */
@@ -119,7 +126,7 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
         'game' => ['slug' => (string)$game['slug'], 'name' => (string)$game['name']],
         'fields' => $fields,
         'checkout_supported' => $checkoutSupported,
-        'username_check_available' => $usernameCheckSupported && $usernameCheckerConfigured,
+        'username_check_available' => $usernameCheckSupported && ($usernameCheckerConfigured || game_account_gopay_check_supported((string)$game['slug'], (string)$game['name'])),
     ];
 }
 
