@@ -1409,3 +1409,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Perbaikan dibuat pada branch `audit/php-valid-game-provider`, commit `4d61d7c9d8eec675bea0e59876237b9716803e1d`: normalisasi `base_price`, `selling_price`, dan `is_available` memakai nilai default aman agar row yang tidak menyertakan key opsional tidak menimbulkan warning. Belum diverifikasi di mesin lokal pengguna; wajib pull branch dan ulangi tes katalog serta `git diff --check`.
 - JavaScript `public/assets/catalog.js` masih belum diperiksa karena Node.js/alternatif runtime tidak ditemukan di mesin pengguna. Jangan mengklaim JS lint lulus sampai ada CI atau parser yang dapat menjalankannya.
 - Tiga banner lokal tetap tidak terlacak dan harus dipertahankan. Jangan merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Verifikasi lokal regresi katalog
+
+- Pengguna menarik branch audit terbaru dengan fast-forward; `git diff --check` bersih.
+- `php -l app/services/catalog.php` lulus.
+- `php -d error_reporting=E_ALL tests/catalog-availability.php` lulus 6/6 tanpa warning setelah normalisasi field opsional menggunakan nilai default.
+- Masih perlu pemeriksaan regresi lintas tes dan validasi sintaks JavaScript. Node.js belum tersedia di lingkungan lokal yang dilaporkan; jangan menandai validasi JS lokal sebagai lulus tanpa menjalankannya. Tidak ada pembayaran, order supplier, atau backup Drive yang dijalankan.
