@@ -174,22 +174,11 @@ function game_username_gopay_fallback_enabled(): bool
     return filter_var(getenv('GAME_CHECK_GOPAY_FALLBACK_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
 }
 
-/** Try the primary Evo checker first; only transport/provider failures trigger fallback. */
+/** Optional GoPay-only nickname lookup; never requires an Evo API key or calls a top-up supplier. */
 function game_username_check_with_fallback(PDO $pdo, string $gameCode, string $userId, string $zone, string $gameSlug, string $gameName): string
 {
-    $primaryError = null;
-    if ($gameCode !== '') {
-        try {
-            return game_username_check($gameCode, $userId, $zone);
-        } catch (DomainException $e) {
-            // A definitive invalid/not-found response from the primary provider is not retried.
-            throw $e;
-        } catch (RuntimeException $e) {
-            $primaryError = $e;
-        }
-    }
     if (!game_username_gopay_fallback_enabled()) {
-        throw new RuntimeException('GoPay Games fallback is disabled by configuration.', 0, $primaryError);
+        throw new RuntimeException('GoPay Games nickname lookup is disabled by configuration.');
     }
     try {
         // GoPay-only titles need their own per-account cooldown because no Evo limit ran.
@@ -211,7 +200,7 @@ function game_username_check_with_fallback(PDO $pdo, string $gameCode, string $u
             return $fallback['username'];
         }
         if ($fallback['status'] === 'unsupported') {
-            throw new RuntimeException('No fallback provider is configured for this game.', 0, $primaryError);
+            throw new RuntimeException('GoPay Games does not support this game.');
         }
-        throw new RuntimeException('Nickname providers are temporarily unavailable.', 0, $primaryError);
+        throw new RuntimeException('GoPay Games nickname lookup is temporarily unavailable.');
 }
