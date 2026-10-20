@@ -1511,3 +1511,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - `php bin/preflight.php`: **48/48 checks passed**; koneksi DB, tabel, dan migrasi terdeteksi. Pembayaran, order supplier, dan backup settlement tetap nonaktif.
 - Seluruh 12 kelompok tes berikut lulus tanpa output warning yang terlihat: `duitku-callback-result-state.php`, `duitku-transaction-status.php`, `reconcile-cooldown-regression.php`, `checkout-request-fingerprint.php`, `fulfillment-mapping.php`, `provider-budget-capacity.php`, `catalog-availability.php` (6/6), `pricing-hybrid.php`, `admin-authorization.php`, `admin-login-throttle-clear.php`, `game-account-schema.php`, dan `game-username-fallback.php`.
 - Batasan: ini tes lokal/preflight, bukan bukti kredensial eksternal atau transaksi sandbox/produksi berfungsi. Validasi sintaks JS dan hasil CI branch terbaru masih perlu dicek. Jangan merge ke `main` atau mengaktifkan pembayaran/order/backup sebelum verifikasi tambahan.
+
+
+## GitHub Actions setelah regresi lokal — 2026-10-20
+
+- Setelah pengguna melaporkan preflight 48/48 dan seluruh 12 kelompok tes regresi lulus, catatan ini diperbarui.
+- GitHub Actions `PHP quality checks` pada commit `e9628ffff1ea12221f63c7629f34e7cefbb960ae` (head branch `audit/php-valid-game-provider`, PR #8) berstatus `completed / success`.
+- CI hijau ini mencakup workflow PHP quality yang ada; jangan menyimpulkan bahwa JavaScript atau alur browser end-to-end sudah diverifikasi hanya dari nama/status workflow tersebut. Validasi JS eksplisit dan browser masih perlu dipastikan.
+- Tidak ada merge atau perubahan konfigurasi keamanan: checkout pembayaran, order supplier, dan backup Drive tetap nonaktif.
