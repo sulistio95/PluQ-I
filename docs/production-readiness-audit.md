@@ -1384,3 +1384,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Tes mock `tests/game-username-fallback.php` ditambahkan ke workflow PHP quality. GitHub Actions run #765 (`39355548027`) sukses; PHP lint dan semua tes workflow lulus. Tidak ada request live, dependency install, atau pengujian hosting. Audit izin/ketentuan endpoint GoPay belum selesai, jadi jangan aktifkan flag di produksi. [Run #765](https://github.com/sulistio95/PluQ-I/actions/runs/39355548027).
 - Cakupan ini bukan pengganti penuh paket upstream 22 game: adaptor GoPay hanya memakai pemetaan eksplisit dan tidak mengimplementasikan provider Codashop. Beberapa judul dalam daftar upstream hanya Codashop; mereka tetap bergantung pada Evo atau tidak memiliki pemeriksaan.
 - PR #7, main, dan supplier/payment flow tidak diubah/di-merge. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## 2026-10-20 — Manual nickname validation without Evo registration
+
+- The public account form no longer advertises automatic lookup unless the optional GoPay adapter is explicitly enabled. No Evo API key/account is needed for ordinary local testing.
+- The route now calls the GoPay-only adapter rather than trying Evo first. `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false` remains the safe default, so unsupported games use manual ID entry when their account schema is reviewed, and no external nickname request is made in the default local configuration.
+- This does not make unknown account schemas safe for checkout: unreviewed game/server mappings remain blocked. Nickname verification is optional; account-field validation and server-side product/checkout validation remain separate controls.
+- GoPay endpoint terms and live API response remain unverified. Do not enable the flag in production or claim that automatic nickname lookup works until an authorized staging test is completed. No payment, supplier order, or Drive backup was triggered.
