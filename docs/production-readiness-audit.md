@@ -1656,3 +1656,9 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 
 - Koreksi sebelumnya dengan margin 12px belum menyamakan tepi banner dan input karena .search-row memiliki padding horizontal 24px pada desktop. .hero kini memakai margin 24px di desktop dan 14px di ponsel, mengikuti padding pencarian pada breakpoint masing-masing.
 - Kode CSS commit 48835eefe64b62babffd5200df55d1e9946c9d44. Perlu hard refresh dan uji visual browser; belum dinyatakan terverifikasi dan belum merge ke main.
+
+
+## 2026-10-21 — Banner memakai lebar yang sama dengan kolom pencarian
+
+- `.hero` memakai `width:100%`, `box-sizing:border-box`, dan tanpa margin horizontal ekstra supaya lebar banner mengikuti area konten utama yang sama dengan input pencarian. Override margin banner pada tampilan ponsel dihapus.
+- Commit CSS: 86483f95cbbc63ee6a281e4caffc2b2abe267735. Perlu hard refresh dan verifikasi visual desktop/mobile; belum merge ke `main`.
