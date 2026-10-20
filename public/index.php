@@ -32,7 +32,6 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
   require_once PLUQI_ROOT.'/config/database.php';
   require_once PLUQI_ROOT.'/app/services/game_fields.php';
   require_once PLUQI_ROOT.'/app/services/game_username_check.php';
-  require_once PLUQI_ROOT.'/app/services/game_username_fallback.php';
   $pdo = database();
   $schema = catalog_game_account_schema($pdo, $m[1]);
   if (!$schema['checkout_supported']) json_response(['error'=>'account_schema_unverified','message'=>'Pemetaan akun game ini belum diverifikasi.'],409);
@@ -62,18 +61,12 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
   $serviceCode = game_account_username_check_code((string)$schema['game']['slug'], (string)$schema['game']['name']);
   $userId = (string)($normalized['user_id'] ?? '');
   $zoneId = (string)($normalized['zone_id'] ?? $normalized['server'] ?? '');
-  $checkerApiKey = trim((string)(getenv('GAME_CHECK_API_KEY') ?: ''));
-  if ($serviceCode !== null && $checkerApiKey !== '') {
-   // Prefer the dedicated nickname-check API when credentials are configured.
-   game_username_check_enforce_provider_limits($pdo, $fingerprint);
-   $username = game_username_check($serviceCode, $userId, $zoneId);
-  } elseif (game_username_gopay_fallback_enabled()) {
-   // The public GoPay endpoint is undocumented; only use it after explicit opt-in.
-   // Pass an empty service code so the fallback's per-account cooldown is enforced.
-   $username = game_username_check_with_fallback($pdo, '', $userId, $zoneId, (string)$schema['game']['slug'], (string)$schema['game']['name']);
-  } else {
-   throw new RuntimeException('No enabled nickname-check provider is configured.');
+  if ($serviceCode === null) {
+   json_response(['error'=>'username_check_unavailable','message'=>'Pengecekan username VIPayment tidak mendukung game ini.'],409);
   }
+  // VIPayment Game Feature Get Nickname: use supplier credentials already configured in admin settings.
+  game_username_check_enforce_provider_limits($pdo, $fingerprint);
+  $username = game_username_check($serviceCode, $userId, $zoneId);
   game_username_check_cache_success($pdo, $fingerprint, (string)$schema['game']['slug'], $username);
   // Opportunistic cleanup is bounded so this stays suitable for shared hosting.
   $pdo->exec('DELETE FROM game_username_check_cache WHERE expires_at <= UTC_TIMESTAMP() LIMIT 100');

@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/vipayment.php';
+
 /**
  * Generate customer account inputs from the synchronized game catalog.
  *
@@ -58,13 +60,13 @@ function game_account_schema_is_supported(string $slug, string $name, array $fie
 }
 
 /**
- * Return the game code used by the separate Game Check API, not a supplier product code.
+ * Return the VIPayment Game Feature nickname code, separate from supplier product codes.
  */
 function game_account_username_check_code(string $slug, string $name): ?string
 {
     $identity = strtolower(trim($slug . ' ' . $name));
 
-    // Codes supplied by the user from VIPayment's Get Nickname feature list.
+    // Codes from VIPayment's documented Game Feature > Get Nickname list.
     if (preg_match('/mobile[\s_-]*legends?.*region|region.*mobile[\s_-]*legends?/i', $identity) === 1) {
         return 'mobile-legends-region';
     }
@@ -75,7 +77,7 @@ function game_account_username_check_code(string $slug, string $name): ?string
         return 'free-fire';
     }
     if (preg_match('/pubg[\s_-]*mobile|\bpubgm\b/i', $identity) === 1) {
-        return 'pubg-mobile';
+        return 'pubgm';
     }
     if (preg_match('/genshin[\s_-]*impact/i', $identity) === 1) {
         return 'genshin-impact';
@@ -87,26 +89,17 @@ function game_account_username_check_code(string $slug, string $name): ?string
         return 'valorant';
     }
     if (preg_match('/point[\s_-]*blank|\bpointblank\b/i', $identity) === 1) {
-        return 'point-blank';
+        return 'pointblank';
     }
-
-    // Honor of Kings is absent from the supplied VIPayment lookup list.
     return null;
-}
-
-function game_account_gopay_check_supported(string $slug, string $name): bool
-{
-    $identity = strtolower(trim($slug . ' ' . $name));
-    return preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|free[\\s_-]*fire(?:[\\s_-]*max)?|genshin[\\s_-]*impact|valorant|honor[\\s_-]*of[\\s_-]*kings?|\\bhok\\b|pubg[\\s_-]*mobile|\\bpubgm\\b|fc[\\s_-]*mobile|magic[\\s_-]*chess.*go[\\s_-]*go|\\bmcgg\\b|arena[\\s_-]*of[\\s_-]*valor|\\baov\\b|call[\\s_-]*of[\\s_-]*duty|\\bcodm?\\b/i', $identity) === 1;
 }
 
 function game_account_username_check_supported(string $slug, string $name): bool
 {
-    return game_account_username_check_code($slug, $name) !== null
-        || game_account_gopay_check_supported($slug, $name);
+    return game_account_username_check_code($slug, $name) !== null;
 }
 
-/** Return generated fields and whether a reviewed VIPayment nickname lookup is available. */
+/** Return generated fields and whether VIPayment nickname lookup is configured. */
 function catalog_game_account_schema(PDO $pdo, string $slug): array
 {
     $stmt = $pdo->prepare("SELECT id,slug,name FROM games WHERE slug=:slug AND status='ACTIVE' LIMIT 1");
@@ -118,19 +111,22 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
 
     $fields = game_account_fields_for_game((string)$game['slug'], (string)$game['name']);
     $checkoutSupported = game_account_schema_is_supported((string)$game['slug'], (string)$game['name'], $fields);
-    // Nickname lookup is independent from supplier catalogue, balance, and product codes.
     $lookupCode = game_account_username_check_code((string)$game['slug'], (string)$game['name']);
-    $checkerApiKey = trim((string)(getenv('GAME_CHECK_API_KEY') ?: ''));
-    $gopayFallbackEnabled = filter_var(getenv('GAME_CHECK_GOPAY_FALLBACK_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
-    $gopaySupported = game_account_gopay_check_supported((string)$game['slug'], (string)$game['name']);
+    $vipaymentConfigured = false;
+    if ($lookupCode !== null) {
+        try {
+            vipayment_config();
+            $vipaymentConfigured = true;
+        } catch (Throwable) {
+            $vipaymentConfigured = false;
+        }
+    }
 
     return [
         'game' => ['slug' => (string)$game['slug'], 'name' => (string)$game['name']],
         'fields' => $fields,
         'checkout_supported' => $checkoutSupported,
-        // Advertise checks only when a supported, configured provider can actually be called.
-        'username_check_available' => ($lookupCode !== null && $checkerApiKey !== '')
-            || ($gopaySupported && $gopayFallbackEnabled),
+        'username_check_available' => $lookupCode !== null && $vipaymentConfigured,
     ];
 }
 

@@ -1466,3 +1466,26 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - GitHub Actions `PHP quality checks` succeeded for routing commit `23508598100b75080f70d61a94a93c097671e525` (run #791), schema availability commit `e0ca6bf234cecda1fe3f4653baf67ef994c0278b` (run #792), and `.env.example` commit `4bb1c72bce77959be62f7e01e0f853041dbe9e2d` (run #793).
 - This proves the configured workflow checks pass, not that an external nickname API returns real account names. Live verification awaits an authorized provider configuration.
 - After the user pulls, run preflight, `game-account-schema.php`, `game-username-fallback.php`, and `git diff --check`, then test the local endpoint. With `GAME_CHECK_API_KEY` empty and fallback false, safe expected behavior is that username checking is unavailable (and no GoPay request is made). Do not enable fallback before authorization is confirmed.
+
+
+## 2026-10-20 — Keputusan menghapus GoPay/Evo dan kembali ke VIPayment
+
+- Menghapus jalur GoPay yang memakai endpoint tidak terdokumentasi serta jalur Game Check pihak ketiga yang memerlukan API key terpisah.
+- Pengecekan username kembali diarahkan ke dokumentasi VIPayment Game Feature: POST /api/game-feature, type=get-nickname, code, target, additional_target. Respons sukses yang didokumentasikan mengembalikan nickname pada data.
+- Kode lookup yang dipetakan: mobile-legends, mobile-legends-region, free-fire, pubgm, valorant, genshin-impact, honkai-star-rail, pointblank. Honor of Kings dan judul lain di luar daftar tidak diiklankan sebagai auto-check.
+- Menggunakan API ID/key VIPayment yang sudah tersimpan di Pengaturan API. Request lookup tidak memanggil type=order dan tidak membuat transaksi top-up.
+- Ditambahkan tes parameter untuk memastikan type, code, target, dan additional_target benar; tes ini tidak menggantikan uji API live dengan kredensial pemilik.
+- Referensi dokumentasi: https://vip-reseller.co.id/page/api/game-feature. Setelah branch diperbarui, jalankan CI, preflight dan tes PHP lokal. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+### Temuan pengujian lokal — deklarasi fungsi ganda
+- Log lokal 20 Oktober 2026 menunjukkan `Cannot redeclare game_username_check()` pada baris 139 setelah deklarasi pertama pada baris 46. Akar masalah: implementasi Game Check lama tertinggal setelah implementasi VIPayment ditambahkan.
+- Dihapus blok implementasi Game Check lama; fungsi `game_username_check()` yang tersisa menggunakan VIPayment `/game-feature` dan `get-nickname`. Rate limit/cache tidak dihapus.
+- Status perbaikan: sudah dikomit ke branch `fix/vipayment-nickname-lookup`; perlu jalankan ulang syntax check, tes regresi, dan tes endpoint lokal sebelum menyatakan lolos.
+
+
+## 2026-10-20 — Perbaikan preflight untuk tabel pemeriksaan username
+- Log uji lokal menunjukkan endpoint `POST /api/games/free-fire/check-username` merespons HTTP 503 karena tabel `game_username_check_limits` tidak ada di database `pluqi_local_test`.
+- Migration yang seharusnya membuat tabel ini sudah tersedia: `database/migrations/013_game_username_check_protection.sql`. Migration tersebut membuat `game_username_check_limits` dan `game_username_check_cache`; kemungkinan database lokal belum menerapkannya.
+- Memperbarui `bin/preflight.php` agar memeriksa kedua tabel serta catatan migration `013_game_username_check_protection`, sehingga kondisi database seperti ini terdeteksi sebelum pengujian endpoint.
+- Tindakan lokal: terapkan SQL migration 013 pada database pengujian yang benar, lalu jalankan preflight dan tes username. Jangan menghapus rate limit/cache. Panggilan API VIPayment live tetap belum terverifikasi; pembayaran dan pemesanan supplier tetap nonaktif.
