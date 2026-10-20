@@ -87,7 +87,7 @@
       const image = game.icon_url
         ? '<img loading="lazy" src="' + escapeHtml(game.icon_url) + '" alt="">'
         : '<img alt="" aria-hidden="true">';
-      return '<button class="game" type="button" data-slug="' + escapeHtml(game.slug) + '">' + image + '<span class="game-name">' + escapeHtml(game.name) + '</span></button>';
+      return '<button class="game" type="button" data-slug="' + escapeHtml(game.slug) + '"><span class="game-icon-frame">' + image + '</span><span class="game-name">' + escapeHtml(game.name) + '</span></button>';
     }).join('');
   }
 
