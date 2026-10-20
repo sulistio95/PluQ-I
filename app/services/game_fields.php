@@ -119,17 +119,18 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
     $fields = game_account_fields_for_game((string)$game['slug'], (string)$game['name']);
     $checkoutSupported = game_account_schema_is_supported((string)$game['slug'], (string)$game['name'], $fields);
     // Nickname lookup is independent from supplier catalogue, balance, and product codes.
-    $usernameCheckSupported = game_account_username_check_supported((string)$game['slug'], (string)$game['name']);
-    $gopayFallbackEnabled = filter_var(getenv('GAME_CHECK_GOPAY_FALLBACK_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
     $lookupCode = game_account_username_check_code((string)$game['slug'], (string)$game['name']);
+    $checkerApiKey = trim((string)(getenv('GAME_CHECK_API_KEY') ?: ''));
+    $gopayFallbackEnabled = filter_var(getenv('GAME_CHECK_GOPAY_FALLBACK_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
     $gopaySupported = game_account_gopay_check_supported((string)$game['slug'], (string)$game['name']);
 
     return [
         'game' => ['slug' => (string)$game['slug'], 'name' => (string)$game['name']],
         'fields' => $fields,
         'checkout_supported' => $checkoutSupported,
-        // Evo is not required. Automatic lookup is advertised only when the optional GoPay adapter is explicitly enabled.
-        'username_check_available' => $gopaySupported && $gopayFallbackEnabled,
+        // Advertise checks only when a supported, configured provider can actually be called.
+        'username_check_available' => ($lookupCode !== null && $checkerApiKey !== '')
+            || ($gopaySupported && $gopayFallbackEnabled),
     ];
 }
 
