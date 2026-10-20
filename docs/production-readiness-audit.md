@@ -1581,3 +1581,13 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Kedua skrip kini memeriksa kredensial melalui `pluqi_api_config_value()`, menyamakan sumber konfigurasi dengan panel admin. Supplier tanpa kredensial tetap dilewati; kesalahan pembacaan/dekripsi atau pemanggilan API ditangani sebagai kegagalan, bukan dianggap saldo nol.
 - Perubahan hanya memperbaiki pemilihan sumber kredensial pada CLI. Belum ada bukti uji runtime dengan database/kredensial pengguna dan belum diklaim lint/CI lulus. Setelah menarik commit, jalankan lint, preflight, lalu `php bin/sync-balances.php`; pastikan hasil VIPAY mencatat saldo aktual dan `last_balance_check_at` terisi. Jangan menampilkan API ID/Key di log atau chat.
 - Jika saldo aktual VIPayment Rp1.130, batas pakai pada reserve 50% adalah Rp565 sebelum dikurangi komitmen aktif; harga modal Rp1 dapat tersedia jika seluruh syarat lain lolos. Pembayaran, order supplier, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Perbaikan tampilan katalog berdasarkan ketersediaan supplier
+
+- Aturan katalog pelanggan diklarifikasi: tampilkan hanya SKU yang status katalog supplier-nya `ACTIVE` (VIPayment melaporkan `available`).
+- SKU yang supplier tandai `empty` atau yang ditandai stale saat sinkronisasi tidak ditampilkan sebagai pilihan pelanggan.
+- SKU `ACTIVE` dari supplier tetap dapat ditampilkan dengan label tidak tersedia ketika pemeriksaan saldo/cadangan lokal gagal. Saldo rendah tidak sama dengan status produk `empty`.
+- Checkout tetap wajib memeriksa ketersediaan dan kapasitas supplier di server; perubahan ini hanya menyaring katalog yang ditampilkan.
+- Perlu uji lokal setelah sinkronisasi katalog: produk `available` dengan saldo cukup dapat dipesan; produk `available` dengan saldo tidak cukup terlihat namun tidak dapat dibeli; produk `empty` tidak muncul.
+- Belum menjalankan pengujian lokal atau CI dari perubahan ini. Perubahan hanya pada branch `feature/admin-left-sidebar`; tidak di-merge ke `main`.
