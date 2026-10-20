@@ -1670,3 +1670,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Kedua skrip kini memeriksa kredensial melalui `pluqi_api_config_value()`, menyamakan sumber konfigurasi dengan panel admin. Supplier tanpa kredensial tetap dilewati; kesalahan pembacaan/dekripsi atau pemanggilan API ditangani sebagai kegagalan, bukan dianggap saldo nol.
 - Perubahan hanya memperbaiki pemilihan sumber kredensial pada CLI. Belum ada bukti uji runtime dengan database/kredensial pengguna dan belum diklaim lint/CI lulus. Setelah menarik commit, jalankan lint, preflight, lalu `php bin/sync-balances.php`; pastikan hasil VIPAY mencatat saldo aktual dan `last_balance_check_at` terisi. Jangan menampilkan API ID/Key di log atau chat.
 - Jika saldo aktual VIPayment Rp1.130, batas pakai pada reserve 50% adalah Rp565 sebelum dikurangi komitmen aktif; harga modal Rp1 dapat tersedia jika seluruh syarat lain lolos. Pembayaran, order supplier, dan backup Google Drive tetap nonaktif.
+
+
+## Lanjutan 2026-10-20 — Filter katalog supplier available
+- Perubahan `app/services/catalog.php` pada branch `feature/admin-left-sidebar`: query katalog pelanggan kini menambahkan `p.status='ACTIVE'`. SKU yang supplier laporkan `empty` tidak lagi ditampilkan; SKU yang masih `ACTIVE` tetapi gagal pemeriksaan saldo/cadangan tetap muncul dengan `is_available=false` agar frontend bisa memberi label Habis/tidak tersedia.
+- Ini memisahkan status katalog supplier dari kelayakan saldo lokal. Tidak ada status produk yang diaktifkan manual, tidak ada transaksi supplier/pembayaran yang dibuat, dan tidak ada perubahan pada `main`.
+- Wajib uji lokal: jalankan sinkronisasi katalog, buka game Mobile Legends, pastikan SKU `empty` hilang dan SKU `available` dengan saldo tak cukup tetap terlihat tidak dapat dibeli. Pastikan checkout menolak produk saat saldo/cadangan tidak cukup.
+- CI dan uji database/browser belum dijalankan dari perubahan ini; jangan klaim lulus sebelum ada hasil nyata.
