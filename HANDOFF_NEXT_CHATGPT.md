@@ -1662,3 +1662,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Database belum memiliki transaksi, sehingga pencarian/detail transaksi nyata belum dapat diverifikasi terhadap data pesanan. Ini bukan kegagalan pengujian: belum ada data untuk dicari.
 - Status: akses dan pemuatan halaman dasar terverifikasi secara lokal; query dengan transaksi nyata dan detail relasi pembayaran/supplier/refund masih menunggu fixture transaksi terkontrol. Tidak ada pembayaran atau order supplier sungguhan yang dijalankan.
 - Tiga banner lokal yang belum terlacak harus dipertahankan. Jangan merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: CLI sinkronisasi membaca kredensial panel admin
+
+- Temuan: `bin/sync-balances.php` dan `bin/sync-catalog.php` sebelumnya memeriksa kredensial hanya melalui `getenv()`, sedangkan `pluqi_api_config_value()` mendahulukan kredensial terenkripsi di `app_settings`. Akibatnya, kredensial yang hanya disimpan melalui Pengaturan API bisa membuat sinkronisasi CLI salah melewati supplier.
+- Kedua skrip kini memeriksa kredensial melalui `pluqi_api_config_value()`, menyamakan sumber konfigurasi dengan panel admin. Supplier tanpa kredensial tetap dilewati; kesalahan pembacaan/dekripsi atau pemanggilan API ditangani sebagai kegagalan, bukan dianggap saldo nol.
+- Perubahan hanya memperbaiki pemilihan sumber kredensial pada CLI. Belum ada bukti uji runtime dengan database/kredensial pengguna dan belum diklaim lint/CI lulus. Setelah menarik commit, jalankan lint, preflight, lalu `php bin/sync-balances.php`; pastikan hasil VIPAY mencatat saldo aktual dan `last_balance_check_at` terisi. Jangan menampilkan API ID/Key di log atau chat.
+- Jika saldo aktual VIPayment Rp1.130, batas pakai pada reserve 50% adalah Rp565 sebelum dikurangi komitmen aktif; harga modal Rp1 dapat tersedia jika seluruh syarat lain lolos. Pembayaran, order supplier, dan backup Google Drive tetap nonaktif.
