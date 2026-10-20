@@ -1448,3 +1448,14 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - The workflow now runs `node --check public/assets/catalog.js`; its syntax check therefore passed on the GitHub runner. Node.js is CI-only and is not a runtime requirement for shared hosting.
 - This validates JavaScript parsing, not browser behavior, API provider staging, Duitku sandbox transactions, or deployment readiness. Those checks remain outstanding.
 - Payment checkout, supplier ordering, GoPay fallback, and Google Drive backup remain disabled. Do not merge to `main` as part of this syntax-only change.
+
+
+## 2026-10-20 — Audit legal/teknis endpoint username dan koreksi routing provider
+
+- Public search did not find official API documentation for `https://gopay.co.id/games/v1/order/user-account`; opening the endpoint did not expose a documented API contract. Endpoint behavior, response schema, stability, and commercial-use authorization remain unverified.
+- Official GoPay terms state that access from third-party platforms that are not Official/Authorized Platform Partners may be restricted for security, data protection, or commercial data-collection concerns. This does not itself prove that this particular game endpoint is prohibited, but it does not grant authorization to use an undocumented endpoint. References: https://gopay.co.id/syarat-dan-ketentuan and https://gopay.co.id/terms-and-condition/gopay.
+- Code audit found the username POST route always called the GoPay adapter even when `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false`, and did not use the dedicated checker when `GAME_CHECK_API_KEY` was present.
+- Branch changes: `public/index.php` now prefers the dedicated checker when a supported game code and `GAME_CHECK_API_KEY` are configured; the GoPay adapter is called only when its explicit opt-in flag is true; otherwise the route fails safely when no checker is configured. The fallback receives an empty service code to enforce its existing per-account cooldown. `app/services/game_fields.php` advertises checking only when a matching provider is configured. `.env.example` documents `GAME_CHECK_API_KEY` and keeps GoPay fallback false pending authorization.
+- Commits: `public/index.php` `23508598100b75080f70d61a94a93c097671e525`; `app/services/game_fields.php` `e0ca6bf234cecda1fe3f4653baf67ef994c0278b`; `.env.example` `4bb1c72bce77959be62f7e01e0f853041dbe9e2d`. Regression/CI after these changes still needs verification.
+- User can test locally after pulling, but a real ID lookup requires a valid `GAME_CHECK_API_KEY` for the dedicated service or confirmation that GoPay authorizes this fallback before enabling it. VIPayment credentials do not automatically serve as `GAME_CHECK_API_KEY`. Keep secrets only in local `.env`, never in GitHub or chat.
+- Payment checkout, supplier ordering, GoPay fallback, and Drive backup remain disabled. Do not merge to `main`; preserve three untracked local banner JPGs.
