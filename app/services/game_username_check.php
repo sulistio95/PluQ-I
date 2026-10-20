@@ -1,26 +1,67 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/vipayment.php';
+
 /** Rate-limit rejection is intentionally distinguishable from provider failures. */
 final class GameUsernameRateLimitException extends RuntimeException
 {
 }
 
-/**
- * Dedicated third-party nickname validation service.
- * This service is separate from payment and top-up supplier adapters.
- */
-function game_username_checker_config(): array
+final class GameUsernameInvalidException extends DomainException
 {
-    $apiKey = trim((string) (getenv('GAME_CHECK_API_KEY') ?: ''));
-    if ($apiKey === '') {
-        throw new RuntimeException('Game username checker API key is not configured.');
+}
+
+/** Build the documented VIPayment Game Feature nickname lookup parameters. */
+function game_username_check_parameters(string $gameCode, string $userId, string $zone = ''): array
+{
+    $supported = [
+        'mobile-legends',
+        'mobile-legends-region',
+        'free-fire',
+        'pubgm',
+        'valorant',
+        'genshin-impact',
+        'honkai-star-rail',
+        'pointblank',
+    ];
+    if (!in_array($gameCode, $supported, true)) {
+        throw new InvalidArgumentException('Game username check is not supported for this title.');
+    }
+    $userId = trim($userId);
+    $zone = trim($zone);
+    if ($userId === '' || strlen($userId) > 190 || strlen($zone) > 190) {
+        throw new InvalidArgumentException('Invalid account input for nickname lookup.');
     }
 
     return [
-        'base_url' => 'https://gamecheck.evogamestore.com',
-        'api_key' => $apiKey,
+        'type' => 'get-nickname',
+        'code' => $gameCode,
+        'target' => $userId,
+        'additional_target' => $zone,
     ];
+}
+
+/** Call VIPayment Get Nickname using the existing API credentials from admin settings. */
+function game_username_check(string $gameCode, string $userId, string $zone = ''): string
+{
+    $parameters = game_username_check_parameters($gameCode, $userId, $zone);
+    try {
+        $response = vipayment_post('/game-feature', $parameters);
+    } catch (RuntimeException $e) {
+        $message = strtolower($e->getMessage());
+        if (str_contains($message, 'vipayment rejected the request')
+            && preg_match('/(?:target|user.?id|account|zone).*(?:not found|invalid|wrong|tidak ditemukan|tidak valid|salah)|(?:not found|invalid|wrong|tidak ditemukan|tidak valid|salah).*(?:target|user.?id|account|zone)/i', $message) === 1) {
+            throw new GameUsernameInvalidException('VIPayment reports that the game account was not found.', 0, $e);
+        }
+        throw $e;
+    }
+
+    $username = trim((string) ($response['data'] ?? ''));
+    if ($username === '') {
+        throw new RuntimeException('VIPayment nickname response did not include a username.');
+    }
+    return $username;
 }
 
 /**
