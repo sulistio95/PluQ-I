@@ -1611,3 +1611,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Ukuran bingkai ikon dinaikkan dari 70×70 menjadi 92×92 piksel, termasuk penyesuaian jarak dan aksen bulan sabit. Ruang nama game tetap terpisah agar nama panjang tidak menggeser ikon.
 - Perubahan CSS saja pada `public/assets/catalog.css`; tidak mengubah data game, unggahan ikon/banner, database, atau alur checkout.
 - Belum diverifikasi secara visual di browser/CI. Setelah pull, uji desktop lebar, jendela tablet, dan ponsel; pastikan lima kolom tampil pada desktop, ikon lebih besar, dan tidak terjadi overflow. Belum merge ke `main`.
+
+
+## Update 2026-10-20 — Menghapus aksen lingkaran kecil pada ikon game
+
+- Menghapus pseudo-element bulan sabit/lingkaran kecil di pojok kanan atas bingkai ikon melalui `public/assets/catalog.css`, karena tampak mengganggu setelah ukuran ikon diperbesar.
+- Bingkai lingkaran dan warna emas gelap tetap dipertahankan; ukuran ikon 92px, grid desktop lima kolom, dan breakpoint tablet/ponsel tidak diubah.
+- Commit CSS: `8a2cb4ac6efa6e67a97770fb066382dba95c4c90` pada branch `feature/admin-left-sidebar`.
+- Belum diuji visual di browser dan belum merge ke `main`. Setelah pull, lakukan hard refresh dan periksa ikon di desktop serta ponsel.
