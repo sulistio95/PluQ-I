@@ -1653,3 +1653,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - GitHub Actions **PHP quality checks** untuk commit `6415ccc59e62060abffcab86863ad41e6b40d955` selesai dengan status **success**, run #819: https://github.com/sulistio95/PluQ-I/actions/runs/39391595762.
 - Ini hanya hasil workflow yang dikonfigurasi; belum membuktikan request API live untuk kedua supplier atau perilaku browser. Uji lokal dengan kredensial valid dan pemeriksaan tampilan masih diperlukan.
 - Dukungan API custom tetap memerlukan adapter katalog berdasarkan dokumentasi provider; tidak ada endpoint custom yang dipanggil. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+## 2026-10-20 — Uji browser lokal halaman transaksi admin
+
+- Pengguna menarik branch `feature/admin-left-sidebar` ke `f2421cb` dengan `git pull --ff-only`; file `public/admin/transaction-search.php` dan `public/admin/transaction-detail.php` tersedia secara lokal dan keduanya lolos `php -l`.
+- Pengujian awal melalui `curl` tanpa sesi login menerima HTTP 302 menuju `/admin/` pada kedua halaman, sesuai perlindungan sesi admin.
+- Pengguna kemudian mengonfirmasi pengujian browser setelah login berhasil. Log server menunjukkan `GET /admin/transaction-detail.php` dan `GET /assets/admin-sidebar.css` merespons HTTP 200.
+- Database belum memiliki transaksi, sehingga pencarian/detail transaksi nyata belum dapat diverifikasi terhadap data pesanan. Ini bukan kegagalan pengujian: belum ada data untuk dicari.
+- Status: akses dan pemuatan halaman dasar terverifikasi secara lokal; query dengan transaksi nyata dan detail relasi pembayaran/supplier/refund masih menunggu fixture transaksi terkontrol. Tidak ada pembayaran atau order supplier sungguhan yang dijalankan.
+- Tiga banner lokal yang belum terlacak harus dipertahankan. Jangan merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
