@@ -21,6 +21,12 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, curl, pdo_mysql
           coverage: none
+      - name: Set up Node.js for JavaScript syntax validation
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check storefront JavaScript syntax
+        run: node --check public/assets/catalog.js
       - name: Lint PHP files
         shell: bash
         run: |
