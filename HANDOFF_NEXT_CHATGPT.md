@@ -1677,3 +1677,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Ini memisahkan status katalog supplier dari kelayakan saldo lokal. Tidak ada status produk yang diaktifkan manual, tidak ada transaksi supplier/pembayaran yang dibuat, dan tidak ada perubahan pada `main`.
 - Wajib uji lokal: jalankan sinkronisasi katalog, buka game Mobile Legends, pastikan SKU `empty` hilang dan SKU `available` dengan saldo tak cukup tetap terlihat tidak dapat dibeli. Pastikan checkout menolak produk saat saldo/cadangan tidak cukup.
 - CI dan uji database/browser belum dijalankan dari perubahan ini; jangan klaim lulus sebelum ada hasil nyata.
+
+
+## 2026-10-20 — Bingkai ikon game lingkaran motif bulan sabit
+- Tampilan kartu game diperbarui agar ikon dibungkus lingkaran dengan bingkai emas gelap dan aksen bulan sabit di pinggiran kanan atas. Gambar asli tetap berasal dari unggahan panel admin; format file, URL ikon, database, dan proses unggah tidak diubah.
+- Perubahan hanya pada `public/assets/catalog.css` dan markup ikon di `public/assets/catalog.js`.
+- Wajib uji lokal setelah pull: buka halaman depan, pastikan ikon lama dan ikon yang diunggah tampil bulat, bingkai tidak menutupi nama game, placeholder tanpa ikon tetap rapi, serta tampilan desktop dan seluler tidak terpotong.
+- Belum diuji di browser/CI dan belum di-merge ke `main`.
