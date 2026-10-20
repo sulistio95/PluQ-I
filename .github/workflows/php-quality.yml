@@ -47,7 +47,7 @@ jobs:
       - name: Test automatically generated game account fields
         run: php tests/game-account-schema.php
       - name: Test VIPayment nickname lookup parameters
-        run: php tests/game-username-fallback.php
+        run: php tests/game-username-vipayment.php
       - name: Test provider budget capacity boundaries
         run: php tests/provider-budget-capacity.php
       - name: Test customer catalog supplier availability filtering
