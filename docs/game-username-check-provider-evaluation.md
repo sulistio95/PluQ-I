@@ -1,7 +1,7 @@
 # Evaluasi sumber validasi nickname: triyatna/php-valid-game
 
 Tanggal: 2026-10-20  
-Status: audit statis awal; **belum diintegrasikan ke alur customer dan belum ada request live ke Codashop/GoPay Games**.
+Status: audit statis + adaptor GoPay terbatas pada branch `audit/php-valid-game-provider`; **belum ada request live ke GoPay/Codashop dan flag fallback default mati**.
 
 ## Ringkasan
 
@@ -38,3 +38,12 @@ Jangan mengganti Evo atau mengaktifkan paket upstream langsung pada PR #7. Lanju
 - Codashop provider: https://github.com/triyatna/php-valid-game/blob/main/src/Providers/CodashopProvider.php
 - GoPay Games provider: https://github.com/triyatna/php-valid-game/blob/main/src/Providers/GopayGamesProvider.php
 - Lisensi: https://github.com/triyatna/php-valid-game/blob/main/LICENSE
+
+
+## Implementasi adaptor lanjutan (2026-10-20)
+
+- Dibuat `app/services/game_username_fallback.php` sebagai adaptor cURL terisolasi untuk GoPay Games saja; tidak memasang Composer/Guzzle dan tidak menyalin seluruh package. Endpoint tetap pada host/path GoPay yang diaudit, TLS verification aktif, IPv4 dipaksa, redirect dimatikan, connect timeout 3 detik dan total timeout 5 detik.
+- Primary Evo tidak diganti. Fallback hanya dijalankan saat kegagalan teknis/provider, bukan ketika primary menyatakan akun tidak ditemukan. Respons GoPay yang tidak jelas tidak dianggap sebagai ID invalid. Pemetaan Genshin menerima region yang dikenal saja; region tak dikenal tidak ditebak.
+- Flag `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false` menjaga fallback tetap mati sampai pengujian staging dan peninjauan ketentuan sumber selesai. Batas GoPay terpisah: maksimum 25 request/menit dan cooldown per akun 1 request/5 detik untuk judul GoPay-only. Cache sukses lima menit dari route yang sudah ada tetap dipakai.
+- Tes mock baru: `tests/game-username-fallback.php`, dimasukkan ke workflow `.github/workflows/php-quality.yml`. Belum ada hasil CI aktual atau panggilan provider live.
+- **Batasan:** adaptor ini belum mengimplementasikan provider Codashop dan bukan integrasi lengkap 22 game dari package upstream. Tidak ada composer dependency baru. Jangan mengaktifkan flag di produksi sebelum sumber/ketentuan, hasil staging, dan respons provider diverifikasi.
