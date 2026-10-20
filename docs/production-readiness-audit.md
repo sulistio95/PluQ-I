@@ -1431,3 +1431,12 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - GitHub Actions `PHP quality checks` pada commit `e9628ffff1ea12221f63c7629f34e7cefbb960ae` selesai dengan kesimpulan `success` (PR #8 / branch audit).
 - Hasil ini mendukung status workflow PHP quality, bukan bukti otomatis validasi JavaScript atau browser end-to-end. Pastikan ada pemeriksaan JS eksplisit sebelum menandai bagian itu selesai.
 - Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## 2026-10-20 — JavaScript syntax validation added to CI
+
+- Local environment check: `node` and `nodejs` are absent, and `apt-cache policy nodejs` reports that the package cannot be located in the active APT indexes. Local JS syntax validation remains unrun.
+- Workflow commit `d50d8eddb4ec4c19b2127bdf53a1b1c819531497` adds Node.js 22 setup and `node --check public/assets/catalog.js` to the GitHub Actions PHP quality workflow. Node is used by CI only; no Node runtime or package dependency is added to the PHP shared-hosting application.
+- CI outcome for the new workflow commit is pending verification; do not mark JS syntax validation passed until the run finishes successfully.
+- The user's previously reported local checks remain: preflight 48/48 and 12 PHP regression groups passed. These results do not prove browser E2E, live provider checks, Duitku sandbox, or production readiness.
+- Preserve three untracked local banner JPGs. Do not merge to `main`; payment, supplier ordering, GoPay fallback flag (`GAME_CHECK_GOPAY_FALLBACK_ENABLED=false`), and Drive backup remain disabled.
