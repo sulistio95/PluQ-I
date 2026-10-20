@@ -1564,3 +1564,9 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Flag dan kredensial GAME_CHECK_API_KEY serta GAME_CHECK_GOPAY_FALLBACK_ENABLED dihapus dari .env.example; adaptor GoPay dihapus dan tes diganti dengan tes pemetaan parameter VIPayment.
 - Metadata form hanya mengiklankan pengecekan otomatis jika game masuk daftar kode yang didukung dan kredensial VIPayment tersedia. Game di luar daftar tetap dapat memakai alur manual sesuai aturan schema yang ada.
 - CI dan tes lokal setelah perubahan ini harus dijalankan sebelum menyatakan selesai. Belum ada klaim bahwa panggilan nickname live berhasil. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+### Koreksi lanjutan — 2026-10-20
+- Uji lokal menemukan deklarasi ganda `game_username_check()` di `app/services/game_username_check.php` (implementasi VIPayment di baris awal dan implementasi Game Check lama di bagian bawah), yang menyebabkan HTTP 500 sebelum request keluar.
+- Menghapus implementasi Game Check lama dan mempertahankan satu implementasi VIPayment. Rate limit dan cache MySQL tetap dipertahankan.
+- Ulangi `php -l app/services/game_username_check.php`, `php tests/game-username-vipayment.php`, `php tests/game-account-schema.php`, serta uji endpoint lokal. Uji API live masih harus dikonfirmasi terpisah.
