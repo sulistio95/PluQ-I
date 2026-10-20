@@ -1741,3 +1741,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Berdasarkan tangkapan layar pengguna, banner tampak lebih sempit dan tidak segaris dengan kolom pencarian. `public/assets/catalog.css` kini memberi margin horizontal 12px pada `.hero` agar tepi banner sejajar dengan area input pencarian yang memakai padding horizontal 24px di dalam `main`.
 - Perubahan hanya tata letak banner; rasio 16:5, pergantian banner, katalog, dan alur transaksi tidak diubah.
 - Commit CSS: a52ecee9b9be5daa4497abc8cb50d1b39a13dd5e. Belum diverifikasi visual di browser; setelah pull lakukan hard refresh dan cek desktop serta ponsel. Belum merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif. Pertahankan tiga banner JPG lokal yang belum terlacak.
+
+
+## Koreksi lanjutan — 2026-10-21: Lebar banner terhadap kolom pencarian
+
+- Pengguna melaporkan penyesuaian margin 12px sebelumnya tidak mengubah tampilan secara nyata. Kolom pencarian memiliki padding horizontal 24px di desktop, sehingga margin banner perlu 24px agar tepi banner mengikuti lebar input, bukan 12px.
+- CSS .hero kini memakai margin horizontal 24px pada desktop dan 14px pada breakpoint ponsel agar mengikuti padding .search-row yang responsif.
+- Commit CSS: 48835eefe64b62babffd5200df55d1e9946c9d44. Belum diverifikasi visual browser. Setelah pull, hard refresh dan bandingkan tepi kiri/kanan banner dengan input pencarian. Belum merge ke main; pertahankan tiga banner JPG lokal dan jangan aktifkan pembayaran, supplier ordering, atau backup Drive.
