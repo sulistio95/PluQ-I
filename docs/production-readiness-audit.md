@@ -1366,3 +1366,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Evo Game Store mendokumentasikan primary source + automatic fallback chain serta cache 10 menit di sisi layanan; cache lokal 5 menit mengurangi request berulang. Ini tidak menjamin semua 20–25 game: endpoint yang dipilih hanya mendokumentasikan 8 game. Perlu sumber checker yang sah/teruji untuk judul lainnya.
 - API isan.eu.org tidak dipasang sebagai fallback produksi pada tahap ini karena repositori publik yang diperiksa menyebut lisensi CC BY-NC-SA 4.0; perlu izin sebelum dipakai pada situs komersial.
 - Verifikasi masih perlu: pastikan workflow CI untuk head branch terbaru, terapkan migration 013 di database pengujian, uji concurrency/cache/rate limit, lalu uji dengan API key resmi. Belum ada API live call. Pembayaran, pemesanan supplier, dan backup Drive tetap nonaktif.
+
+
+## 2026-10-20 — Audit kandidat validasi nickname tambahan
+
+- Audit statis `triyatna/php-valid-game` ditulis di `docs/game-username-check-provider-evaluation.md` pada branch `audit/php-valid-game-provider`.
+- Matriks README upstream mencantumkan 22 game: 6 dengan Codashop + GoPay, 12 Codashop saja, dan 4 GoPay saja. Jumlah judul tidak sama dengan jumlah judul yang memiliki fallback.
+- Paket membutuhkan Guzzle ^7 dan PSR Log; repository PluQ-I tidak memiliki `composer.json` atau `composer.lock` di root. Transport upstream tidak memaksa IPv4, timeout default 15 detik, dan redirect diizinkan.
+- Belum ada request live, install dependency, atau perubahan jalur customer. Temuan dan rencana mitigasi lengkap ada pada dokumen evaluasi. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
