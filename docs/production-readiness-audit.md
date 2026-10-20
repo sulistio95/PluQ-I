@@ -1636,3 +1636,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Status verifikasi: belum ada hasil uji browser/CI pascaperubahan ini. Pengujian wajib: pilih game → refresh → form game tetap tampil; Back/Forward; tombol kembali; URL game yang tidak valid kembali ke katalog.
 - Nilai ID yang diketik tidak disimpan ke URL atau dipulihkan setelah refresh. Ini disengaja agar data akun pelanggan tidak bocor melalui URL/history. Pengaturan grid desktop (3–6 kolom) dan ukuran ikon (80–120 px) tersedia pada Pengaturan Template; default ikon 100 px, desktop lima kolom.
 - Belum merge ke `main`. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Branding dan alignment halaman awal
+
+- Header brand diubah menjadi `PluQ-i`, footer menjadi `PluQ-i Official Store`.
+- Header diselaraskan secara horizontal dengan banner menggunakan container maksimum 1148 px dan padding 24 px, mengikuti container utama.
+- Commit kode: `9697591a5d02badfe267e1c515952bd99719eadc` dan `4d2f1cc2ebc94f17df6e1f937608cd14957a574a` pada `feature/admin-left-sidebar`.
+- Status: perubahan kode tersimpan; visual desktop/mobile belum diverifikasi. Belum merge ke `main`.
