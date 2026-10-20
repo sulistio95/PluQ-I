@@ -50,13 +50,15 @@ if ($method==='POST' && preg_match('#^/api/games/([a-zA-Z0-9_-]+)/check-username
   }
   foreach (array_keys($account) as $key) if (!is_string($key) || !array_key_exists($key,$normalized)) json_response(['error'=>'unknown_account_field'],422);
   $fingerprint = hash('sha256', $m[1].'|'.json_encode($normalized,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+  // Rate-limit even cache hits to protect the public endpoint and database.
+  $clientIp = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+  game_username_check_enforce_client_limit($pdo, $clientIp);
   // A successful cached check is safe to reuse briefly and avoids duplicate provider traffic.
   $cachedUsername = game_username_check_cached($pdo, $fingerprint);
   if ($cachedUsername !== null) {
    json_response(['data'=>['username'=>$cachedUsername,'verified'=>true,'cached'=>true]]);
   }
-  $clientIp = (string)($_SERVER['REMOTE_ADDR'] ?? '');
-  game_username_check_enforce_provider_limits($pdo, $clientIp, $fingerprint);
+  game_username_check_enforce_provider_limits($pdo, $fingerprint);
   $serviceCode = game_account_username_check_code((string)$schema['game']['slug'], (string)$schema['game']['name']);
   if ($serviceCode === null) json_response(['error'=>'username_check_unavailable','message'=>'API pengecekan username belum mendukung game ini.'],409);
   $userId = (string)($normalized['user_id'] ?? '');
