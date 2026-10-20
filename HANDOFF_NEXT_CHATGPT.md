@@ -1495,3 +1495,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Perbaikan dibuat pada branch `audit/php-valid-game-provider`, commit `4d61d7c9d8eec675bea0e59876237b9716803e1d`: normalisasi `base_price`, `selling_price`, dan `is_available` memakai nilai default aman agar row yang tidak menyertakan key opsional tidak menimbulkan warning. Belum diverifikasi di mesin lokal pengguna; wajib pull branch dan ulangi tes katalog serta `git diff --check`.
 - JavaScript `public/assets/catalog.js` masih belum diperiksa karena Node.js/alternatif runtime tidak ditemukan di mesin pengguna. Jangan mengklaim JS lint lulus sampai ada CI atau parser yang dapat menjalankannya.
 - Tiga banner lokal tetap tidak terlacak dan harus dipertahankan. Jangan merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Verifikasi lokal katalog tanpa peringatan — 2026-10-20
+
+- Pengguna melakukan `git pull --ff-only origin audit/php-valid-game-provider`; perubahan katalog dan catatan tersinkron dengan fast-forward.
+- `git diff --check` bersih; `php -l app/services/catalog.php` tidak menemukan kesalahan sintaks.
+- `php -d error_reporting=E_ALL tests/catalog-availability.php` lulus **6/6** tanpa peringatan `Undefined array key "base_price"`. Normalisasi `base_price`, `selling_price`, dan `is_available` kini aman terhadap field opsional yang tidak tersedia.
+- Berikutnya: lanjutkan pemeriksaan kualitas lintas tes dan validasi sintaks JavaScript. Mesin lokal pengguna belum memiliki Node.js; jangan menyatakan pemeriksaan JS lokal lulus tanpa alat validasi. Jangan gabungkan branch ini ke `main` dulu. File banner JPG lokal yang tidak dilacak harus dipertahankan; pembayaran, pemesanan supplier, dan backup Drive tetap nonaktif.
