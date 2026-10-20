@@ -1627,3 +1627,12 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Halaman depan membaca pengaturan tersimpan dan mengirimkannya sebagai CSS variables. Nilai default saat belum tersimpan atau database settings tidak dapat dibaca: 5 kolom desktop dan icon 100 px. Tablet tetap 3 kolom dan ponsel 2 kolom.
 - File berubah: `public/admin/template-settings.php`, `public/assets/catalog.css`, dan `public/index.php`. Commits: `d98e1f3210eb8d146f955871763fb19b40679d16`, `dc4c834bdd7a1dc2057662757b8496e67ca0b281`, `175236425db904b07e366096fcfc1991bb483261` pada branch `feature/admin-left-sidebar`.
 - Belum menjalankan PHP lint, `bin/preflight.php`, tes database, CI pascaperubahan, atau verifikasi visual browser. Setelah pull, uji simpan/pemuatan ulang kedua pengaturan, tampilan desktop/tablet/ponsel, dan `git diff --check`. Tidak memerlukan migration baru karena memakai tabel `app_settings` yang sudah ada. Belum merge ke `main`; pertahankan tiga banner JPG lokal yang belum terlacak. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Retensi konteks game saat refresh
+
+- Perbaikan di `public/assets/catalog.js` menyimpan slug game aktif sebagai parameter URL `?game=<slug>`, memulihkan form saat reload, dan menyelaraskan navigasi Back/Forward serta tombol kembali.
+- Commit kode: `8fa78d11455d39dfd3245d0bc795a0dcbb821f14`; catatan handoff diperbarui pada `97e61707b1185750bdf89d98958e60bab56f6bee`, branch `feature/admin-left-sidebar`.
+- Status verifikasi: belum ada hasil uji browser/CI pascaperubahan ini. Pengujian wajib: pilih game → refresh → form game tetap tampil; Back/Forward; tombol kembali; URL game yang tidak valid kembali ke katalog.
+- Nilai ID yang diketik tidak disimpan ke URL atau dipulihkan setelah refresh. Ini disengaja agar data akun pelanggan tidak bocor melalui URL/history. Pengaturan grid desktop (3–6 kolom) dan ukuran ikon (80–120 px) tersedia pada Pengaturan Template; default ikon 100 px, desktop lima kolom.
+- Belum merge ke `main`. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
