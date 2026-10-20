@@ -1418,3 +1418,32 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Pada branch `fix/username-status-without-label`, `public/index.php` menghapus label `Username` tetapi mempertahankan `#username-check` dan `#username-result`. `public/assets/catalog.js` menampilkan pesan generik `Pengecekan username gagal` untuk kegagalan lookup yang dicoba.
 - Untuk Free Fire/HOK yang lookup-nya dinonaktifkan karena kode/dukungan belum dikonfirmasi, area status tetap kosong; User ID dan form tetap tampil.
 - Lint PHP/JS dan uji browser belum dilakukan. Jangan aktifkan pembayaran, pesanan supplier, atau backup Drive.
+
+
+## 2026-10-20 — Koreksi kode khusus VIPayment Get Nickname
+
+- Pengguna memberikan daftar kode resmi dari komentar fitur VIPayment Get Nickname. Kode lookup Free Fire adalah `free-fire`, bukan kode produk top-up `ff5-s13`; daftar juga mencantumkan `mobile-legends`, `mobile-legends-region`, `pubgm`, `valorant`, `genshin-impact`, `honkai-star-rail`, dan `pointblank`.
+- Mengganti pemetaan cek nickname agar memakai kode khusus Game Feature berdasarkan game, bukan memilih kode produk VIPAY termurah dari tabel katalog. Kode lookup dipisahkan dari kode top-up. Honor of Kings tetap tidak didukung karena tidak tercantum pada daftar yang diberikan.
+- Endpoint tetap memakai `type=get-nickname`, `target=user_id`, dan `additional_target=zone_id/server` (kosong untuk game yang hanya memerlukan User ID). Pengecekan nickname tidak membuat order supplier.
+- Menambahkan tes unit pemetaan kode untuk delapan kode yang tersedia dalam daftar. Tes lokal dan panggilan API VIPayment live belum dijalankan pada saat commit; hasil nickname Free Fire perlu diuji dari browser dan log server setelah update.
+- Tetap jangan aktifkan pembayaran, pemesanan supplier, atau backup Google Drive selama pengujian.
+
+
+## 2026-10-20 — Pengecekan nickname dipisahkan dari supplier
+
+- Arah arsitektur diperbarui sesuai keputusan pengguna: pengecekan nickname tidak lagi memanggil endpoint Game Feature VIPayment atau memakai kode produk Digiflazz/VIPayment. Dibuat adapter terpisah `app/services/game_username_check.php` untuk API Game Check eksternal melalui HTTPS, cURL, validasi TLS, timeout, dan IPv4.
+- Kandidat API yang dipilih untuk integrasi awal adalah Game Check by Evo Game Store: `https://gamecheck.evogamestore.com/api/v1/check`. Dokumentasinya menyebut 8 game dan mewajibkan API key gratis melalui halaman request. API key disimpan di environment server `GAME_CHECK_API_KEY`, bukan JavaScript atau GitHub. Referensi dokumentasi: https://game-check.evogamestore.com/.
+- Cakupan awal yang dipetakan: Mobile Legends, Mobile Legends Region, Free Fire/Free Fire MAX, PUBG Mobile, Valorant, Genshin Impact, Honkai: Star Rail, dan Point Blank. Game lain—termasuk Honor of Kings—belum didukung oleh layanan ini dan harus menampilkan kondisi tidak tersedia, bukan mengklaim semua game dapat diverifikasi.
+- Metadata cek nickname kini tidak bergantung pada katalog produk, saldo, atau status supplier. Kode game checker dipisahkan dari kode produk top-up. Tambahan `GAME_CHECK_API_KEY=` dimasukkan ke `.env.example`.
+- Tes pemetaan schema diperbarui. Belum ada panggilan API live karena API key pengguna belum dikonfigurasi; PHP lint, browser, serta workflow CI perlu diverifikasi setelah perubahan. Tidak ada order supplier, pembayaran, atau backup Drive yang dibuat/diaktifkan.
+
+
+## Update — 2026-10-20: Proteksi trafik pemeriksaan nickname
+
+- Pada branch `fix/vipayment-dedicated-nickname-codes`, menambahkan migration `013_game_username_check_protection.sql` untuk cache hasil sukses dan fixed-window rate limit berbasis MySQL/InnoDB. Tidak membutuhkan Redis atau worker permanen, sesuai target shared hosting.
+- Endpoint pemeriksaan kini membatasi 20 request per IP per 60 detik, 1 panggilan upstream untuk fingerprint akun yang sama per 5 detik, dan maksimal 50 panggilan upstream global per 60 detik. IP dan fingerprint disimpan sebagai hash; ID akun mentah tidak dimasukkan ke tabel cache.
+- Hasil nickname yang berhasil di-cache selama 5 menit dengan kunci yang mencakup game dan semua field akun (termasuk zone/server). Hasil ID tidak ditemukan dan error provider tidak di-cache. Request cache-hit tetap dikenai rate limit IP tetapi tidak menghabiskan kuota API eksternal.
+- Timeout API diturunkan menjadi 8 detik (connect timeout 5 detik), koneksi tetap HTTPS/TLS-verified dan dipaksa IPv4. Respons rate-limit lokal/provider dipetakan ke HTTP 429.
+- Dokumentasi Evo Game Store menyatakan layanan mereka memakai primary source + automatic fallback chain dan smart cache TTL 10 menit; integrasi PluQ-I menggunakan cache 5 menit sendiri sebagai lapisan tambahan. Ini bukan jaminan uptime 100%, dan cakupan API tetap 8 game. Sumber: https://game-check.evogamestore.com/.
+- Sumber publik isan.eu.org tidak dipasang sebagai fallback produksi karena repositori yang ditemukan mencantumkan lisensi CC BY-NC-SA 4.0; penggunaan komersial PluQ-I perlu izin yang sesuai. Jangan menambahkannya tanpa pemeriksaan lisensi dan kontrak API yang jelas.
+- Status: perubahan dikirim ke branch PR #7; cek GitHub Actions untuk head terbaru sebelum menyatakan tes lulus. Migration 013 harus diterapkan sebelum endpoint baru diuji. Belum ada panggilan API live karena API key belum disetel. Pembayaran, order supplier, dan backup Drive tetap nonaktif.
