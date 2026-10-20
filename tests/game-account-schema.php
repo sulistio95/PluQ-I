@@ -29,7 +29,8 @@ schema_test(game_account_username_check_code('valorant', 'Valorant') === 'valora
 schema_test(game_account_username_check_code('genshin-impact', 'Genshin Impact') === 'genshin-impact', 'Genshin Impact should use the external API code');
 schema_test(game_account_username_check_code('honkai-star-rail', 'Honkai Star Rail') === 'honkai-star-rail', 'Honkai Star Rail should use the external API code');
 schema_test(game_account_username_check_code('pointblank', 'Point Blank') === 'point-blank', 'Point Blank should use the external API code');
-schema_test(!game_account_username_check_supported('honor-of-kings', 'Honor of Kings'), 'Honor of Kings should remain unsupported because it is absent from the supplied lookup list');
+schema_test(game_account_username_check_code('honor-of-kings', 'Honor of Kings') === null, 'Honor of Kings is not supported by the primary Evo lookup mapping');
+schema_test(game_account_gopay_check_supported('honor-of-kings', 'Honor of Kings'), 'Honor of Kings should be recognized by the opt-in GoPay fallback mapping');
 
 $honorOfKings = game_account_fields_for_game('honor-of-kings', 'Honor of Kings');
 schema_test(array_column($honorOfKings, 'field_key') === ['user_id'], 'Honor of Kings should request only User ID');
