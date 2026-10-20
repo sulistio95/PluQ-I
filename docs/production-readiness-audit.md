@@ -1644,3 +1644,9 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Header diselaraskan secara horizontal dengan banner menggunakan container maksimum 1148 px dan padding 24 px, mengikuti container utama.
 - Commit kode: `9697591a5d02badfe267e1c515952bd99719eadc` dan `4d2f1cc2ebc94f17df6e1f937608cd14957a574a` pada `feature/admin-left-sidebar`.
 - Status: perubahan kode tersimpan; visual desktop/mobile belum diverifikasi. Belum merge ke `main`.
+
+
+## 2026-10-21 — Penyesuaian posisi horizontal banner
+
+- Tangkapan layar pengguna menunjukkan banner tampak tidak berada di tengah terhadap kolom pencarian. Aturan `.hero` pada `public/assets/catalog.css` diberi margin horizontal 12px (commit a52ecee9b9be5daa4497abc8cb50d1b39a13dd5e) agar batas kiri/kanan lebih mendekati input pencarian.
+- Perubahan visual saja; belum diverifikasi dengan browser dan perlu dicek pada desktop/mobile setelah branch ditarik. Tidak ada perubahan pada banner source, katalog, pembayaran, atau supplier ordering.
