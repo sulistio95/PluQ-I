@@ -1619,3 +1619,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Bingkai lingkaran dan warna emas gelap tetap dipertahankan; ukuran ikon 92px, grid desktop lima kolom, dan breakpoint tablet/ponsel tidak diubah.
 - Commit CSS: `8a2cb4ac6efa6e67a97770fb066382dba95c4c90` pada branch `feature/admin-left-sidebar`.
 - Belum diuji visual di browser dan belum merge ke `main`. Setelah pull, lakukan hard refresh dan periksa ikon di desktop serta ponsel.
+
+
+## Update 2026-10-20 — Pengaturan grid dan ukuran icon katalog
+
+- Bagian **Pengaturan Template → Tata letak katalog game** kini menyimpan jumlah kolom desktop (3–6) dan ukuran icon (80–120 px) ke tabel `app_settings`, memakai prepared statement/upsert, pemeriksaan rentang nilai, CSRF dan pembatasan peran admin yang sudah ada. Perubahan dicatat di audit log.
+- Halaman depan membaca pengaturan tersimpan dan mengirimkannya sebagai CSS variables. Nilai default saat belum tersimpan atau database settings tidak dapat dibaca: 5 kolom desktop dan icon 100 px. Tablet tetap 3 kolom dan ponsel 2 kolom.
+- File berubah: `public/admin/template-settings.php`, `public/assets/catalog.css`, dan `public/index.php`. Commits: `d98e1f3210eb8d146f955871763fb19b40679d16`, `dc4c834bdd7a1dc2057662757b8496e67ca0b281`, `175236425db904b07e366096fcfc1991bb483261` pada branch `feature/admin-left-sidebar`.
+- Belum menjalankan PHP lint, `bin/preflight.php`, tes database, CI pascaperubahan, atau verifikasi visual browser. Setelah pull, uji simpan/pemuatan ulang kedua pengaturan, tampilan desktop/tablet/ponsel, dan `git diff --check`. Tidak memerlukan migration baru karena memakai tabel `app_settings` yang sudah ada. Belum merge ke `main`; pertahankan tiga banner JPG lokal yang belum terlacak. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
