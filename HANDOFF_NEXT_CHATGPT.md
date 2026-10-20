@@ -1469,3 +1469,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Tes `tests/game-username-fallback.php` memakai respons tiruan dan ditambahkan ke workflow PHP quality. GitHub Actions run #765 (`39355548027`) sukses: PHP lint dan seluruh tes pada workflow lulus, termasuk adapter fallback. Belum ada API live call atau uji hosting. Sebelum staging: verifikasi izin/ketentuan sumber GoPay, aktifkan flag hanya pada staging, dan periksa respons nyata tanpa membuat order. [Run #765](https://github.com/sulistio95/PluQ-I/actions/runs/39355548027).
 - File yang diubah: `app/services/game_username_fallback.php`, `app/services/game_fields.php`, `public/index.php`, `.env.example`, `tests/game-username-fallback.php`, `.github/workflows/php-quality.yml`, serta catatan evaluasi/audit ini.
 - Branch kerja tetap `audit/php-valid-game-provider`; PR #7 dan branch utama tidak diubah/di-merge. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: Cek nickname tidak lagi mewajibkan pendaftaran Evo
+
+- Pada branch `audit/php-valid-game-provider`, metadata `username_check_available` kini hanya aktif jika game dipetakan ke adapter GoPay dan `GAME_CHECK_GOPAY_FALLBACK_ENABLED=true`. Kunci `GAME_CHECK_API_KEY` Evo tidak lagi menjadi prasyarat atau disebut di `.env.example`.
+- Fungsi validasi yang dipanggil route telah diubah menjadi GoPay-only; ia tidak mencoba Evo terlebih dahulu. Game tanpa dukungan lookup otomatis tetap dapat memakai input ID manual jika skema akun dan pemetaan checkout game sudah ditinjau. Game yang skema akunnya belum terverifikasi tetap diblokir dari pemilihan nominal demi menghindari salah target.
+- Default GoPay tetap `false` karena izin penggunaan endpoint dan respons live belum diverifikasi. Dengan default ini, tes lokal tidak memerlukan API nickname, tidak mengirim request eksternal, dan tidak membuat pesanan. Jika GoPay dinyalakan kelak, lakukan hanya di staging setelah verifikasi ketentuan dan uji respons baca-saja.
+- Perubahan mencakup `app/services/game_fields.php`, `app/services/game_username_fallback.php`, `public/index.php`, `tests/game-account-schema.php`, dan `.env.example`. Perbaikan lanjutan juga menghapus referensi variabel error lama pada adapter GoPay.
+- Status: kode sudah dikirim ke branch GitHub, tetapi hasil CI setelah perubahan ini dan pengujian lokal pengguna masih menunggu. Pull branch tersebut untuk diuji; jangan merge ke `main` sebelum hasil CI dan uji lokal ditinjau. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
