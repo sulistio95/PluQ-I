@@ -1714,3 +1714,14 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Halaman depan membaca pengaturan tersimpan dan mengirimkannya sebagai CSS variables. Nilai default saat belum tersimpan atau database settings tidak dapat dibaca: 5 kolom desktop dan icon 100 px. Tablet tetap 3 kolom dan ponsel 2 kolom.
 - File berubah: `public/admin/template-settings.php`, `public/assets/catalog.css`, dan `public/index.php`. Commits: `d98e1f3210eb8d146f955871763fb19b40679d16`, `dc4c834bdd7a1dc2057662757b8496e67ca0b281`, `175236425db904b07e366096fcfc1991bb483261` pada branch `feature/admin-left-sidebar`.
 - Belum menjalankan PHP lint, `bin/preflight.php`, tes database, CI pascaperubahan, atau verifikasi visual browser. Setelah pull, uji simpan/pemuatan ulang kedua pengaturan, tampilan desktop/tablet/ponsel, dan `git diff --check`. Tidak memerlukan migration baru karena memakai tabel `app_settings` yang sudah ada. Belum merge ke `main`; pertahankan tiga banner JPG lokal yang belum terlacak. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: Pertahankan form game saat halaman di-refresh
+
+- Temuan: pemilihan game hanya disimpan di variabel JavaScript (`activeGame`), sedangkan URL tidak berubah. Saat refresh, browser kembali memuat halaman katalog tanpa konteks game terpilih.
+- `public/assets/catalog.js` kini menambahkan slug game terpilih ke parameter URL `?game=<slug>`; saat halaman dibuka atau di-refresh, aplikasi memulihkan form game jika slug masih tersedia di katalog.
+- Tombol **Kembali ke game** membersihkan parameter game. Tombol Back/Forward browser juga menangani perubahan state URL tanpa memaksa pelanggan kembali ke halaman yang salah.
+- Commit: `8fa78d11455d39dfd3245d0bc795a0dcbb821f14` pada branch `feature/admin-left-sidebar`.
+- Verifikasi otomatis dan browser masih perlu dijalankan. Uji: pilih game, pastikan URL memuat `?game=slug`, refresh dan pastikan form game tetap tampil; gunakan Back/Forward browser dan tombol **Kembali ke game**. Data yang sudah diketik ke kolom ID belum dipersistenkan, sehingga setelah refresh kolom akun akan kosong demi menghindari penyimpanan data akun pelanggan di URL.
+- Pengaturan **Pengaturan Template → Tata letak katalog game** telah tersedia pada branch ini untuk jumlah kolom desktop 3–6 dan ukuran ikon 80–120 px; gunakan ukuran 104 atau 108 px untuk memperbesar ikon sedikit dari default 100 px. Desktop default tetap lima kolom; tablet tiga kolom dan ponsel dua kolom.
+- Belum merge ke `main`. Jangan aktifkan pembayaran, supplier ordering, atau backup Google Drive. Pertahankan tiga banner JPG lokal yang belum terlacak.
