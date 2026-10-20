@@ -29,7 +29,7 @@ schema_test(game_account_username_check_code('valorant', 'Valorant') === 'valora
 schema_test(game_account_username_check_code('genshin-impact', 'Genshin Impact') === 'genshin-impact', 'Genshin Impact should use VIPayment nickname code');
 schema_test(game_account_username_check_code('honkai-star-rail', 'Honkai Star Rail') === 'honkai-star-rail', 'Honkai Star Rail should use VIPayment nickname code');
 schema_test(game_account_username_check_code('pointblank', 'Point Blank') === 'pointblank', 'Point Blank should use VIPayment pointblank nickname code');
-schema_test(game_account_username_check_code('honor-of-kings', 'Honor of Kings') === null, 'Honor of Kings must not be assigned an Evo lookup code');
+schema_test(game_account_username_check_code('honor-of-kings', 'Honor of Kings') === null, 'Honor of Kings must not be assigned an unsupported VIPayment lookup code');
 
 $honorOfKings = game_account_fields_for_game('honor-of-kings', 'Honor of Kings');
 schema_test(array_column($honorOfKings, 'field_key') === ['user_id'], 'Honor of Kings should request only User ID');
