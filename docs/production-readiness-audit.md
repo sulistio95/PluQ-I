@@ -1573,3 +1573,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Pengguna mengonfirmasi kedua halaman dapat diuji melalui browser setelah login. Log PHP built-in server menunjukkan HTTP 200 untuk `GET /admin/transaction-detail.php` serta `GET /assets/admin-sidebar.css`.
 - Database saat ini belum berisi transaksi. Oleh sebab itu, keberhasilan akses/tampilan dasar sudah dikonfirmasi, tetapi pencarian transaksi berisi data dan query detail lintas tabel belum terbukti dengan fixture transaksi.
 - Tidak ada transaksi Duitku, pemesanan supplier, atau backup Google Drive yang dipicu. Pertahankan semua fitur operasional tersebut nonaktif sampai staging terkontrol.
+
+
+## Update — 2026-10-20: CLI sinkronisasi membaca kredensial panel admin
+
+- Temuan: `bin/sync-balances.php` dan `bin/sync-catalog.php` sebelumnya memeriksa kredensial hanya melalui `getenv()`, sedangkan `pluqi_api_config_value()` mendahulukan kredensial terenkripsi di `app_settings`. Akibatnya, kredensial yang hanya disimpan melalui Pengaturan API bisa membuat sinkronisasi CLI salah melewati supplier.
+- Kedua skrip kini memeriksa kredensial melalui `pluqi_api_config_value()`, menyamakan sumber konfigurasi dengan panel admin. Supplier tanpa kredensial tetap dilewati; kesalahan pembacaan/dekripsi atau pemanggilan API ditangani sebagai kegagalan, bukan dianggap saldo nol.
+- Perubahan hanya memperbaiki pemilihan sumber kredensial pada CLI. Belum ada bukti uji runtime dengan database/kredensial pengguna dan belum diklaim lint/CI lulus. Setelah menarik commit, jalankan lint, preflight, lalu `php bin/sync-balances.php`; pastikan hasil VIPAY mencatat saldo aktual dan `last_balance_check_at` terisi. Jangan menampilkan API ID/Key di log atau chat.
+- Jika saldo aktual VIPayment Rp1.130, batas pakai pada reserve 50% adalah Rp565 sebelum dikurangi komitmen aktif; harga modal Rp1 dapat tersedia jika seluruh syarat lain lolos. Pembayaran, order supplier, dan backup Google Drive tetap nonaktif.
