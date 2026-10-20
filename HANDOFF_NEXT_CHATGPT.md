@@ -1725,3 +1725,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Verifikasi otomatis dan browser masih perlu dijalankan. Uji: pilih game, pastikan URL memuat `?game=slug`, refresh dan pastikan form game tetap tampil; gunakan Back/Forward browser dan tombol **Kembali ke game**. Data yang sudah diketik ke kolom ID belum dipersistenkan, sehingga setelah refresh kolom akun akan kosong demi menghindari penyimpanan data akun pelanggan di URL.
 - Pengaturan **Pengaturan Template → Tata letak katalog game** telah tersedia pada branch ini untuk jumlah kolom desktop 3–6 dan ukuran ikon 80–120 px; gunakan ukuran 104 atau 108 px untuk memperbesar ikon sedikit dari default 100 px. Desktop default tetap lima kolom; tablet tiga kolom dan ponsel dua kolom.
 - Belum merge ke `main`. Jangan aktifkan pembayaran, supplier ordering, atau backup Google Drive. Pertahankan tiga banner JPG lokal yang belum terlacak.
+ 
+
+## Update — 2026-10-20: Branding dan perataan header halaman awal
+
+- `public/index.php`: nama brand header diubah dari `PluQ` menjadi `PluQ-i`; footer diubah dari `PluQ.I Official Store` menjadi `PluQ-i Official Store`.
+- `public/assets/catalog.css`: header `.top` diberi lebar maksimum dan padding horizontal yang mengikuti container utama agar tulisan brand sejajar dengan sisi kiri banner.
+- Commit kode: `9697591a5d02badfe267e1c515952bd99719eadc` (brand/footer) dan `4d2f1cc2ebc94f17df6e1f937608cd14957a574a` (alignment), branch `feature/admin-left-sidebar`.
+- Belum diverifikasi visual di browser; setelah pull, lakukan hard refresh dan periksa alignment desktop serta mobile.
+- Belum merge ke `main`; jangan mengaktifkan pembayaran atau supplier ordering.
