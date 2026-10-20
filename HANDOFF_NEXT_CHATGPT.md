@@ -1748,3 +1748,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Pengguna melaporkan penyesuaian margin 12px sebelumnya tidak mengubah tampilan secara nyata. Kolom pencarian memiliki padding horizontal 24px di desktop, sehingga margin banner perlu 24px agar tepi banner mengikuti lebar input, bukan 12px.
 - CSS .hero kini memakai margin horizontal 24px pada desktop dan 14px pada breakpoint ponsel agar mengikuti padding .search-row yang responsif.
 - Commit CSS: 48835eefe64b62babffd5200df55d1e9946c9d44. Belum diverifikasi visual browser. Setelah pull, hard refresh dan bandingkan tepi kiri/kanan banner dengan input pencarian. Belum merge ke main; pertahankan tiga banner JPG lokal dan jangan aktifkan pembayaran, supplier ordering, atau backup Drive.
+
+
+## Update — 2026-10-21: Samakan lebar banner dengan kolom pencarian
+
+- Menyesuaikan `.hero` agar memakai lebar penuh area konten `main` (`width:100%; box-sizing:border-box`) dan menghapus margin horizontal tambahan. Ini membuat sisi kanan banner sejajar dengan sisi kanan kolom pencarian, bukan hanya mengandalkan posisi tengah.
+- Pada breakpoint ponsel, margin horizontal khusus banner juga dihapus agar banner tetap mengikuti lebar konten yang sama. Rasio banner dan mekanisme slider tidak berubah.
+- Commit CSS: 86483f95cbbc63ee6a281e4caffc2b2abe267735. Belum diverifikasi secara visual di browser; lakukan pull dan hard refresh. Belum merge ke `main`; jangan hapus tiga banner JPG lokal yang belum terlacak atau mengaktifkan pembayaran/order supplier/backup Drive.
