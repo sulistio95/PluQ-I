@@ -1478,3 +1478,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Default GoPay tetap `false` karena izin penggunaan endpoint dan respons live belum diverifikasi. Dengan default ini, tes lokal tidak memerlukan API nickname, tidak mengirim request eksternal, dan tidak membuat pesanan. Jika GoPay dinyalakan kelak, lakukan hanya di staging setelah verifikasi ketentuan dan uji respons baca-saja.
 - Perubahan mencakup `app/services/game_fields.php`, `app/services/game_username_fallback.php`, `public/index.php`, `tests/game-account-schema.php`, dan `.env.example`. Perbaikan lanjutan juga menghapus referensi variabel error lama pada adapter GoPay.
 - Status: kode sudah dikirim ke branch GitHub, tetapi hasil CI setelah perubahan ini dan pengujian lokal pengguna masih menunggu. Pull branch tersebut untuk diuji; jangan merge ke `main` sebelum hasil CI dan uji lokal ditinjau. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: hasil pemeriksaan lokal setelah handoff
+
+- Pengguna mengonfirmasi branch lokal `audit/php-valid-game-provider`, HEAD `c494ef0` (`Record manual nickname fallback decision in readiness audit`), sinkron dengan `origin/audit/php-valid-game-provider`.
+- `git status --short` hanya menunjukkan tiga banner JPG baru yang belum dilacak di `public/uploads/banners/`: `3415d24f42be590c29d176df0f32acf6.jpg`, `f1bdb42a7c23d2c0b084d2bffdee282c.jpg`, dan `fe03270365bd04633c47bc8794da2dd6.jpg`. File tersebut harus dipertahankan; jangan menjalankan `git clean`, reset, atau menghapusnya.
+- Pemeriksaan `command -v node`, `nodejs`, `js`, `qjs`, dan `quickjs` tidak menemukan runtime yang tersedia (tidak ada path yang dicetak). Karena itu `node --check public/assets/catalog.js` belum dijalankan dan sintaks JS belum dapat dinyatakan lulus/gagal.
+- Status check GitHub untuk `c494ef0` tidak mengembalikan status, dan pencarian workflow PR-triggered untuk short SHA juga tidak menemukan run. Ini bukan bukti tes gagal maupun lulus; hasil CI head terbaru perlu diperiksa dari GitHub Actions secara langsung.
+- Langkah berikutnya: pertahankan branch dan banner, jalankan ulang pemeriksaan PHP yang tersedia (`php bin/preflight.php`, tes PHP terkait, dan `git diff --check`), lalu lakukan pemeriksaan JS menggunakan runtime/parser yang memang tersedia atau CI yang berjalan pada head branch. Jangan merge ke `main`; `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false` tetap dipertahankan. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
