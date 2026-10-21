@@ -51,6 +51,7 @@ function game_account_fields_for_game(string $slug, string $name): array
                 ['option_label' => 'America', 'option_value' => 'america'],
                 ['option_label' => 'Europe', 'option_value' => 'europe'],
                 ['option_label' => 'TW / HK / MO', 'option_value' => 'tw_hk_mo'],
+            ] : [],
             'placeholder' => 'Pilih server / region akun',
             'is_required' => true,
             'validation_regex' => '^[a-zA-Z0-9_ -]{1,190}$',
