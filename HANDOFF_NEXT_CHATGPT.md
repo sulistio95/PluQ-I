@@ -1,3 +1,10 @@
+## Update — 2026-10-21: Animasi kaca pecah saat membuka form game
+
+- Menambahkan transisi ringan berbasis SVG/CSS pada `public/assets/catalog.js` dan `public/assets/catalog.css`: saat game diklik dari katalog, retakan kaca muncul sebentar sebelum form akun/nominal dibuka.
+- Tidak memakai library eksternal; klik ganda selama animasi diabaikan untuk mencegah pemanggilan transisi bertumpuk.
+- Navigasi langsung melalui URL `?game=...` dan tombol kembali tetap menggunakan alur sebelumnya. Preferensi `prefers-reduced-motion` melewati animasi.
+- Belum diuji di browser nyata. Verifikasi lokal tetap diperlukan untuk memastikan durasi dan tampilan sesuai pada desktop/ponsel; tidak ada pembayaran atau pemesanan supplier yang diaktifkan.
+
 ## Verifikasi CI — pelacakan transaksi admin (2026-10-20)
 
 - GitHub Actions **PHP quality checks** lulus pada commit dokumentasi dc49bfc3a504cb4dc82f90b966589d52c03f014d, run [#828](https://github.com/sulistio95/PluQ-I/actions/runs/39395576680). Job mencakup pemeriksaan sintaks JavaScript, lint seluruh file PHP, dan tes regresi yang ada.
