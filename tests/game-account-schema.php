@@ -48,7 +48,14 @@ schema_test(!game_account_schema_is_supported('magic-chess-go-go', 'Magic Chess 
 $zenless = game_account_fields_for_game('zenless-zone-zero', 'Zenless Zone Zero');
 schema_test(array_column($zenless, 'field_key') === ['user_id', 'server'], 'Zenless Zone Zero should request User ID and Server/Region');
 schema_test($zenless[1]['label'] === 'Server / Region', 'Zenless Zone Zero server field should be labeled Server / Region');
+schema_test($zenless[1]['field_type'] === 'select', 'Zenless Zone Zero server should be a dropdown');
+schema_test(array_column($zenless[1]['options'], 'option_value') === ['asia', 'america', 'europe', 'tw_hk_mo'], 'Zenless Zone Zero should show common region choices as UI-only values');
 schema_test(!game_account_schema_is_supported('zenless-zone-zero', 'Zenless Zone Zero', $zenless), 'Zenless Zone Zero checkout must remain blocked until supplier account mapping is reviewed');
+
+$activeZenless = game_account_fields_for_game('zenless-zone-zero-zzz', 'Zenless Zone Zero (ZZZ)');
+schema_test(array_column($activeZenless, 'field_key') === ['user_id', 'server'], 'Active Zenless Zone Zero catalog slug should request User ID and Server/Region');
+schema_test($activeZenless[1]['field_type'] === 'select', 'Active Zenless Zone Zero catalog slug should render a server dropdown');
+schema_test(!game_account_schema_is_supported('zenless-zone-zero-zzz', 'Zenless Zone Zero (ZZZ)', $activeZenless), 'Active Zenless Zone Zero checkout must remain blocked until supplier account mapping is reviewed');
 
 $serverTitle = game_account_fields_for_game('example-region-game', 'Example Region Game');
 schema_test(array_column($serverTitle, 'field_key') === ['user_id', 'server'], 'Titles whose metadata names a server/region should show a server field');
