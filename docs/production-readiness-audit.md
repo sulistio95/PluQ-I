@@ -1681,3 +1681,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 
 - `.hero` memakai `width:100%`, `box-sizing:border-box`, dan tanpa margin horizontal ekstra supaya lebar banner mengikuti area konten utama yang sama dengan input pencarian. Override margin banner pada tampilan ponsel dihapus.
 - Commit CSS: 86483f95cbbc63ee6a281e4caffc2b2abe267735. Perlu hard refresh dan verifikasi visual desktop/mobile; belum merge ke `main`.
+
+
+## 2026-10-21 — Koreksi skema akun game
+
+- Genshin Impact dan Honkai: Star Rail memakai field `user_id` + `server` dengan label Server / Region; bukan Zone ID.
+- Magic Chess GoGo memakai `user_id` + `zone_id`.
+- Tes regresi ditambahkan. Field Server/Region masih input teks pada perubahan ini; dropdown berisi pilihan yang disuplai API belum diimplementasikan. Perlu mengidentifikasi dan memvalidasi sumber daftar server dari API sebelum mengaktifkan dropdown atau checkout.
+- Status: perubahan berada di `feature/admin-left-sidebar`; tes lokal dan CI belum dijalankan untuk commit terbaru. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
