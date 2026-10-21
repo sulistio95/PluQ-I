@@ -1,3 +1,10 @@
+## Update — 2026-10-21: Field Server / Region untuk Zenless Zone Zero
+
+- Atas laporan pengguna, `app/services/game_fields.php` kini mengenali `Zenless Zone Zero`/slug `zenless-zone-zero` dan menampilkan field wajib **Server / Region** selain User ID.
+- Tes regresi ditambahkan pada `tests/game-account-schema.php`, termasuk memastikan checkout Zenless tetap diblokir karena pemetaan target akun supplier belum ditinjau. Jangan membuka checkout hanya karena field sudah tampil.
+- Pengguna mengonfirmasi katalog VIPayment sudah disinkronkan dan item game muncul. Fokus masalah yang tersisa adalah field akun Zenless; Digiflazz belum digunakan karena masih registrasi.
+- Perubahan kode berada di `feature/admin-left-sidebar`; belum diuji lokal/CI setelah perubahan ini dan belum merge ke `main`. Setelah pull, jalankan tes schema akun. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
 ## Update — 2026-10-21: Transisi kaca pecah dibatalkan
 
 - Atas permintaan pengguna, animasi kaca pecah dihapus dari `public/assets/catalog.js` dan `public/assets/catalog.css`; klik game kembali membuka form secara langsung.
