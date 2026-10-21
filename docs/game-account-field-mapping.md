@@ -7,8 +7,8 @@ Status: audit awal, 2026-10-21. Ini adalah pemetaan kebutuhan field UI, bukan pe
 | Game | Field UI yang diharapkan | Nilai yang dikirim ke supplier | Status |
 |---|---|---|---|
 | Mobile Legends | User ID + Zone ID | `data_no` = User ID; `data_zone` = Zone ID | Skema field sudah ada; mapping order tetap perlu diverifikasi |
-| Genshin Impact | User ID + pilihan Server / Region | Server terpilih harus dipetakan ke nilai server yang diterima supplier pada `data_zone` atau parameter target yang didokumentasikan | Nama field sudah dikoreksi; daftar opsi dan mapping nilai belum diverifikasi terhadap respons akun VIPayment |
-| Honkai: Star Rail | User ID + pilihan Server / Region | Server terpilih harus dipetakan ke nilai server yang diterima supplier pada `data_zone` atau parameter target yang didokumentasikan | Nama field sudah dikoreksi; daftar opsi dan mapping nilai belum diverifikasi terhadap respons akun VIPayment |
+| Genshin Impact | User ID + dropdown Server / Region (Asia, America, Europe, TW/HK/MO) | Nilai dropdown (`asia`, `america`, `europe`, `tw_hk_mo`) hanya placeholder UI; belum dipastikan diterima supplier atau harus dipetakan ke `data_zone`/parameter lain | Dropdown UI dibuat; checkout tetap diblokir sampai kode target supplier diverifikasi |
+| Honkai: Star Rail | User ID + dropdown Server / Region (Asia, America, Europe, TW/HK/MO) | Nilai dropdown (`asia`, `america`, `europe`, `tw_hk_mo`) hanya placeholder UI; belum dipastikan diterima supplier atau harus dipetakan ke `data_zone`/parameter lain | Dropdown UI dibuat; checkout tetap diblokir sampai kode target supplier diverifikasi |
 | Magic Chess GoGo | User ID + Zone ID | `data_no` = User ID; `data_zone` = Zone ID | Skema field sudah ada; pemetaan format supplier belum dikonfirmasi |
 | Zenless Zone Zero | User ID + pilihan Server / Region | Nilai server harus cocok dengan format target supplier | Field Server / Region sudah ada; opsi dan format supplier belum diverifikasi |
 
@@ -35,3 +35,11 @@ Karena itu, jangan menggunakan nilai `server` pada SKU sebagai opsi server akun 
 - `app/services/game_fields.php` masih membentuk field Server / Region sebagai teks; dropdown dinamis belum dibuat.
 - Tes `tests/game-account-schema.php` menguji nama field dasar, tetapi belum menguji opsi server dinamis atau transformasi nilai order.
 - Pemetaan ini tidak menganggap bahwa keberhasilan menampilkan field berarti akun atau transaksi supplier sudah tervalidasi.
+
+
+## Update 2026-10-21 — Dropdown Server / Region sementara
+
+- Genshin Impact dan Honkai: Star Rail kini menggunakan dropdown berisi Asia, America, Europe, dan TW / HK / MO.
+- Nilai option (`asia`, `america`, `europe`, `tw_hk_mo`) adalah nilai UI sementara, bukan kode API VIPayment yang sudah dikonfirmasi. Jangan mengirimkannya ke supplier secara langsung.
+- `game_account_schema_is_supported()` tetap menolak checkout untuk kedua game karena field `server` belum memiliki mapping supplier yang diverifikasi. Magic Chess GoGo tetap menggunakan User ID + Zone ID.
+- Langkah berikutnya: jalankan tes schema, lint, dan pemeriksaan CI; implementasikan mapping target order hanya setelah kode supplier yang benar ditemukan dari dokumentasi/respons API yang sah.
