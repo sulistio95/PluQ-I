@@ -1,3 +1,10 @@
+## Handoff terbaru — 2026-10-21: Dropdown ZZZ
+
+- Perbaikan pada branch `feature/admin-left-sidebar`: Zenless Zone Zero kini harus menampilkan User ID + dropdown Server / Region (Asia, America, Europe, TW / HK / MO).
+- Tes regresi ditambahkan untuk slug aktif `zenless-zone-zero-zzz` dan nama `Zenless Zone Zero (ZZZ)`, karena entri tersebut memiliki 15 produk; slug `zenless-zone-zero` adalah INACTIVE dan tidak memiliki produk.
+- Pilihan server adalah placeholder UI, bukan kode supplier terverifikasi. Checkout untuk schema server tetap diblokir. Pembayaran, order supplier, dan backup Google Drive tetap nonaktif.
+- Setelah pull, jalankan `php -l app/services/game_fields.php`, `php tests/game-account-schema.php`, dan `git diff --check`. Kemudian refresh frontend dengan hard refresh dan cek dropdown ZZZ.
+
 ## Update — 2026-10-21: Field Server / Region untuk Zenless Zone Zero
 
 - Atas laporan pengguna, `app/services/game_fields.php` kini mengenali `Zenless Zone Zero`/slug `zenless-zone-zero` dan menampilkan field wajib **Server / Region** selain User ID.
