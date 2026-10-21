@@ -10,7 +10,7 @@ Status: audit awal, 2026-10-21. Ini adalah pemetaan kebutuhan field UI, bukan pe
 | Genshin Impact | User ID + dropdown Server / Region (Asia, America, Europe, TW/HK/MO) | Nilai dropdown (`asia`, `america`, `europe`, `tw_hk_mo`) hanya placeholder UI; belum dipastikan diterima supplier atau harus dipetakan ke `data_zone`/parameter lain | Dropdown UI dibuat; checkout tetap diblokir sampai kode target supplier diverifikasi |
 | Honkai: Star Rail | User ID + dropdown Server / Region (Asia, America, Europe, TW/HK/MO) | Nilai dropdown (`asia`, `america`, `europe`, `tw_hk_mo`) hanya placeholder UI; belum dipastikan diterima supplier atau harus dipetakan ke `data_zone`/parameter lain | Dropdown UI dibuat; checkout tetap diblokir sampai kode target supplier diverifikasi |
 | Magic Chess GoGo | User ID + Zone ID | `data_no` = User ID; `data_zone` = Zone ID | Skema field sudah ada; pemetaan format supplier belum dikonfirmasi |
-| Zenless Zone Zero | User ID + pilihan Server / Region | Nilai server harus cocok dengan format target supplier | Field Server / Region sudah ada; opsi dan format supplier belum diverifikasi |
+| Zenless Zone Zero | User ID + dropdown Server / Region (Asia, America, Europe, TW/HK/MO) | Nilai dropdown (`asia`, `america`, `europe`, `tw_hk_mo`) hanya placeholder UI; belum dipastikan diterima supplier atau harus dipetakan ke `data_zone`/parameter lain | Dropdown UI dibuat; checkout tetap diblokir sampai kode target supplier diverifikasi |
 
 ## Temuan API VIPayment
 
@@ -32,7 +32,7 @@ Karena itu, jangan menggunakan nilai `server` pada SKU sebagai opsi server akun 
 
 ## Batasan saat ini
 
-- `app/services/game_fields.php` masih membentuk field Server / Region sebagai teks; dropdown dinamis belum dibuat.
+- Zenless Zone Zero kini memakai dropdown UI dengan pilihan umum Asia, America, Europe, dan TW / HK / MO. Nilai tersebut hanya placeholder UI dan belum terverifikasi sebagai kode supplier.
 - Tes `tests/game-account-schema.php` menguji nama field dasar, tetapi belum menguji opsi server dinamis atau transformasi nilai order.
 - Pemetaan ini tidak menganggap bahwa keberhasilan menampilkan field berarti akun atau transaksi supplier sudah tervalidasi.
 
@@ -43,3 +43,10 @@ Karena itu, jangan menggunakan nilai `server` pada SKU sebagai opsi server akun 
 - Nilai option (`asia`, `america`, `europe`, `tw_hk_mo`) adalah nilai UI sementara, bukan kode API VIPayment yang sudah dikonfirmasi. Jangan mengirimkannya ke supplier secara langsung.
 - `game_account_schema_is_supported()` tetap menolak checkout untuk kedua game karena field `server` belum memiliki mapping supplier yang diverifikasi. Magic Chess GoGo tetap menggunakan User ID + Zone ID.
 - Langkah berikutnya: jalankan tes schema, lint, dan pemeriksaan CI; implementasikan mapping target order hanya setelah kode supplier yang benar ditemukan dari dokumentasi/respons API yang sah.
+
+
+## Update 2026-10-21 — Dropdown Zenless Zone Zero
+
+- Field Server / Region untuk Zenless Zone Zero kini menggunakan dropdown dengan pilihan UI umum Asia, America, Europe, dan TW / HK / MO, sama seperti dropdown Genshin Impact dan Honkai: Star Rail.
+- Nilai opsi belum diverifikasi terhadap kode order VIPayment. Checkout tetap diblokir untuk skema server sampai pemetaan supplier diverifikasi.
+- Tes regresi mencakup slug katalog aktif `zenless-zone-zero-zzz` dan nama `Zenless Zone Zero (ZZZ)` agar perubahan tetap berlaku untuk entri yang memiliki produk.
