@@ -50,3 +50,10 @@ Karena itu, jangan menggunakan nilai `server` pada SKU sebagai opsi server akun 
 - Field Server / Region untuk Zenless Zone Zero kini menggunakan dropdown dengan pilihan UI umum Asia, America, Europe, dan TW / HK / MO, sama seperti dropdown Genshin Impact dan Honkai: Star Rail.
 - Nilai opsi belum diverifikasi terhadap kode order VIPayment. Checkout tetap diblokir untuk skema server sampai pemetaan supplier diverifikasi.
 - Tes regresi mencakup slug katalog aktif `zenless-zone-zero-zzz` dan nama `Zenless Zone Zero (ZZZ)` agar perubahan tetap berlaku untuk entri yang memiliki produk.
+
+## Audit lanjutan — 2026-10-21
+
+- Pemeriksaan dokumentasi publik tidak menemukan format region khusus untuk Genshin Impact, Honkai: Star Rail, atau Zenless Zone Zero. Parameter order hanya menjelaskan `data_no`, `data_zone`, dan `post_additional_data` secara umum; tidak ada contoh pemetaan region untuk ketiga game.
+- `get-nickname` mendokumentasikan `additional_target` sebagai `zone_id`, bukan region. Kode lookup Genshin/HSR yang saat ini ada di aplikasi belum membuktikan bahwa kode tersebut diterima VIPayment; ZZZ belum memiliki kode lookup.
+- Katalog `services` menunjukkan `server` pada SKU, tetapi dokumentasi tidak membuktikan bahwa itu adalah region akun pelanggan. Jangan memetakan S9/S11/S13 menjadi Asia/America/Europe.
+- Kesimpulan: tidak ada perubahan pemetaan yang aman dilakukan dari bukti publik saat ini. Pertahankan checkout ketiga game diblokir; jangan kirim transaksi uji berbayar. Bila tidak ingin menunggu bukti lebih lanjut, nonaktifkan game sementara, jangan hapus data/produk permanen.
