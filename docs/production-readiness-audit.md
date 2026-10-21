@@ -1,3 +1,9 @@
+## 2026-10-21 — Dropdown Server / Region Zenless Zone Zero (perbaikan)
+
+- Penyebab dropdown tidak muncul: aturan field server sebelumnya hanya memberi tipe `select` pada Genshin Impact dan Honkai: Star Rail; ZZZ menerima tipe `text`.
+- `app/services/game_fields.php` kini memberi ZZZ dropdown UI Asia, America, Europe, dan TW / HK / MO. Tes regresi mencakup slug aktif `zenless-zone-zero-zzz` / nama `Zenless Zone Zero (ZZZ)`.
+- Nilai opsi masih placeholder UI, belum diverifikasi sebagai kode order supplier. Checkout tetap diblokir untuk skema server yang belum dipetakan. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
 ## 2026-10-21 — Field Server / Region untuk Zenless Zone Zero
 
 - `app/services/game_fields.php` mengenali Zenless Zone Zero berdasarkan nama/slug dan menambahkan field wajib **Server / Region** setelah User ID.
