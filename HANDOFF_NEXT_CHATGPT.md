@@ -1811,3 +1811,10 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 
 - Setelah pengguna menarik perubahan dropdown server, `php -l app/services/game_fields.php` menemukan `validation_regex` terpotong pada field server dan blok fungsi tidak tertutup.
 - Memperbaiki file di commit `ac6704885939a0cf12c64ef96abd9a6619d6b620`. Perbaikan belum diverifikasi melalui eksekusi PHP lokal atau CI; pengguna perlu menarik commit tersebut dan mengulang tes.
+
+## Handoff — Audit mapping region VIPayment (2026-10-21)
+
+- Audit dokumentasi publik selesai: belum ada bukti untuk mengirim pilihan region Genshin/HSR/ZZZ lewat `data_zone` atau `post_additional_data`. `additional_target` untuk `get-nickname` didokumentasikan sebagai zone ID; `server` katalog adalah atribut SKU yang maknanya untuk region akun belum terverifikasi.
+- Tidak ada perubahan kode/transaksi. Checkout untuk schema server tetap diblokir.
+- Kode lookup Genshin/HSR yang ada belum terverifikasi pada VIPayment; ZZZ belum didukung lookup. Audit berikutnya dapat meninjau apakah tombol pemeriksaan nickname perlu dinonaktifkan untuk game tersebut sampai kodenya terbukti.
+- Jika pengguna memilih tidak menelusuri lebih lanjut, nonaktifkan ketiga game sementara (jangan hapus produk/riwayat permanen). Jangan mengaktifkan pembayaran, order supplier, atau backup Drive.
