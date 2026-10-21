@@ -9,6 +9,7 @@
   let bannerIndex = 0;
   let bannerTimer = null;
   let activeGame = null;
+  let glassTransitionInProgress = false;
   let gameFields = [];
   let gameMeta = {username_check_available: false};
   let usernameTimer = null;
@@ -97,6 +98,31 @@
     else url.searchParams.delete('game');
     const method = replace ? 'replaceState' : 'pushState';
     window.history[method]({gameSlug: slug || null}, '', url.pathname + url.search + url.hash);
+  }
+
+  function transitionToGame(game) {
+    if (!game || glassTransitionInProgress) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) { showProducts(game); return; }
+    glassTransitionInProgress = true;
+    const overlay = document.createElement('div');
+    overlay.className = 'glass-transition';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.innerHTML = '<svg class="glass-cracks" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">' +
+      '<g class="glass-crack-shadow"><path d="M50 50 L42 37 L35 28 L31 15 M42 37 L28 39 L17 32 M35 28 L22 20 L14 8 M42 37 L44 23 L41 10 M50 50 L61 38 L70 30 L78 14 M61 38 L75 40 L88 34 M70 30 L78 22 L91 19 M61 38 L59 24 L63 9 M50 50 L39 56 L30 66 L18 70 M39 56 L35 76 L25 88 M30 66 L17 61 L7 66 M50 50 L60 56 L68 68 L81 74 M60 56 L65 77 L76 89 M68 68 L84 63 L94 69 M50 50 L50 63 L47 79 L51 94" /></g>' +
+      '<g class="glass-crack-line"><path d="M50 50 L42 37 L35 28 L31 15 M42 37 L28 39 L17 32 M35 28 L22 20 L14 8 M42 37 L44 23 L41 10 M50 50 L61 38 L70 30 L78 14 M61 38 L75 40 L88 34 M70 30 L78 22 L91 19 M61 38 L59 24 L63 9 M50 50 L39 56 L30 66 L18 70 M39 56 L35 76 L25 88 M30 66 L17 61 L7 66 M50 50 L60 56 L68 68 L81 74 M60 56 L65 77 L76 89 M68 68 L84 63 L94 69 M50 50 L50 63 L47 79 L51 94" /></g>' +
+      '<circle class="glass-impact" cx="50" cy="50" r="1.4" /></svg>';
+    document.body.appendChild(overlay);
+    document.body.classList.add('glass-transitioning');
+    window.setTimeout(() => {
+      overlay.classList.add('glass-transition--breaking');
+      window.setTimeout(() => {
+        overlay.remove();
+        document.body.classList.remove('glass-transitioning');
+        glassTransitionInProgress = false;
+        showProducts(game);
+      }, 180);
+    }, 250);
   }
 
   function showCatalog(updateHistory = true) {
@@ -353,7 +379,7 @@
     const button = event.target.closest('button[data-slug]');
     if (!button) return;
     const game = games.find((item) => item.slug === button.dataset.slug);
-    if (game) showProducts(game);
+    if (game) transitionToGame(game);
   });
   $('back').addEventListener('click', () => showCatalog());
   window.addEventListener('popstate', () => {
