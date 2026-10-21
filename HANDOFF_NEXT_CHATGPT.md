@@ -1790,3 +1790,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Audit dokumentasi publik VIPayment menemukan `type=services` mengembalikan properti `server` pada tiap record layanan, tetapi dokumentasi tidak menyatakan bahwa nilai itu adalah daftar server akun pelanggan. Endpoint order menerima `data_no` dan `data_zone`; dokumentasi yang ditinjau tidak mendefinisikan endpoint server-list khusus.
 - Karena itu, jangan membangun dropdown dengan menganggap properti SKU `server` sebagai opsi akun. Selanjutnya verifikasi respons katalog nyata yang sudah disanitasi dan format target tiap game, lalu implementasikan opsi dropdown dengan nilai kode yang tervalidasi di sisi server.
 - Saat ini field Server/Region masih berupa teks; dropdown dinamis dan transformasi server/zone ke parameter order belum diverifikasi. Checkout skema yang belum ditinjau harus tetap diblokir. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-21: Dropdown Server / Region sementara
+
+- Genshin Impact dan Honkai: Star Rail kini menampilkan dropdown Server / Region dengan opsi Asia, America, Europe, dan TW / HK / MO.
+- Nilai option `asia`, `america`, `europe`, `tw_hk_mo` bersifat UI sementara, bukan kode API VIPayment yang terverifikasi. Jangan mengirim nilai tersebut langsung ke order supplier.
+- `game_account_schema_is_supported()` tetap memblokir checkout untuk schema dengan field `server` yang belum dipetakan. Magic Chess GoGo tetap User ID + Zone ID.
+- Tes regresi diperbarui untuk memastikan pilihan dropdown dan gate checkout. Perubahan belum diuji lokal/CI dan belum merge ke main. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
