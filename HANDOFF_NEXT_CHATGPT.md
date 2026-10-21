@@ -1798,3 +1798,9 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Nilai option `asia`, `america`, `europe`, `tw_hk_mo` bersifat UI sementara, bukan kode API VIPayment yang terverifikasi. Jangan mengirim nilai tersebut langsung ke order supplier.
 - `game_account_schema_is_supported()` tetap memblokir checkout untuk schema dengan field `server` yang belum dipetakan. Magic Chess GoGo tetap User ID + Zone ID.
 - Tes regresi diperbarui untuk memastikan pilihan dropdown dan gate checkout. Perubahan belum diuji lokal/CI dan belum merge ke main. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## Perbaikan sintaks — 2026-10-21
+
+- Setelah pengguna menarik perubahan dropdown server, `php -l app/services/game_fields.php` menemukan `validation_regex` terpotong pada field server dan blok fungsi tidak tertutup.
+- Memperbaiki file di commit `ac6704885939a0cf12c64ef96abd9a6619d6b620`. Perbaikan belum diverifikasi melalui eksekusi PHP lokal atau CI; pengguna perlu menarik commit tersebut dan mengulang tes.
