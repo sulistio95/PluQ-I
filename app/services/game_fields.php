@@ -24,9 +24,9 @@ function game_account_fields_for_game(string $slug, string $name): array
         'validation_regex' => '^[^\\s]{1,190}$',
     ]];
 
-    $needsZone = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail/i', $identity) === 1;
+    $needsZone = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|magic[\\s_-]*chess[\\s_-]*go[\\s_-]*go|\\bmcgg\\b/i', $identity) === 1;
     $isZenlessZoneZero = preg_match('/zenless[\\s_-]*zone[\\s_-]*zero|\\bzzz\\b/i', $identity) === 1;
-    $needsServer = !$needsZone && ($isZenlessZoneZero || preg_match('/\\b(server|region)\\b/i', $identity) === 1);
+    $needsServer = !$needsZone && ($isZenlessZoneZero || preg_match('/genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail|\\b(server|region)\\b/i', $identity) === 1);
 
     if ($needsZone) {
         $fields[] = [
@@ -40,9 +40,9 @@ function game_account_fields_for_game(string $slug, string $name): array
     } elseif ($needsServer) {
         $fields[] = [
             'field_key' => 'server',
-            'label' => $isZenlessZoneZero ? 'Server / Region' : 'Server',
+            'label' => ($isZenlessZoneZero || preg_match('/genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail/i', $identity) === 1) ? 'Server / Region' : 'Server',
             'field_type' => 'text',
-            'placeholder' => $isZenlessZoneZero ? 'Masukkan server atau region akun' : 'Masukkan server',
+            'placeholder' => 'Pilih server setelah opsi server dari API tersedia',
             'is_required' => true,
             'validation_regex' => '^.{1,190}$',
         ];
