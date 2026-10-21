@@ -1,3 +1,8 @@
+## 2026-10-21 — Transisi kaca pecah dibatalkan
+
+- Animasi SVG/CSS kaca pecah dihapus atas permintaan pengguna karena tidak bekerja sebagaimana diharapkan.
+- Pemilihan game kembali memakai alur langsung `showProducts(game)`. Tidak ada dependensi baru.
+
 ## 2026-10-21 — Transisi kaca pecah pada katalog
 
 - Added a lightweight SVG/CSS glass-crack transition before the game account/product form opens from a catalog click.
