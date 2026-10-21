@@ -1774,3 +1774,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Menyesuaikan `.hero` agar memakai lebar penuh area konten `main` (`width:100%; box-sizing:border-box`) dan menghapus margin horizontal tambahan. Ini membuat sisi kanan banner sejajar dengan sisi kanan kolom pencarian, bukan hanya mengandalkan posisi tengah.
 - Pada breakpoint ponsel, margin horizontal khusus banner juga dihapus agar banner tetap mengikuti lebar konten yang sama. Rasio banner dan mekanisme slider tidak berubah.
 - Commit CSS: 86483f95cbbc63ee6a281e4caffc2b2abe267735. Belum diverifikasi secara visual di browser; lakukan pull dan hard refresh. Belum merge ke `main`; jangan hapus tiga banner JPG lokal yang belum terlacak atau mengaktifkan pembayaran/order supplier/backup Drive.
+
+
+## Update — 2026-10-21: Koreksi field akun Genshin, Honkai Star Rail, dan Magic Chess GoGo
+
+- Atas laporan pengguna, `app/services/game_fields.php` kini memetakan Genshin Impact dan Honkai: Star Rail ke field `user_id` + `server` (label **Server / Region**), bukan `zone_id`.
+- Magic Chess GoGo kini dikenali sebagai game yang membutuhkan `user_id` + `zone_id`.
+- Menambahkan tes regresi di `tests/game-account-schema.php`. Checkout untuk skema yang belum ditinjau tetap diblokir; field server saat ini masih input teks, belum dropdown yang mengambil pilihan dari API. Implementasi dropdown API harus mengikuti struktur respons supplier yang benar dan validasi server-side, bukan menebak pilihan.
+- Perubahan dikirim ke `feature/admin-left-sidebar`; belum diuji lokal/CI dan belum merge ke `main`. Setelah pull, jalankan `php tests/game-account-schema.php`. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
