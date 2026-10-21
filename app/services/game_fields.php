@@ -25,7 +25,8 @@ function game_account_fields_for_game(string $slug, string $name): array
     ]];
 
     $needsZone = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail/i', $identity) === 1;
-    $needsServer = !$needsZone && preg_match('/\\b(server|region)\\b/i', $identity) === 1;
+    $isZenlessZoneZero = preg_match('/zenless[\\s_-]*zone[\\s_-]*zero|\\bzzz\\b/i', $identity) === 1;
+    $needsServer = !$needsZone && ($isZenlessZoneZero || preg_match('/\\b(server|region)\\b/i', $identity) === 1);
 
     if ($needsZone) {
         $fields[] = [
@@ -39,9 +40,9 @@ function game_account_fields_for_game(string $slug, string $name): array
     } elseif ($needsServer) {
         $fields[] = [
             'field_key' => 'server',
-            'label' => 'Server',
+            'label' => $isZenlessZoneZero ? 'Server / Region' : 'Server',
             'field_type' => 'text',
-            'placeholder' => 'Masukkan server',
+            'placeholder' => $isZenlessZoneZero ? 'Masukkan server atau region akun' : 'Masukkan server',
             'is_required' => true,
             'validation_regex' => '^.{1,190}$',
         ];
