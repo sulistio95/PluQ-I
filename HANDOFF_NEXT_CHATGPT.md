@@ -1,3 +1,8 @@
+## Update — 2026-10-21: Transisi kaca pecah dibatalkan
+
+- Atas permintaan pengguna, animasi kaca pecah dihapus dari `public/assets/catalog.js` dan `public/assets/catalog.css`; klik game kembali membuka form secara langsung.
+- Tidak ada perubahan pada tiga ikon game lokal yang belum dilacak. Jangan menghapusnya tanpa instruksi.
+
 ## Update — 2026-10-21: Animasi kaca pecah saat membuka form game
 
 - Menambahkan transisi ringan berbasis SVG/CSS pada `public/assets/catalog.js` dan `public/assets/catalog.css`: saat game diklik dari katalog, retakan kaca muncul sebentar sebelum form akun/nominal dibuka.
