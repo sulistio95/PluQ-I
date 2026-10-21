@@ -35,6 +35,11 @@ $honorOfKings = game_account_fields_for_game('honor-of-kings', 'Honor of Kings')
 schema_test(array_column($honorOfKings, 'field_key') === ['user_id'], 'Honor of Kings should request only User ID');
 schema_test(game_account_schema_is_supported('honor-of-kings', 'Honor of Kings', $honorOfKings), 'Reviewed Honor of Kings schema should allow checkout');
 
+$zenless = game_account_fields_for_game('zenless-zone-zero', 'Zenless Zone Zero');
+schema_test(array_column($zenless, 'field_key') === ['user_id', 'server'], 'Zenless Zone Zero should request User ID and Server/Region');
+schema_test($zenless[1]['label'] === 'Server / Region', 'Zenless Zone Zero server field should be labeled Server / Region');
+schema_test(!game_account_schema_is_supported('zenless-zone-zero', 'Zenless Zone Zero', $zenless), 'Zenless Zone Zero checkout must remain blocked until supplier account mapping is reviewed');
+
 $serverTitle = game_account_fields_for_game('example-region-game', 'Example Region Game');
 schema_test(array_column($serverTitle, 'field_key') === ['user_id', 'server'], 'Titles whose metadata names a server/region should show a server field');
 schema_test(!game_account_schema_is_supported('example-region-game', 'Example Region Game', $serverTitle), 'Unmapped server fields must block checkout');
