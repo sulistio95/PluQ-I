@@ -38,19 +38,19 @@ function game_account_fields_for_game(string $slug, string $name): array
             'validation_regex' => '^[^\\s]{1,190}$',
         ];
     } elseif ($needsServer) {
-        $isGenshinOrHonkai = preg_match('/genshin[\s_-]*impact|honkai[\s_-]*star[\s_-]*rail/i', $identity) === 1;
+        $isGenshinOrHonkai = preg_match('/genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail/i', $identity) === 1;
+        $usesServerDropdown = $isGenshinOrHonkai || $isZenlessZoneZero;
         $fields[] = [
             'field_key' => 'server',
             'label' => ($isZenlessZoneZero || $isGenshinOrHonkai) ? 'Server / Region' : 'Server',
-            // These are common UI labels only, not confirmed VIPayment order codes.
+            // Common UI choices only; values are not confirmed VIPayment order codes.
             // Checkout remains blocked for all server-based schemas until provider mapping is verified.
-            'field_type' => $isGenshinOrHonkai ? 'select' : 'text',
-            'options' => $isGenshinOrHonkai ? [
+            'field_type' => $usesServerDropdown ? 'select' : 'text',
+            'options' => $usesServerDropdown ? [
                 ['option_label' => 'Asia', 'option_value' => 'asia'],
                 ['option_label' => 'America', 'option_value' => 'america'],
                 ['option_label' => 'Europe', 'option_value' => 'europe'],
                 ['option_label' => 'TW / HK / MO', 'option_value' => 'tw_hk_mo'],
-            ] : [],
             'placeholder' => 'Pilih server / region akun',
             'is_required' => true,
             'validation_regex' => '^[a-zA-Z0-9_ -]{1,190}$',
