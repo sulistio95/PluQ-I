@@ -42,7 +42,7 @@ function game_account_fields_for_game(string $slug, string $name): array
             'field_key' => 'server',
             'label' => ($isZenlessZoneZero || preg_match('/genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail/i', $identity) === 1) ? 'Server / Region' : 'Server',
             'field_type' => 'text',
-            'placeholder' => 'Pilih server setelah opsi server dari API tersedia',
+            'placeholder' => 'Masukkan server / region akun',
             'is_required' => true,
             'validation_regex' => '^.{1,190}$',
         ];
