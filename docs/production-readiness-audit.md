@@ -1704,3 +1704,10 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Genshin Impact dan Honkai: Star Rail menampilkan dropdown umum Asia, America, Europe, dan TW / HK / MO. Nilai internalnya adalah placeholder UI (`asia`, `america`, `europe`, `tw_hk_mo`), bukan kode supplier terverifikasi.
 - Checkout tetap diblokir karena `game_account_schema_is_supported()` menolak skema akun dengan field `server` yang belum dipetakan. Magic Chess GoGo tetap meminta User ID + Zone ID.
 - Tes schema ditambah untuk field select, opsi, dan gate checkout. Tes lokal/CI belum dijalankan; jangan menyatakan integrasi VIPayment tervalidasi. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-21 — Perbaikan sintaks skema akun
+
+- Pemeriksaan pengguna menemukan PHP parse error di `app/services/game_fields.php` setelah perubahan dropdown server; string `validation_regex` terpotong dan blok field tidak tertutup.
+- Memperbaiki source di commit `ac6704885939a0cf12c64ef96abd9a6619d6b620`. Status verifikasi: belum diuji ulang dengan PHP lokal/CI; jangan menganggap tes lulus sampai hasil aktual tersedia.
+- Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
