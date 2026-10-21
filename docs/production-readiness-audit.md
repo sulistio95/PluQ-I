@@ -1689,3 +1689,11 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Magic Chess GoGo memakai `user_id` + `zone_id`.
 - Tes regresi ditambahkan. Field Server/Region masih input teks pada perubahan ini; dropdown berisi pilihan yang disuplai API belum diimplementasikan. Perlu mengidentifikasi dan memvalidasi sumber daftar server dari API sebelum mengaktifkan dropdown atau checkout.
 - Status: perubahan berada di `feature/admin-left-sidebar`; tes lokal dan CI belum dijalankan untuk commit terbaru. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-21: Audit pemetaan field akun game
+
+- Membuat `docs/game-account-field-mapping.md` untuk mencatat field yang benar: Mobile Legends = User ID + Zone ID; Genshin Impact = User ID + Server/Region; Honkai: Star Rail = User ID + Server/Region; Magic Chess GoGo = User ID + Zone ID; Zenless Zone Zero = User ID + Server/Region.
+- Audit dokumentasi publik VIPayment menemukan `type=services` mengembalikan properti `server` pada tiap record layanan, tetapi dokumentasi tidak menyatakan bahwa nilai itu adalah daftar server akun pelanggan. Endpoint order menerima `data_no` dan `data_zone`; dokumentasi yang ditinjau tidak mendefinisikan endpoint server-list khusus.
+- Karena itu, jangan membangun dropdown dengan menganggap properti SKU `server` sebagai opsi akun. Selanjutnya verifikasi respons katalog nyata yang sudah disanitasi dan format target tiap game, lalu implementasikan opsi dropdown dengan nilai kode yang tervalidasi di sisi server.
+- Saat ini field Server/Region masih berupa teks; dropdown dinamis dan transformasi server/zone ke parameter order belum diverifikasi. Checkout skema yang belum ditinjau harus tetap diblokir. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
