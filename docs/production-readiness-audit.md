@@ -1,3 +1,10 @@
+## 2026-10-21 — Transisi kaca pecah pada katalog
+
+- Added a lightweight SVG/CSS glass-crack transition before the game account/product form opens from a catalog click.
+- No external animation dependency was added. Repeated clicks are guarded during the short transition; browsers requesting reduced motion skip it.
+- Existing URL/history behavior and direct `?game=` restoration remain unchanged in code. Browser-level appearance, mobile performance, and back-navigation regression still require local verification.
+- No payment, supplier-ordering, or backup behavior was enabled by this UI change.
+
 ## 2026-10-20 — Hasil CI untuk pelacakan transaksi admin
 
 - GitHub Actions **PHP quality checks** lulus pada commit dc49bfc3a504cb4dc82f90b966589d52c03f014d, run [#828](https://github.com/sulistio95/PluQ-I/actions/runs/39395576680). Langkah lint PHP dan pemeriksaan sintaks JavaScript sukses.
