@@ -16,8 +16,14 @@ schema_test(array_column($mobileLegends, 'field_key') === ['user_id', 'zone_id']
 
 $genshin = game_account_fields_for_game('genshin-impact', 'Genshin Impact');
 schema_test(array_column($genshin, 'field_key') === ['user_id', 'server'], 'Genshin Impact should request User ID and Server/Region');
+schema_test($genshin[1]['field_type'] === 'select', 'Genshin Impact server should be a select field');
+schema_test(array_column($genshin[1]['options'], 'option_value') === ['asia', 'america', 'europe', 'tw_hk_mo'], 'Genshin Impact should show common region choices as UI-only values');
+schema_test(!game_account_schema_is_supported('genshin-impact', 'Genshin Impact', $genshin), 'Genshin Impact checkout must remain blocked until VIPayment server mapping is verified');
 $honkaiStarRail = game_account_fields_for_game('honkai-star-rail', 'Honkai Star Rail');
 schema_test(array_column($honkaiStarRail, 'field_key') === ['user_id', 'server'], 'Honkai Star Rail should request User ID and Server/Region');
+schema_test($honkaiStarRail[1]['field_type'] === 'select', 'Honkai Star Rail server should be a select field');
+schema_test(array_column($honkaiStarRail[1]['options'], 'option_value') === ['asia', 'america', 'europe', 'tw_hk_mo'], 'Honkai Star Rail should show common region choices as UI-only values');
+schema_test(!game_account_schema_is_supported('honkai-star-rail', 'Honkai Star Rail', $honkaiStarRail), 'Honkai Star Rail checkout must remain blocked until VIPayment server mapping is verified');
 
 schema_test(game_account_username_check_supported('free-fire', 'Free Fire'), 'Free Fire should be recognized as eligible for VIPayment nickname lookup');
 schema_test(game_account_username_check_code('free-fire', 'Free Fire') === 'free-fire', 'Free Fire nickname code must remain separate from supplier product codes');
