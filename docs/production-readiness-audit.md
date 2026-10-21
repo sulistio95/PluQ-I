@@ -1,3 +1,10 @@
+## 2026-10-21 — Field Server / Region untuk Zenless Zone Zero
+
+- `app/services/game_fields.php` mengenali Zenless Zone Zero berdasarkan nama/slug dan menambahkan field wajib **Server / Region** setelah User ID.
+- `tests/game-account-schema.php` menguji kedua field dan memastikan checkout tetap ditolak sampai dukungan/pemetaan akun supplier ditinjau.
+- Katalog VIPayment telah disinkronkan menurut konfirmasi pengguna; masalah yang dilaporkan kini khusus pada field akun. Digiflazz belum digunakan.
+- Status validasi: tes lokal dan CI pascaperubahan belum dijalankan. Belum merge ke `main`. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
 ## 2026-10-21 — Transisi kaca pecah dibatalkan
 
 - Animasi SVG/CSS kaca pecah dihapus atas permintaan pengguna karena tidak bekerja sebagaimana diharapkan.
