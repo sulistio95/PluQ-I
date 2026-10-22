@@ -169,7 +169,7 @@ function game_icon_commit_to_github(string $localPath, string $publicUrl): void
         throw new RuntimeException('Tidak dapat memulai koneksi GitHub API.');
     }
     curl_setopt_array($curl, [
-        CURLOPT_POST => true,
+        CURLOPT_CUSTOMREQUEST => 'PUT',
         CURLOPT_POSTFIELDS => $payload,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CONNECTTIMEOUT => 5,
