@@ -209,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (($_GET['saved'] ?? '') === '1') {
-    $notice = 'Pilihan game berhasil disimpan dan produk yang tersedia di cache telah diselaraskan. Untuk melihat centang, muat kembali daftar game tersimpan.'
+    $notice = 'Pilihan game berhasil disimpan dan produk yang tersedia di cache telah diselaraskan. Untuk melihat centang, muat kembali daftar game tersimpan.';
 }
 if ($selectedProviderId > 0 && $apiWasLoaded) {
     $stmt = $pdo->prepare("SELECT provider_game_code FROM game_provider_mappings WHERE provider_id=:provider_id AND status='ACTIVE'");
