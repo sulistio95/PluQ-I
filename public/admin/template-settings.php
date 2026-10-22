@@ -129,6 +129,73 @@ function game_icon_remove_local_file(string $url): bool
     return $path === null || !is_file($path) || @unlink($path);
 }
 
+/**
+ * Commit an uploaded game icon to the configured GitHub repository.
+ * Credentials must come from the server environment/private .env, never from request data.
+ */
+function game_icon_commit_to_github(string $localPath, string $publicUrl): void
+{
+    $token = trim((string) (getenv('GITHUB_UPLOAD_TOKEN') ?: ''));
+    $repository = trim((string) (getenv('GITHUB_UPLOAD_REPOSITORY') ?: ''));
+    $branch = trim((string) (getenv('GITHUB_UPLOAD_BRANCH') ?: ''));
+
+    if ($token === '' || $repository === '' || $branch === '') {
+        throw new RuntimeException('Sinkronisasi GitHub belum dikonfigurasi. Atur GITHUB_UPLOAD_TOKEN, GITHUB_UPLOAD_REPOSITORY, dan GITHUB_UPLOAD_BRANCH pada konfigurasi privat server.');
+    }
+    if (!preg_match('~^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$~D', $repository)
+        || str_contains($branch, '..') || preg_match('~[\\x00-\\x20~^:?*\\[\\\\]\\\\]~', $branch)) {
+        throw new RuntimeException('Konfigurasi repositori atau branch GitHub tidak valid.');
+    }
+    $path = parse_url($publicUrl, PHP_URL_PATH);
+    if (!is_string($path) || !preg_match('~^/uploads/game-icons/([a-f0-9]{32}\\.(?:jpg|png|webp))$~D', $path, $matches)) {
+        throw new RuntimeException('Path icon tidak valid untuk sinkronisasi GitHub.');
+    }
+    $repoPath = 'public' . $path;
+    $bytes = @file_get_contents($localPath);
+    if (!is_string($bytes) || $bytes === '') {
+        throw new RuntimeException('File icon lokal tidak dapat dibaca untuk dikirim ke GitHub.');
+    }
+
+    $payload = json_encode([
+        'message' => 'Add game icon ' . $matches[1],
+        'content' => base64_encode($bytes),
+        'branch' => $branch,
+    ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
+    $url = 'https://api.github.com/repos/' . $repository . '/contents/' . implode('/', array_map('rawurlencode', explode('/', $repoPath)));
+    $curl = curl_init($url);
+    if ($curl === false) {
+        throw new RuntimeException('Tidak dapat memulai koneksi GitHub API.');
+    }
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/vnd.github+json',
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json',
+            'X-GitHub-Api-Version: 2022-11-28',
+            'User-Agent: PluQ-I-Admin',
+        ],
+    ]);
+    $response = curl_exec($curl);
+    $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($curl);
+    curl_close($curl);
+
+    if (!is_string($response) || $status < 200 || $status >= 300) {
+        // Do not include the authorization token or raw response body in the error.
+        throw new RuntimeException(
+            'GitHub gagal menyimpan icon (HTTP ' . $status . '). '
+            . ($curlError !== '' ? 'Periksa koneksi HTTPS server. ' : '')
+            . 'Periksa izin Contents: Read and write, nama repositori, dan branch.'
+        );
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!admin_csrf_valid($_POST['csrf'] ?? null)) {
         http_response_code(403);
@@ -246,6 +313,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($uploadError === UPLOAD_ERR_NO_FILE) throw new InvalidArgumentException('Pilih file icon dari laptop terlebih dahulu.');
                 $newIconUrl = game_icon_store_upload($_FILES['game_icon_file']);
                 try {
+                    $newIconPath = game_icon_local_path($newIconUrl);
+                    if ($newIconPath === null) {
+                        throw new RuntimeException('Path icon lokal tidak valid.');
+                    }
+                    game_icon_commit_to_github($newIconPath, $newIconUrl);
                     $pdo->beginTransaction();
                     $update = $pdo->prepare('UPDATE games SET icon_url=:icon WHERE id=:id AND status=\'ACTIVE\'');
                     $update->execute(['icon'=>$newIconUrl,'id'=>$gameId]);
@@ -324,7 +396,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (($_GET['saved'] ?? '') === '1') $notice = 'Banner berhasil disimpan.';
 if (($_GET['deactivated'] ?? '') === '1') $notice = 'Banner dinonaktifkan dan tidak akan ditampilkan di halaman depan.';
 if (($_GET['deleted'] ?? '') === '1') $notice = (($_GET['file_cleanup'] ?? '') === 'failed') ? 'Banner dihapus dari database, tetapi file gambar lokal gagal dihapus. Periksa folder public/uploads/banners.' : 'Banner dihapus. Jika menggunakan gambar lokal, file gambarnya juga dihapus.';
-if (($_GET['icon_saved'] ?? '') === '1') $notice = 'Icon game berhasil diunggah dan ditampilkan pada katalog.';
+if (($_GET['icon_saved'] ?? '') === '1') $notice = 'Icon game berhasil disimpan ke GitHub dan ditampilkan pada katalog.';
 if (($_GET['icon_deleted'] ?? '') === '1') $notice = (($_GET['file_cleanup'] ?? '') === 'failed') ? 'Icon dihapus dari katalog, tetapi file lokal gagal dihapus. Periksa folder public/uploads/game-icons.' : 'Icon game dihapus. Game tetap tampil di katalog tanpa icon khusus.';
 if (($_GET['layout_saved'] ?? '') === '1') $notice = 'Tata letak katalog berhasil disimpan.';
 
@@ -380,7 +452,7 @@ $csrf = admin_csrf_token();
 <?php foreach ($banners as $banner): ?><tr><td><img class="thumb" src="<?=admin_escape($banner['image_url'])?>" alt="<?=admin_escape($banner['title'])?>" loading="lazy"></td><td><?=admin_escape($banner['title'])?><div class="muted small"><?=admin_escape($banner['image_url'])?></div><div class="muted small">Tujuan: <?=admin_escape($banner['target_url'] ?: 'Tidak ada')?></div></td><td><?=number_format((int)$banner['sort_order'])?></td><td><?=admin_escape($banner['status'])?></td><td><div class="actions"><a href="/admin/template-settings.php?edit=<?=(int)$banner['id']?>">Edit</a><?php if ($canManage): ?><?php if ($banner['status']==='ACTIVE'): ?><form class="inline" method="post" onsubmit="return confirm('Nonaktifkan banner ini?')"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="deactivate"><input type="hidden" name="id" value="<?=(int)$banner['id']?>"><button type="submit">Nonaktifkan</button></form><?php endif; ?><form class="inline" method="post" onsubmit="return confirm('Hapus banner ini secara permanen? File lokal yang terkait juga akan dihapus.')"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?=(int)$banner['id']?>"><button type="submit">Hapus</button></form><?php endif; ?></div></td></tr><?php endforeach; ?>
 </tbody></table></div></section>
 <section class="panel"><h2>Icon Game List</h2>
-<p class="muted">Hanya game yang dicentang dan tersimpan aktif pada menu <a href="/admin/game-mappings.php">Game List</a> yang tampil di sini. Unggah icon untuk mengisi kolom <code>games.icon_url</code> yang dipakai katalog halaman depan. Format JPG/PNG/WebP, maksimal 5 MB. Hapus hanya menghapus icon, bukan game atau mapping supplier.</p>
+<p class="muted">Hanya game yang dicentang dan tersimpan aktif pada menu <a href="/admin/game-mappings.php">Game List</a> yang tampil di sini. Unggah icon untuk mengisi kolom <code>games.icon_url</code> yang dipakai katalog halaman depan. Format JPG/PNG/WebP, maksimal 5 MB. Setiap icon baru akan disimpan lokal dan dikomit ke repositori GitHub/branch yang dikonfigurasi server. Sinkronisasi GitHub harus dikonfigurasi sebelum unggahan dapat disimpan. Hapus hanya menghapus icon dari katalog; file yang sudah dikomit ke GitHub tidak dihapus otomatis.</p>
 <p class="dimension-hint"><strong>Saran ukuran icon: 512 × 512 px (persegi/1:1).</strong> Gunakan gambar yang fokus pada logo game, dengan sedikit ruang kosong di sekelilingnya agar tidak terpotong saat ditampilkan. Ukuran ini adalah rekomendasi, bukan batas wajib.</p>
 <?php if (!$activeGames): ?><p class="muted">Belum ada game aktif. Pilih dan simpan game terlebih dahulu di Game List.</p><?php else: ?>
 <div class="icon-matrix">
