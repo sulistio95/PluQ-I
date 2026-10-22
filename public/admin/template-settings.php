@@ -202,7 +202,7 @@ function game_icon_commit_to_github(string $localPath, string $publicUrl): void
     $isBrandLogo = str_starts_with($path, '/uploads/brand-logos/');
     $bytes = @file_get_contents($localPath);
     if (!is_string($bytes) || $bytes === '') {
-        throw new RuntimeException('File icon lokal tidak dapat dibaca untuk dikirim ke GitHub.');
+        throw new RuntimeException('File gambar lokal tidak dapat dibaca untuk dikirim ke GitHub.');
     }
 
     $payload = json_encode([
@@ -251,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Sesi formulir tidak valid. Muat ulang halaman dan coba lagi.';
     } elseif (!$canManage) {
         http_response_code(403);
-        $error = 'Peran akun Anda tidak diizinkan mengubah banner.';
+        $error = 'Peran akun Anda tidak diizinkan mengubah pengaturan template.';
     } else {
         $action = (string) ($_POST['action'] ?? '');
         try {
