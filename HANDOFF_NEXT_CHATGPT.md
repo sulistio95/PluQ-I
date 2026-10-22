@@ -1,3 +1,12 @@
+## Update — 2026-10-23: Hapus logo lama dari GitHub dengan aman
+
+- `public/admin/template-settings.php` kini menambahkan fungsi penghapusan logo header melalui GitHub Contents API: mengambil SHA file pada branch konfigurasi terlebih dahulu, lalu menghapus file dengan commit terpisah.
+- Saat logo diganti, penghapusan file lama baru dilakukan setelah logo baru berhasil dikomit ke GitHub dan URL baru tersimpan di database. Saat logo dihapus dari panel, URL database dikosongkan dahulu sebelum file lama dibersihkan.
+- Penghapusan dibatasi ketat ke `public/uploads/brand-logos/<32-hex>.(jpg|png|webp)`; URL eksternal, icon game, dan path lain tidak dihapus. File yang sudah tidak ada di GitHub dianggap sudah bersih.
+- Jika pembersihan file lama gagal, perubahan logo tetap berlaku, kegagalan dicatat di log PHP, dan panel menampilkan peringatan `old_logo_cleanup=failed`. Token GitHub tetap harus disimpan privat dan memiliki izin Contents: Read and write.
+- Perubahan telah dikomit langsung ke branch `feature/admin-left-sidebar`, commit `2458119` dan `caebe86`. Belum diuji di lingkungan lokal atau dengan token GitHub sungguhan.
+- Logo lama yang sudah telanjur menjadi file yatim di GitHub tidak dihapus massal oleh perubahan ini. Periksa referensi database terlebih dahulu sebelum pembersihan satu kali.
+- Langkah lokal: pulihkan file logo yang sengaja dipindahkan saat sinkronisasi (`git restore public/uploads/brand-logos/01777c2b96ea69718d056589a6292878.png`), lalu `git pull --ff-only origin feature/admin-left-sidebar`, jalankan `php -l public/admin/template-settings.php` dan `git diff --check`. Uji alur ganti logo dan hapus logo; pastikan file lama hilang dari branch GitHub hanya jika benar-benar tidak lagi dipakai.
 ## Update — 2026-10-22: Jumlah kolom katalog ponsel bisa diatur
 
 - Panel **Pengaturan Template → Tata letak katalog game** kini memiliki pilihan jumlah game per baris untuk ponsel: 2, 3, atau 4 kolom; default 3.
