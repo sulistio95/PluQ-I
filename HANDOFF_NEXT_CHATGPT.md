@@ -1,3 +1,12 @@
+## Update — 2026-10-22: Satu sumber sinkronisasi katalog
+
+- Keputusan: hanya tombol **Sinkronkan katalog** di Pengaturan API yang melakukan request katalog ke Digiflazz/VIPayment.
+- Game List sekarang membaca daftar game dari tabel cache `provider_products`; tombolnya hanya memuat cache lokal, bukan memanggil API supplier.
+- Pratinjau katalog di Pengaturan API juga membaca cache lokal. Untuk memperbarui data, jalankan sinkronisasi supplier secara eksplisit.
+- Sinkronisasi tetap menyimpan katalog supplier meskipun belum ada pemetaan game aktif, sehingga alur awal tidak melingkar. Setelah game dipilih di Game List, produk toko untuk game tersebut dibangun dari cache yang tersimpan tanpa request API tambahan.
+- Saat pemetaan supplier diubah, produk yang tidak lagi dipetakan oleh supplier itu ditandai `OUT_OF_STOCK`; data dan riwayat tidak dihapus.
+- Perubahan hanya untuk pengelolaan katalog. Pembayaran, order supplier, dan backup Google Drive tetap nonaktif. Jalankan lint PHP, tes katalog yang tersedia, dan `git diff --check` lokal setelah pull; kemudian verifikasi alur: sinkronisasi pertama → Game List → pilih/simpan game → katalog produk.
+  
 ## Handoff terbaru — 2026-10-21: Dropdown ZZZ
 
 - Perbaikan pada branch `feature/admin-left-sidebar`: Zenless Zone Zero kini harus menampilkan User ID + dropdown Server / Region (Asia, America, Europe, TW / HK / MO).
