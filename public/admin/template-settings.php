@@ -387,7 +387,7 @@ function brand_logo_cleanup_unused_from_github(string $activeLogoUrl): void
         throw new RuntimeException('GitHub gagal membuat daftar logo (HTTP ' . $status . ').' . ($curlError !== '' ? ' Periksa koneksi HTTPS server.' : ''));
     }
     $entries = json_decode($response, true);
-    if (!is_array($entries) || (array_is_list($entries) && $entries !== [] && !isset($entries[0]['type']))) {
+    if (!is_array($entries) || ($entries !== [] && !array_is_list($entries))) {
         throw new RuntimeException('GitHub mengembalikan daftar logo yang tidak valid.');
     }
 
