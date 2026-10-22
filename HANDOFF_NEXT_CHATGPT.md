@@ -1844,3 +1844,13 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Tidak ada perubahan kode/transaksi. Checkout untuk schema server tetap diblokir.
 - Kode lookup Genshin/HSR yang ada belum terverifikasi pada VIPayment; ZZZ belum didukung lookup. Audit berikutnya dapat meninjau apakah tombol pemeriksaan nickname perlu dinonaktifkan untuk game tersebut sampai kodenya terbukti.
 - Jika pengguna memilih tidak menelusuri lebih lanjut, nonaktifkan ketiga game sementara (jangan hapus produk/riwayat permanen). Jangan mengaktifkan pembayaran, order supplier, atau backup Drive.
+
+
+## Update — 2026-10-23: Logo header dapat diubah dari Pengaturan Template
+
+- Menambahkan panel **Pengaturan Template → Logo Header Halaman Depan** untuk unggah/ganti logo, melihat pratinjau, atau menghapus logo agar tulisan `PluQ-i` tampil kembali.
+- Logo memakai validasi unggahan JPG/PNG/WebP, batas 5 MB, dimensi maksimum 8000×8000 dan 25 megapiksel; form dilindungi CSRF dan hanya peran admin yang boleh mengubah.
+- URL logo disimpan pada `app_settings.brand_logo_url` tanpa migration. File disimpan di `public/uploads/brand-logos/` dan dikirim ke GitHub Contents API menggunakan token privat, repository, dan branch yang sama dengan unggahan icon game.
+- Halaman depan menampilkan logo secara responsif; jika pengaturan kosong atau logo dihapus, teks `PluQ-i` menjadi fallback. Menghapus logo dari panel tidak menghapus file yang sudah dikomit di GitHub.
+- Berkas kode: `public/admin/template-settings.php`, `public/index.php`, dan `public/assets/catalog.css`.
+- Status verifikasi: perubahan ditulis ke branch `feature/admin-left-sidebar`; lint PHP, `bin/preflight.php`, uji database, CI, dan tampilan browser lokal belum dijalankan. Setelah sinkronisasi lokal, jalankan `php -l public/admin/template-settings.php`, `php -l public/index.php`, `php bin/preflight.php`, tes terkait, dan `git diff --check`; lalu uji unggah/ganti/hapus logo di panel serta tampilan desktop/ponsel. Jangan aktifkan pembayaran, order supplier, atau backup Google Drive.
