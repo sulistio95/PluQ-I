@@ -245,6 +245,95 @@ function game_icon_commit_to_github(string $localPath, string $publicUrl): void
     }
 }
 
+
+/**
+ * Delete an obsolete brand logo from the configured GitHub branch.
+ * Only the strict brand-logo upload path is accepted; game icons are never touched.
+ * A 404 on the initial lookup means the file is already absent and is safe to ignore.
+ */
+function brand_logo_delete_from_github(string $publicUrl): void
+{
+    $token = trim((string) (getenv('GITHUB_UPLOAD_TOKEN') ?: ''));
+    $repository = trim((string) (getenv('GITHUB_UPLOAD_REPOSITORY') ?: ''));
+    $branch = trim((string) (getenv('GITHUB_UPLOAD_BRANCH') ?: ''));
+
+    if ($token === '' || $repository === '' || $branch === '') {
+        throw new RuntimeException('Penghapusan logo GitHub belum dikonfigurasi.');
+    }
+    if (!preg_match('~^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$~D', $repository)
+        || str_contains($branch, '..')
+        || !preg_match('~^[A-Za-z0-9._/-]+$~D', $branch)) {
+        throw new RuntimeException('Konfigurasi repositori atau branch GitHub tidak valid.');
+    }
+    $path = parse_url($publicUrl, PHP_URL_PATH);
+    if (!is_string($path) || !preg_match('~^/uploads/brand-logos/([a-f0-9]{32}\.(?:jpg|png|webp))$~D', $path, $matches)) {
+        // External URLs and unrelated paths must never trigger repository deletion.
+        return;
+    }
+
+    $repoPath = 'public' . $path;
+    $url = 'https://api.github.com/repos/' . $repository . '/contents/' . implode('/', array_map('rawurlencode', explode('/', $repoPath)));
+    $headers = [
+        'Accept: application/vnd.github+json',
+        'Authorization: Bearer ' . $token,
+        'X-GitHub-Api-Version: 2022-11-28',
+        'User-Agent: PluQ-I-Admin',
+    ];
+
+    $curl = curl_init($url . '?ref=' . rawurlencode($branch));
+    if ($curl === false) {
+        throw new RuntimeException('Tidak dapat memulai koneksi GitHub API.');
+    }
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_HTTPHEADER => $headers,
+    ]);
+    $response = curl_exec($curl);
+    $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($curl);
+    curl_close($curl);
+
+    if ($status === 404) {
+        return;
+    }
+    if (!is_string($response) || $status < 200 || $status >= 300) {
+        throw new RuntimeException('GitHub gagal memeriksa logo lama (HTTP ' . $status . ').' . ($curlError !== '' ? ' Periksa koneksi HTTPS server.' : ''));
+    }
+    $file = json_decode($response, true);
+    $fileSha = is_array($file) ? (string) ($file['sha'] ?? '') : '';
+    if (!preg_match('~^[a-f0-9]{40}$~D', $fileSha)) {
+        throw new RuntimeException('GitHub tidak mengembalikan SHA file logo yang valid.');
+    }
+
+    $payload = json_encode([
+        'message' => 'Remove obsolete brand logo ' . $matches[1],
+        'sha' => $fileSha,
+        'branch' => $branch,
+    ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    $curl = curl_init($url);
+    if ($curl === false) {
+        throw new RuntimeException('Tidak dapat memulai koneksi penghapusan GitHub.');
+    }
+    curl_setopt_array($curl, [
+        CURLOPT_CUSTOMREQUEST => 'DELETE',
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_HTTPHEADER => array_merge($headers, ['Content-Type: application/json']),
+    ]);
+    $deleteResponse = curl_exec($curl);
+    $deleteStatus = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $deleteError = curl_error($curl);
+    curl_close($curl);
+
+    if (!is_string($deleteResponse) || $deleteStatus < 200 || $deleteStatus >= 300) {
+        throw new RuntimeException('GitHub gagal menghapus logo lama (HTTP ' . $deleteStatus . ').' . ($deleteError !== '' ? ' Periksa koneksi HTTPS server.' : ' Periksa izin Contents: Read and write dan branch.'));
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!admin_csrf_valid($_POST['csrf'] ?? null)) {
         http_response_code(403);
@@ -377,8 +466,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     brand_logo_remove_local_file($newLogoUrl);
                     throw $saveError;
                 }
-                brand_logo_remove_local_file($oldLogoUrl);
-                header('Location: /admin/template-settings.php?brand_logo_saved=1');
+                $oldLogoCleanupFailed = false;
+                if ($oldLogoUrl !== '' && $oldLogoUrl !== $newLogoUrl) {
+                    try {
+                        // Re-read the active setting before deleting the old remote asset.
+                        $activeLogo = $pdo->query("SELECT setting_value FROM app_settings WHERE setting_key='brand_logo_url' LIMIT 1")->fetchColumn();
+                        if ((string) $activeLogo !== $oldLogoUrl) {
+                            brand_logo_delete_from_github($oldLogoUrl);
+                            brand_logo_remove_local_file($oldLogoUrl);
+                        }
+                    } catch (Throwable $cleanupError) {
+                        error_log('PluQ-I brand logo cleanup failed: ' . $cleanupError->getMessage());
+                        $oldLogoCleanupFailed = true;
+                    }
+                }
+                header('Location: /admin/template-settings.php?brand_logo_saved=1' . ($oldLogoCleanupFailed ? '&old_logo_cleanup=failed' : ''));
                 exit;
             }
             if ($action === 'delete_brand_logo') {
@@ -396,8 +498,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'ip'=>substr((string)($_SERVER['REMOTE_ADDR'] ?? ''),0,45),
                 ]);
                 $pdo->commit();
-                brand_logo_remove_local_file($oldLogoUrl);
-                header('Location: /admin/template-settings.php?brand_logo_deleted=1');
+                $oldLogoCleanupFailed = false;
+                try {
+                    // Delete only after the setting is cleared and verify it remains unused.
+                    $activeLogo = $pdo->query("SELECT setting_value FROM app_settings WHERE setting_key='brand_logo_url' LIMIT 1")->fetchColumn();
+                    if ((string) $activeLogo !== $oldLogoUrl) {
+                        brand_logo_delete_from_github($oldLogoUrl);
+                        brand_logo_remove_local_file($oldLogoUrl);
+                    }
+                } catch (Throwable $cleanupError) {
+                    error_log('PluQ-I brand logo cleanup failed: ' . $cleanupError->getMessage());
+                    $oldLogoCleanupFailed = true;
+                }
+                header('Location: /admin/template-settings.php?brand_logo_deleted=1' . ($oldLogoCleanupFailed ? '&old_logo_cleanup=failed' : ''));
                 exit;
             }
             if ($action === 'save_game_icon') {
