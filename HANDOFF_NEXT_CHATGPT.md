@@ -1871,3 +1871,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Jika pembersihan GitHub gagal, panel memberi peringatan `old_logo_cleanup=failed`; logo yang baru dipilih atau fallback teks tetap berlaku. Log PHP hanya menyimpan pesan kesalahan, bukan token.
 - Validasi lokal yang sudah dilaporkan pengguna: `php -l public/admin/template-settings.php` lulus, `git diff --check` bersih, working tree sinkron dengan branch. Ini belum membuktikan GitHub API berjalan saat runtime karena belum diuji lewat panel dengan konfigurasi token yang aktif.
 - Langkah pengguna berikutnya cukup lewat panel admin: unggah/ganti logo, lalu periksa logo yang tampil; setelah itu uji tombol hapus dan pastikan teks `PluQ-i` kembali. Tidak perlu menjalankan perintah terminal setiap kali mengelola logo. Jika muncul peringatan, periksa konfigurasi privat server (`GITHUB_UPLOAD_TOKEN`, `GITHUB_UPLOAD_REPOSITORY`, `GITHUB_UPLOAD_BRANCH`) dan izin token Contents: Read and write.
+
+
+## Lanjutan — 2026-10-23: Hapus otomatis semua logo yang tidak terpakai
+
+- `public/admin/template-settings.php` kini memiliki `brand_logo_cleanup_unused_from_github()` yang membaca isi folder `public/uploads/brand-logos/` pada branch yang dikonfigurasi, mempertahankan hanya logo yang URL-nya aktif di `app_settings.brand_logo_url`, lalu menghapus file logo lain melalui GitHub Contents API.
+- Sweep dijalankan otomatis setelah upload/ganti logo maupun setelah logo dihapus melalui panel. Saat logo dihapus, tidak ada logo aktif sehingga semua file logo bernama hasil unggahan yang cocok pola ketat di folder tersebut dianggap tidak terpakai dan dibersihkan.
+- Pembersihan hanya menyentuh nama file 32 karakter heksadesimal dengan ekstensi JPG/PNG/WebP di folder brand logo; tidak menyentuh game icons atau file lain. Jika GitHub gagal memberi daftar file atau menghapus salah satu file, proses menampilkan peringatan pada panel dan mencatat pesan di PHP error log.
+- Commit kode: `74afa7028242f730faeb5a32fa217a8b6a0797f1`; validasi respons daftar GitHub: `5777d7a8f766853fca0cc8ad08e2e8da1d011404`, branch `feature/admin-left-sidebar`.
+- Belum ada pengujian runtime dengan token GitHub dari server. Setelah sinkronisasi lokal, cukup uji melalui panel: ganti logo dan pastikan hanya logo baru tersisa di folder GitHub; kemudian hapus logo dan pastikan folder tidak lagi memiliki file logo hasil unggahan. Jika muncul peringatan, cek variabel privat `GITHUB_UPLOAD_TOKEN`, `GITHUB_UPLOAD_REPOSITORY`, `GITHUB_UPLOAD_BRANCH` dan izin Contents: Read and write.
