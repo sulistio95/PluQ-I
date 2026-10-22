@@ -1,3 +1,12 @@
+## Update — 2026-10-22: Ikon game dari admin disimpan ke GitHub
+
+- `public/admin/template-settings.php` kini mengirim setiap icon game baru ke GitHub Contents API setelah file lolos validasi upload lokal, sebelum URL icon diperbarui di database.
+- Konfigurasi wajib di `.env` privat server: `GITHUB_UPLOAD_TOKEN`, `GITHUB_UPLOAD_REPOSITORY` (format `owner/repo`), dan `GITHUB_UPLOAD_BRANCH`. `.env.example` hanya berisi nilai contoh/non-rahasia.
+- Gunakan fine-grained personal access token yang dibatasi ke repository `sulistio95/PluQ-I` dengan izin **Contents: Read and write**. Jangan masukkan token ke GitHub, frontend, chat, atau commit.
+- Path gambar yang dikomit: `public/uploads/game-icons/<random-name>.(jpg|png|webp)`. Database tetap menyimpan URL lokal `/uploads/game-icons/...`, sehingga tampilan lokal/hosting memakai file di `public/`. File icon lama yang sudah dikomit tidak dihapus otomatis saat diganti/dihapus dari katalog.
+- Upload icon akan gagal dengan pesan konfigurasi/API jika token, repo, branch, atau izin belum benar; file lokal sementara dibersihkan saat proses simpan gagal. Banner tidak ikut disinkronkan ke GitHub.
+- **Belum diuji dengan token GitHub sungguhan.** Setelah pull, jalankan `php -l public/admin/template-settings.php` dan `git diff --check`, atur rahasia hanya di `.env` lokal, lalu uji satu icon non-kritis. Pastikan `GITHUB_UPLOAD_BRANCH` menunjuk branch yang benar-benar dipakai deployment; saat ini contoh di `.env.example` menggunakan `feature/admin-left-sidebar`.
+
 ## Update — 2026-10-22: Satu sumber sinkronisasi katalog
 
 - Keputusan: hanya tombol **Sinkronkan katalog** di Pengaturan API yang melakukan request katalog ke Digiflazz/VIPayment.
