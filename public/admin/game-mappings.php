@@ -4,8 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__, 2) . '/app/bootstrap.php';
 require_once PLUQI_ROOT . '/config/database.php';
 require_once PLUQI_ROOT . '/app/services/admin_auth.php';
-require_once PLUQI_ROOT . '/app/services/digiflazz.php';
-require_once PLUQI_ROOT . '/app/services/vipayment.php';
+require_once PLUQI_ROOT . '/app/services/catalog_sync.php';
 
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
@@ -62,40 +61,31 @@ function mapping_game_slug(PDO $pdo, string $name): string
     }
 }
 
-/** Fetch distinct game names from the selected supplier without exposing its codes in the UI. */
-function mapping_fetch_provider_games(string $providerCode): array
+/** Read distinct game names from the locally synchronized supplier catalog cache. */
+function mapping_fetch_provider_games(PDO $pdo, int $providerId, string $providerCode): array
 {
-    if ($providerCode === 'DIGI') {
-        $items = digiflazz_price_list();
-        $games = [];
-        foreach ($items as $item) {
-            if (!is_array($item)) continue;
-            $code = trim((string) ($item['brand'] ?? ''));
-            if ($code === '' || strlen($code) > 190) continue;
-            $lower = strtolower($code);
-            if (str_contains($lower, 'joki') || str_contains($lower, 'vilog')) continue;
-            $games[$code] = ['code' => $code, 'name' => $code];
-        }
-    } elseif ($providerCode === 'VIPAY') {
-        $items = vipayment_game_services(null, null);
-        $games = [];
-        foreach ($items as $item) {
-            if (!is_array($item)) continue;
-            $code = trim((string) ($item['game'] ?? ''));
-            if ($code === '' || strlen($code) > 190) continue;
-            $lower = strtolower($code);
-            if (str_contains($lower, 'joki') || str_contains($lower, 'vilog')) continue;
-            $games[$code] = ['code' => $code, 'name' => $code];
-        }
-    } else {
+    if (!in_array($providerCode, ['DIGI', 'VIPAY'], true)) {
         throw new InvalidArgumentException('Supplier tidak dikenal.');
     }
-
-    uasort($games, static fn(array $a, array $b): int => strcasecmp($a['name'], $b['name']));
-    if ($games === []) {
-        throw new RuntimeException('API supplier tidak mengembalikan daftar game yang valid. Pemetaan lama tidak diubah.');
+    $stmt = $pdo->prepare("SELECT DISTINCT provider_game_code
+        FROM provider_products
+        WHERE provider_id = :provider_id
+          AND provider_game_code IS NOT NULL
+          AND provider_game_code <> ''
+        ORDER BY provider_game_code");
+    $stmt->execute(['provider_id' => $providerId]);
+    $games = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $value) {
+        $code = trim((string) $value);
+        if ($code === '' || strlen($code) > 190) continue;
+        $lower = strtolower($code);
+        if (str_contains($lower, 'joki') || str_contains($lower, 'vilog')) continue;
+        $games[] = ['code' => $code, 'name' => $code];
     }
-    return array_values($games);
+    if ($games === []) {
+        throw new RuntimeException('Belum ada katalog supplier tersimpan. Buka Pengaturan API dan jalankan Sinkronkan katalog untuk supplier ini terlebih dahulu.');
+    }
+    return $games;
 }
 
 /** Find or create one canonical web game so same-named supplier games share one storefront entry. */
@@ -124,8 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $provider = $providerById[$selectedProviderId];
         try {
-            // Fetch fresh data on both load and save. A provider/API failure never deactivates stored mappings.
-            $apiGames = mapping_fetch_provider_games((string) $provider['code']);
+            // Read the local cache only. Game List must not trigger supplier API requests.
+            $apiGames = mapping_fetch_provider_games($pdo, $selectedProviderId, (string) $provider['code']);
             $apiWasLoaded = true;
             $knownCodes = array_fill_keys(array_column($apiGames, 'code'), true);
 
@@ -133,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("SELECT provider_game_code FROM game_provider_mappings WHERE provider_id=:provider_id AND status='ACTIVE'");
                 $stmt->execute(['provider_id' => $selectedProviderId]);
                 $checkedCodes = array_fill_keys(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN)), true);
-                $notice = 'Daftar game berhasil diambil dari ' . $provider['name'] . '. Centang game yang ingin ditampilkan, lalu simpan.';
+                $notice = 'Daftar game dari katalog tersimpan berhasil dimuat untuk ' . $provider['name'] . '. Tidak ada permintaan API supplier yang dilakukan.';
             } elseif (isset($_POST['save_selection'])) {
                 $submittedCodes = $_POST['game_codes'] ?? [];
                 if (!is_array($submittedCodes)) $submittedCodes = [];
@@ -167,12 +157,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'code' => $game['code'],
                             'name' => $game['name'],
                         ]);
+                        catalog_sync_materialize_provider_game($pdo, $selectedProviderId, $code, $gameId);
                     }
 
                     // Storefront visibility is derived from whether any supplier has selected the canonical game.
                     $pdo->exec("UPDATE games g SET g.status=CASE WHEN EXISTS (
                         SELECT 1 FROM game_provider_mappings m WHERE m.game_id=g.id AND m.status='ACTIVE'
                     ) THEN 'ACTIVE' ELSE 'INACTIVE' END");
+
+                    // Products from games deselected for this supplier must not remain purchasable.
+                    $deactivateUnmappedProducts = $pdo->prepare("UPDATE products p SET p.status='OUT_OF_STOCK'
+                        WHERE p.provider_id=:provider_id AND NOT EXISTS (
+                            SELECT 1 FROM game_provider_mappings m
+                            WHERE m.provider_id=p.provider_id
+                              AND m.provider_game_code=p.provider_product_code
+                              AND m.status='ACTIVE'
+                        )");
+                    // Product SKU differs from provider game code, so use the provider product cache
+                    // to determine which product SKUs belong to mappings that are no longer active.
+                    $deactivateUnmappedProducts = $pdo->prepare("UPDATE products p
+                        JOIN provider_products pp ON pp.provider_id=p.provider_id
+                            AND pp.provider_product_code=p.provider_product_code
+                        LEFT JOIN game_provider_mappings m ON m.provider_id=pp.provider_id
+                            AND m.provider_game_code=pp.provider_game_code AND m.status='ACTIVE'
+                        SET p.status='OUT_OF_STOCK'
+                        WHERE p.provider_id=:provider_id AND m.id IS NULL");
+                    $deactivateUnmappedProducts->execute(['provider_id' => $selectedProviderId]);
 
                     $audit = $pdo->prepare("INSERT INTO audit_logs
                         (actor_type,actor_id,action,entity_type,entity_id,details,ip_address)
@@ -196,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
         } catch (Throwable $e) {
-            $error = 'Tidak dapat mengambil atau menyimpan daftar game dari supplier. Periksa pengaturan API dan log server. Daftar tersimpan tidak diubah jika proses penarikan API gagal.';
+            $error = 'Tidak dapat memuat atau menyimpan daftar game dari katalog tersimpan. Jika katalog belum pernah disinkronkan, buka Pengaturan API dan sinkronkan supplier terlebih dahulu. Daftar pemetaan lama tidak diubah jika proses gagal.';
             if ($apiWasLoaded && isset($_POST['load_games'])) {
                 $apiGames = [];
                 $apiWasLoaded = false;
@@ -206,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (($_GET['saved'] ?? '') === '1') {
-    $notice = 'Pilihan game berhasil disimpan. Untuk melihat kembali centang yang tersimpan, tarik ulang daftar dari supplier ini.';
+    $notice = 'Pilihan game berhasil disimpan dan produk yang tersedia di cache telah diselaraskan. Untuk melihat centang, muat kembali daftar game tersimpan.'
 }
 if ($selectedProviderId > 0 && $apiWasLoaded) {
     $stmt = $pdo->prepare("SELECT provider_game_code FROM game_provider_mappings WHERE provider_id=:provider_id AND status='ACTIVE'");
@@ -233,8 +243,8 @@ $csrf = admin_csrf_token();
 <?php if ($error !== ''): ?><div class="error"><?=mapping_escape($error)?></div><?php endif; ?>
 <?php if ($notice !== ''): ?><div class="notice"><?=mapping_escape($notice)?></div><?php endif; ?>
 <section class="panel">
-<h2>1. Pilih supplier dan tarik game</h2>
-<p class="muted">Daftar ditarik langsung dari API supplier yang dipilih. Pilihan tersimpan untuk supplier lain tidak dihapus saat Anda berpindah supplier. Kegagalan API tidak akan mengubah pemetaan tersimpan.</p>
+<h2>1. Pilih supplier dan muat game tersimpan</h2>
+<p class="muted">Daftar dibaca dari katalog yang terakhir disinkronkan melalui Pengaturan API. Halaman ini tidak memanggil API supplier. Jika katalog belum tersedia, sinkronkan supplier terlebih dahulu di Pengaturan API.</p>
 <?php if (!$canManage): ?><p class="muted">Peran akun Anda hanya dapat melihat panel transaksi. Minta ADMIN atau SUPER_ADMIN mengelola daftar game.</p><?php else: ?>
 <form method="post">
 <input type="hidden" name="csrf" value="<?=mapping_escape($csrf)?>">
@@ -243,14 +253,14 @@ $csrf = admin_csrf_token();
 <option value="">Pilih supplier</option>
 <?php foreach ($providers as $provider): ?><option value="<?=(int)$provider['id']?>" <?=$selectedProviderId === (int)$provider['id'] ? 'selected' : ''?>><?=mapping_escape($provider['name'])?></option><?php endforeach; ?>
 </select>
-<div class="actions"><button type="submit" name="load_games" value="1">Tarik daftar game dari API</button></div>
+<div class="actions"><button type="submit" name="load_games" value="1">Muat daftar game tersimpan</button></div>
 </form>
 <?php endif; ?>
 </section>
 <?php if ($apiWasLoaded): ?>
 <section class="panel">
 <h2>2. Pilih game yang ditampilkan di web</h2>
-<p class="muted"><?=count($apiGames)?> nama game diterima dari API. Hanya nama game ditampilkan di sini; kode supplier digunakan secara internal untuk mencocokkan katalog dan pesanan.</p>
+<p class="muted"><?=count($apiGames)?> nama game dibaca dari database katalog. Hanya nama game ditampilkan di sini; kode supplier digunakan secara internal untuk mencocokkan katalog dan pesanan.</p>
 <?php if (!$canManage): ?><p class="muted">Akun ini tidak dapat menyimpan perubahan.</p><?php else: ?>
 <form method="post">
 <input type="hidden" name="csrf" value="<?=mapping_escape($csrf)?>">
