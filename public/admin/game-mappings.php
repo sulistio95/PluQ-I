@@ -166,13 +166,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ) THEN 'ACTIVE' ELSE 'INACTIVE' END");
 
                     // Products from games deselected for this supplier must not remain purchasable.
-                    $deactivateUnmappedProducts = $pdo->prepare("UPDATE products p SET p.status='OUT_OF_STOCK'
-                        WHERE p.provider_id=:provider_id AND NOT EXISTS (
-                            SELECT 1 FROM game_provider_mappings m
-                            WHERE m.provider_id=p.provider_id
-                              AND m.provider_game_code=p.provider_product_code
-                              AND m.status='ACTIVE'
-                        )");
                     // Product SKU differs from provider game code, so use the provider product cache
                     // to determine which product SKUs belong to mappings that are no longer active.
                     $deactivateUnmappedProducts = $pdo->prepare("UPDATE products p
