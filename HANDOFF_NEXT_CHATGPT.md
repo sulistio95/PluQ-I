@@ -1,3 +1,11 @@
+## Update — 2026-10-22: Jumlah kolom katalog ponsel bisa diatur
+
+- Panel **Pengaturan Template → Tata letak katalog game** kini memiliki pilihan jumlah game per baris untuk ponsel: 2, 3, atau 4 kolom; default 3.
+- Desktop tetap dapat diatur 3–6 kolom; tablet tetap 3 kolom. Ukuran icon tetap punya pengaturan tersendiri.
+- Nilai ponsel disimpan pada `app_settings.catalog_grid_columns_mobile`; tidak membutuhkan migrasi karena memakai tabel pengaturan yang sudah ada.
+- Frontend membaca nilai tersebut dan menerapkannya hanya pada layar hingga 560 px.
+- Perubahan sudah ditulis ke branch `feature/admin-left-sidebar`; setelah `git pull`, jalankan lint PHP untuk `public/index.php` dan `public/admin/template-settings.php`, serta `git diff --check`. Verifikasi visual di browser lokal. Belum diuji di ponsel atau hosting.
+
 ## Update — 2026-10-22: Ikon game dari admin disimpan ke GitHub
 
 - `public/admin/template-settings.php` kini mengirim setiap icon game baru ke GitHub Contents API setelah file lolos validasi upload lokal, sebelum URL icon diperbarui di database.
