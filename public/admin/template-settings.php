@@ -615,6 +615,7 @@ if (($_GET['deactivated'] ?? '') === '1') $notice = 'Banner dinonaktifkan dan ti
 if (($_GET['deleted'] ?? '') === '1') $notice = (($_GET['file_cleanup'] ?? '') === 'failed') ? 'Banner dihapus dari database, tetapi file gambar lokal gagal dihapus. Periksa folder public/uploads/banners.' : 'Banner dihapus. Jika menggunakan gambar lokal, file gambarnya juga dihapus.';
 if (($_GET['brand_logo_saved'] ?? '') === '1') $notice = 'Logo header berhasil disimpan ke GitHub dan diterapkan pada halaman depan.';
 if (($_GET['brand_logo_deleted'] ?? '') === '1') $notice = 'Logo header dihapus. Tulisan PluQ-i ditampilkan kembali.';
+if (($_GET['old_logo_cleanup'] ?? '') === 'failed') $notice = 'Logo baru berhasil diterapkan, tetapi file logo lama gagal dibersihkan dari GitHub. Periksa log PHP server dan konfigurasi token/branch GitHub.';
 if (($_GET['icon_saved'] ?? '') === '1') $notice = 'Icon game berhasil disimpan ke GitHub dan ditampilkan pada katalog.';
 if (($_GET['icon_deleted'] ?? '') === '1') $notice = (($_GET['file_cleanup'] ?? '') === 'failed') ? 'Icon dihapus dari katalog, tetapi file lokal gagal dihapus. Periksa folder public/uploads/game-icons.' : 'Icon game dihapus. Game tetap tampil di katalog tanpa icon khusus.';
 if (($_GET['layout_saved'] ?? '') === '1') $notice = 'Tata letak katalog berhasil disimpan.';
