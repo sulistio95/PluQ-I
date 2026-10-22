@@ -143,7 +143,8 @@ function game_icon_commit_to_github(string $localPath, string $publicUrl): void
         throw new RuntimeException('Sinkronisasi GitHub belum dikonfigurasi. Atur GITHUB_UPLOAD_TOKEN, GITHUB_UPLOAD_REPOSITORY, dan GITHUB_UPLOAD_BRANCH pada konfigurasi privat server.');
     }
     if (!preg_match('~^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$~D', $repository)
-        || str_contains($branch, '..') || preg_match('~[\\x00-\\x20~^:?*\\[\\\\]\\\\]~', $branch)) {
+        || $branch === '' || str_contains($branch, '..')
+        || !preg_match('~^[A-Za-z0-9._/-]+$~D', $branch)) {
         throw new RuntimeException('Konfigurasi repositori atau branch GitHub tidak valid.');
     }
     $path = parse_url($publicUrl, PHP_URL_PATH);
@@ -385,6 +386,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             throw new InvalidArgumentException('Aksi tidak dikenal.');
         } catch (InvalidArgumentException $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            $error = $e->getMessage();
+        } catch (RuntimeException $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             $error = $e->getMessage();
         } catch (Throwable $e) {
