@@ -208,6 +208,9 @@ function sync_digiflazz_catalog(PDO $pdo): array
         if ($validResponseItems === 0) {
             throw new RuntimeException('Digiflazz catalog had no valid product records; refresh was rolled back.');
         }
+        if ($seen === 0) {
+            throw new RuntimeException('Digiflazz catalog contained no eligible services; refresh was rolled back.');
+        }
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
@@ -274,6 +277,9 @@ function sync_vipayment_catalog(PDO $pdo): array
         }
         if ($validResponseItems === 0) {
             throw new RuntimeException('VIPayment catalog had no valid service records; refresh was rolled back.');
+        }
+        if ($seen === 0) {
+            throw new RuntimeException('VIPayment catalog contained no eligible services; refresh was rolled back.');
         }
         $pdo->commit();
     } catch (Throwable $e) {
