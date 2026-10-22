@@ -122,6 +122,41 @@ function catalog_sync_upsert_store_product(
     ]);
 }
 
+/**
+ * Build/update storefront products from the last successfully synchronized supplier cache.
+ * This keeps Game List mapping changes from requiring another supplier API request.
+ */
+function catalog_sync_materialize_provider_game(PDO $pdo, int $providerId, string $providerGameCode, int $gameId): int
+{
+    $stmt = $pdo->prepare("SELECT provider_product_code, product_name, base_price, is_available, raw_data
+        FROM provider_products
+        WHERE provider_id = :provider_id AND provider_game_code = :game_code
+        ORDER BY id");
+    $stmt->execute(['provider_id' => $providerId, 'game_code' => $providerGameCode]);
+    $count = 0;
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $raw = [];
+        if (is_string($row['raw_data'] ?? null) && $row['raw_data'] !== '') {
+            $decoded = json_decode($row['raw_data'], true);
+            if (is_array($decoded)) {
+                $raw = $decoded;
+            }
+        }
+        catalog_sync_upsert_store_product(
+            $pdo,
+            $providerId,
+            $gameId,
+            (string) $row['provider_product_code'],
+            (string) $row['product_name'],
+            catalog_sync_price($row['base_price']),
+            (bool) $row['is_available'],
+            $raw
+        );
+        $count++;
+    }
+    return $count;
+}
+
 function sync_digiflazz_catalog(PDO $pdo): array
 {
     $providerStmt = $pdo->prepare("SELECT id, status FROM providers WHERE code = 'DIGI' LIMIT 1");
@@ -172,9 +207,6 @@ function sync_digiflazz_catalog(PDO $pdo): array
         }
         if ($validResponseItems === 0) {
             throw new RuntimeException('Digiflazz catalog had no valid product records; refresh was rolled back.');
-        }
-        if ($mapped === 0) {
-            throw new RuntimeException('No Digiflazz services matched active game mappings; refresh was rolled back to preserve the existing catalog.');
         }
         $pdo->commit();
     } catch (Throwable $e) {
@@ -242,9 +274,6 @@ function sync_vipayment_catalog(PDO $pdo): array
         }
         if ($validResponseItems === 0) {
             throw new RuntimeException('VIPayment catalog had no valid service records; refresh was rolled back.');
-        }
-        if ($mapped === 0) {
-            throw new RuntimeException('No VIPayment services matched active game mappings; refresh was rolled back to preserve the existing catalog.');
         }
         $pdo->commit();
     } catch (Throwable $e) {
