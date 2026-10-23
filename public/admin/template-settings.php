@@ -680,8 +680,6 @@ if (isset($_GET['edit'])) {
 }
 $banners = $pdo->query('SELECT id,title,image_url,target_url,sort_order,status FROM banners ORDER BY sort_order,id DESC')->fetchAll(PDO::FETCH_ASSOC);
 $layoutSettings=['catalog_grid_columns_desktop'=>'5','catalog_grid_columns_mobile'=>'3','catalog_icon_size'=>'100','catalog_icon_size_desktop'=>'','catalog_icon_size_mobile'=>''];
-                header('Location: /admin/template-settings.php?brand_logo_saved=1' . ($oldLogoCleanupFailed ? '&old_logo_cleanup=failed' : ''));
-                header('Location: /admin/template-settings.php?brand_logo_deleted=1' . ($oldLogoCleanupFailed ? '&old_logo_cleanup=failed' : ''));
 if (($_GET['brand_logo_saved'] ?? '') === '1') $notice = 'Logo header berhasil disimpan ke GitHub dan diterapkan pada halaman depan.';
 if (($_GET['brand_logo_deleted'] ?? '') === '1') $notice = 'Logo header dihapus. Tulisan PluQ-i ditampilkan kembali.';
 $layoutQuery=$pdo->prepare("SELECT setting_key,setting_value FROM app_settings WHERE setting_key IN ('catalog_grid_columns_desktop','catalog_grid_columns_mobile','catalog_icon_size','catalog_icon_size_desktop','catalog_icon_size_mobile')");
