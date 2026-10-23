@@ -1418,3 +1418,20 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Pada branch `fix/username-status-without-label`, `public/index.php` menghapus label `Username` tetapi mempertahankan `#username-check` dan `#username-result`. `public/assets/catalog.js` menampilkan pesan generik `Pengecekan username gagal` untuk kegagalan lookup yang dicoba.
 - Untuk Free Fire/HOK yang lookup-nya dinonaktifkan karena kode/dukungan belum dikonfirmasi, area status tetap kosong; User ID dan form tetap tampil.
 - Lint PHP/JS dan uji browser belum dilakukan. Jangan aktifkan pembayaran, pesanan supplier, atau backup Drive.
+
+
+## Update — 2026-10-23: Filter Harga Modal Supplier
+
+- Branch: `feature/filter-supplier-prices-to-active-games`.
+- Mengubah `public/admin/supplier-prices.php` agar daftar hanya mengambil produk dengan pemetaan supplier berstatus `ACTIVE` dan game berstatus `ACTIVE`. Produk katalog yang belum dipetakan tetap tersimpan di katalog supplier, tetapi tidak ditampilkan pada halaman perbandingan harga.
+- Dropdown Game sekarang hanya memuat game berstatus `ACTIVE` yang memiliki setidaknya satu pemetaan supplier aktif.
+- Filter game tertentu juga memastikan game masih aktif. Pencarian nama/kode, urutan harga modal, harga modal, harga jual/keuntungan, ketersediaan, dan waktu sinkronisasi dipertahankan.
+- Perubahan kode tersimpan di commit `2ec17236141872d4cab710ab0cedfddcdad62a1b`. Belum menjalankan PHP lint, tes database, atau tes browser; lakukan verifikasi lokal sebelum merge. Tidak ada data katalog yang dihapus dan sinkronisasi supplier tidak diubah.
+
+## Update — 2026-10-23: Tes regresi filter Harga Modal Supplier
+
+- Menambahkan `tests/supplier-prices-filtering.php`, pemeriksaan regresi tingkat sumber untuk memastikan halaman hanya menampilkan produk dengan pemetaan supplier aktif dan game aktif; dropdown dan filter game juga dibatasi pada game aktif.
+- Pemeriksaan memastikan kolom harga modal, harga jual, keuntungan, ketersediaan, dan waktu sinkronisasi tetap ada, serta halaman tetap bersifat baca-saja.
+- Workflow `.github/workflows/php-quality.yml` kini menjalankan tes tersebut.
+- Tes ini tidak memakai database atau `.env` dan tidak mengubah katalog supplier. Karena sifatnya pemeriksaan sumber, tes ini bukan pengganti tes integrasi SQL dengan database MySQL sementara atau uji browser.
+- Perubahan berada di branch `feature/filter-supplier-prices-to-active-games`. Status lint dan GitHub Actions setelah perubahan ini masih harus diverifikasi; jangan merge ke `main` sebelum hasil workflow terbaru diperiksa.
