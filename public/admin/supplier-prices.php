@@ -19,7 +19,7 @@ $error = ''; $rows = []; $providers = []; $games = []; $total = 0;
 function supplier_prices_money(mixed $value): string { return 'Rp '.number_format((float)$value,0,',','.'); }
 try {
  $providers=$pdo->query('SELECT id,code,name FROM providers ORDER BY name')->fetchAll(PDO::FETCH_ASSOC);
- $games=$pdo->query('SELECT id,name FROM games ORDER BY name')->fetchAll(PDO::FETCH_ASSOC);
+ $games=$pdo->query("SELECT g.id,g.name FROM games g WHERE g.status='ACTIVE' AND EXISTS (SELECT 1 FROM game_provider_mappings gm WHERE gm.game_id=g.id AND gm.status='ACTIVE') ORDER BY g.name")->fetchAll(PDO::FETCH_ASSOC);
  $where=[]; $params=[]; $codes=array_column($providers,'code');
  if ($filters['provider']!=='') {
   if (!in_array($filters['provider'],$codes,true)) { $filters['provider']=''; $error='Filter supplier tidak valid.'; }
@@ -28,7 +28,7 @@ try {
  if ($filters['game_id']!=='') {
   $gid=filter_var($filters['game_id'],FILTER_VALIDATE_INT);
   if ($gid===false || $gid<1) { $filters['game_id']=''; $error='Filter game tidak valid.'; }
-  else { $where[]='gm.game_id=:game_id'; $params['game_id']=$gid; }
+  else { $where[]="gm.game_id=:game_id AND g.status='ACTIVE'"; $params['game_id']=$gid; }
  }
  if ($filters['q']!=='') {
   $where[]='(pp.product_name LIKE :q1 OR pp.provider_product_code LIKE :q2 OR pp.provider_game_code LIKE :q3)';
@@ -36,8 +36,8 @@ try {
  }
  $whereSql=$where?' WHERE '.implode(' AND ',$where):'';
  $from=" FROM provider_products pp JOIN providers pr ON pr.id=pp.provider_id
- LEFT JOIN game_provider_mappings gm ON gm.provider_id=pp.provider_id AND gm.provider_game_code=pp.provider_game_code AND gm.status='ACTIVE'
- LEFT JOIN games g ON g.id=gm.game_id
+ JOIN game_provider_mappings gm ON gm.provider_id=pp.provider_id AND gm.provider_game_code=pp.provider_game_code AND gm.status='ACTIVE'
+ JOIN games g ON g.id=gm.game_id AND g.status='ACTIVE'
  LEFT JOIN products p ON p.provider_id=pp.provider_id AND p.provider_product_code=pp.provider_product_code";
  $stmt=$pdo->prepare('SELECT COUNT(*)'.$from.$whereSql); $stmt->execute($params); $total=(int)$stmt->fetchColumn();
  $sql="SELECT pp.product_name,pp.provider_product_code,pp.provider_game_code,pp.base_price,pp.is_available,pp.synced_at,
@@ -55,7 +55,7 @@ try {
 </style></head><body><main>
 <header class="bar"><div><h1>Harga Modal Supplier</h1><div class="muted">Bandingkan harga asli supplier dengan harga jual setelah keuntungan.</div></div><a href="/admin/">Kembali ke panel admin</a></header>
 <?php if($error!==''): ?><div class="error"><?=admin_escape($error)?></div><?php endif; ?>
-<section class="panel"><p class="muted">Harga modal adalah harga dari sinkronisasi katalog terakhir. Harga jual dihitung dengan aturan keuntungan aktif. Produk yang belum dipetakan tetap dapat dilihat. Halaman ini hanya-baca: tidak mengubah harga dan tidak membuat pesanan.</p>
+<section class="panel"><p class="muted">Harga modal adalah harga dari sinkronisasi katalog terakhir. Harga jual dihitung dengan aturan keuntungan aktif. Hanya produk dari game dengan pemetaan supplier aktif yang ditampilkan. Halaman ini hanya-baca: tidak mengubah harga dan tidak membuat pesanan.</p>
 <form method="get" class="filters"><label>Supplier<select name="provider"><option value="">Semua supplier</option><?php foreach($providers as $p): ?><option value="<?=admin_escape($p['code'])?>" <?=$filters['provider']===$p['code']?'selected':''?>><?=admin_escape($p['name'])?> (<?=admin_escape($p['code'])?>)</option><?php endforeach; ?></select></label>
 <label>Game<select name="game_id"><option value="">Semua game</option><?php foreach($games as $g): ?><option value="<?=admin_escape($g['id'])?>" <?=$filters['game_id']===(string)$g['id']?'selected':''?>><?=admin_escape($g['name'])?></option><?php endforeach; ?></select></label>
 <label>Cari nama/kode<input type="search" name="q" maxlength="150" value="<?=admin_escape($filters['q'])?>" placeholder="Nama produk atau kode supplier"></label>
