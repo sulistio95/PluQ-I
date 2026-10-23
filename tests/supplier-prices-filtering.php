@@ -46,7 +46,7 @@ $checks = [
     'supplier price query uses dynamic pagination instead of fixed 200 rows' =>
         str_contains($source, 'LIMIT " . $perPage . " OFFSET " . $offset') && !str_contains($source, 'LIMIT 200'),
     'pagination links preserve active filters and sort order' =>
-        str_contains($source, '$queryBase=$filters') && str_contains($source, '$queryBase[\\'sort\\']=$sort'),
+        str_contains($source, '$queryBase=$filters') && str_contains($source, "\$queryBase['sort']=\$sort"),
     'homepage loads games and banners independently' =>
         str_contains($jsSource, 'Promise.allSettled([getJson(\'/api/games\'), getJson(\'/api/banners\')])'),
 ];
