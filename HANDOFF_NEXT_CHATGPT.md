@@ -1418,3 +1418,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Pada branch `fix/username-status-without-label`, `public/index.php` menghapus label `Username` tetapi mempertahankan `#username-check` dan `#username-result`. `public/assets/catalog.js` menampilkan pesan generik `Pengecekan username gagal` untuk kegagalan lookup yang dicoba.
 - Untuk Free Fire/HOK yang lookup-nya dinonaktifkan karena kode/dukungan belum dikonfirmasi, area status tetap kosong; User ID dan form tetap tampil.
 - Lint PHP/JS dan uji browser belum dilakukan. Jangan aktifkan pembayaran, pesanan supplier, atau backup Drive.
+
+
+## Update — 2026-10-23: Filter Harga Modal Supplier
+
+- Branch: `feature/filter-supplier-prices-to-active-games`.
+- Mengubah `public/admin/supplier-prices.php` agar daftar hanya mengambil produk dengan pemetaan supplier berstatus `ACTIVE` dan game berstatus `ACTIVE`. Produk katalog yang belum dipetakan tetap tersimpan di katalog supplier, tetapi tidak ditampilkan pada halaman perbandingan harga.
+- Dropdown Game sekarang hanya memuat game berstatus `ACTIVE` yang memiliki setidaknya satu pemetaan supplier aktif.
+- Filter game tertentu juga memastikan game masih aktif. Pencarian nama/kode, urutan harga modal, harga modal, harga jual/keuntungan, ketersediaan, dan waktu sinkronisasi dipertahankan.
+- Perubahan kode tersimpan di commit `2ec17236141872d4cab710ab0cedfddcdad62a1b`. Belum menjalankan PHP lint, tes database, atau tes browser; lakukan verifikasi lokal sebelum merge. Tidak ada data katalog yang dihapus dan sinkronisasi supplier tidak diubah.
