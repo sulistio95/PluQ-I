@@ -1880,3 +1880,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Pembersihan hanya menyentuh nama file 32 karakter heksadesimal dengan ekstensi JPG/PNG/WebP di folder brand logo; tidak menyentuh game icons atau file lain. Jika GitHub gagal memberi daftar file atau menghapus salah satu file, proses menampilkan peringatan pada panel dan mencatat pesan di PHP error log.
 - Commit kode: `74afa7028242f730faeb5a32fa217a8b6a0797f1`; validasi respons daftar GitHub: `5777d7a8f766853fca0cc8ad08e2e8da1d011404`, branch `feature/admin-left-sidebar`.
 - Belum ada pengujian runtime dengan token GitHub dari server. Setelah sinkronisasi lokal, cukup uji melalui panel: ganti logo dan pastikan hanya logo baru tersisa di folder GitHub; kemudian hapus logo dan pastikan folder tidak lagi memiliki file logo hasil unggahan. Jika muncul peringatan, cek variabel privat `GITHUB_UPLOAD_TOKEN`, `GITHUB_UPLOAD_REPOSITORY`, `GITHUB_UPLOAD_BRANCH` dan izin Contents: Read and write.
+
+
+## Update — 2026-10-23: Ukuran icon katalog desktop dan ponsel terpisah
+
+- Pengaturan Template → Tata letak katalog game memisahkan ukuran icon desktop dan ponsel, masing-masing 64–120 px dengan kenaikan 4 px. Pengaturan jumlah kolom desktop (3–6) dan ponsel (2–4) tetap ada.
+- `app_settings` menyimpan `catalog_icon_size_desktop` dan `catalog_icon_size_mobile`; nilai lama `catalog_icon_size` tetap diperbarui ke ukuran desktop agar kompatibel dengan build lama. Tidak perlu migration.
+- `public/index.php` meneruskan dua CSS variables dan `public/assets/catalog.css` menerapkan ukuran ponsel pada lebar maksimal 560 px. Tablet 561–900 px tetap 3 kolom dan memakai ukuran desktop.
+- File diubah: `public/admin/template-settings.php`, `public/index.php`, `public/assets/catalog.css`, dan catatan ini. Belum menjalankan PHP lint, preflight, tes database, atau uji visual browser. Setelah pull, uji simpan/pemuatan ulang pengaturan dan pastikan ikon desktop/ponsel berubah secara independen. Belum merge ke `main`.
