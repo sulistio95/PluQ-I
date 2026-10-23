@@ -1451,3 +1451,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Memperbaiki inisialisasi frontend agar `/api/games` dan `/api/banners` dimuat secara independen memakai `Promise.allSettled`. Kegagalan endpoint banner tidak lagi membatalkan render daftar game/icon, dan sebaliknya.
 - Perubahan berada pada `public/admin/supplier-prices.php` dan `public/assets/catalog.js`. Wajib menjalankan lint PHP, tes regresi, syntax JavaScript, dan uji browser. Jika URL endpoint atau file gambar sendiri gagal, penyebab backend/berkasnya masih perlu diperiksa melalui Network/console.
 - Branch kerja: `feature/supplier-price-pagination-fix-catalog-assets`. Jangan gabungkan sebelum pemeriksaan lokal dan GitHub Actions selesai.
+
+
+## Pengaturan grid dan ukuran icon katalog (PR #13)
+- Panel admin `Tata letak katalog game` memungkinkan pengaturan kolom desktop 3–6, kolom ponsel 2–4, dan ukuran icon desktop/ponsel 64–120 px.
+- Nilai disimpan di `app_settings` menggunakan transaksi dan audit log; `catalog_icon_size` tetap disinkronkan untuk kompatibilitas.
+- Homepage membaca konfigurasi database dan memakai default bila belum tersedia. Tablet 561–900 px tetap menggunakan 3 kolom.
+- CSS katalog memakai variabel konfigurasi untuk grid dan ukuran bingkai icon.
+- Perubahan sudah dikirim ke branch PR #13, tetapi lint PHP, tes lokal, dan GitHub Actions pada commit terbaru masih harus diperiksa sebelum merge.
