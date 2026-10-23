@@ -15,6 +15,13 @@ if (!is_string($source)) {
     exit(1);
 }
 
+$jsPath = dirname(__DIR__) . '/public/assets/catalog.js';
+$jsSource = file_get_contents($jsPath);
+if (!is_string($jsSource)) {
+    fwrite(STDERR, "Unable to read catalog.js\\n");
+    exit(1);
+}
+
 $checks = [
     'product rows require an active supplier mapping' =>
         preg_match('/JOIN\s+game_provider_mappings\s+gm\s+ON\s+gm\.provider_id\s*=\s*pp\.provider_id\s+AND\s+gm\.provider_game_code\s*=\s*pp\.provider_game_code\s+AND\s+gm\.status\s*=\s*\'ACTIVE\'/i', $source) === 1,
@@ -34,6 +41,14 @@ $checks = [
         str_contains($source, 'supplier_prices_money($sell-$base)'),
     'catalog remains read-only and no fulfillment is triggered' =>
         str_contains($source, 'tidak mengubah harga dan tidak membuat pesanan'),
+    'supplier price page size is selectable and bounded' =>
+        str_contains($source, "in_array($perPage, [25, 50, 100, 200], true)"),
+    'supplier price query uses dynamic pagination instead of fixed 200 rows' =>
+        str_contains($source, 'LIMIT " . $perPage . " OFFSET " . $offset') && !str_contains($source, 'LIMIT 200'),
+    'pagination links preserve active filters and sort order' =>
+        str_contains($source, "$queryBase=$filters") && str_contains($source, "$queryBase['sort']=$sort"),
+    'homepage loads games and banners independently' =>
+        str_contains($jsSource, 'Promise.allSettled([getJson(\'/api/games\'), getJson(\'/api/banners\')])'),
 ];
 
 $failed = [];
