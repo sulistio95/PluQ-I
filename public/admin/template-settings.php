@@ -645,21 +645,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($action === 'save_catalog_layout') {
                 $columns = filter_var($_POST['grid_columns'] ?? null, FILTER_VALIDATE_INT);
                 $mobileColumns = filter_var($_POST['mobile_grid_columns'] ?? null, FILTER_VALIDATE_INT);
-                $iconSize = filter_var($_POST['icon_size'] ?? null, FILTER_VALIDATE_INT);
+                $desktopIconSize = filter_var($_POST['desktop_icon_size'] ?? null, FILTER_VALIDATE_INT);
+                $mobileIconSize = filter_var($_POST['mobile_icon_size'] ?? null, FILTER_VALIDATE_INT);
+                $validIconSizes = [64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120];
                 if (!in_array($columns, [3, 4, 5, 6], true)
                     || !in_array($mobileColumns, [2, 3, 4], true)
-                    || !in_array($iconSize, [80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120], true)) {
-                    throw new InvalidArgumentException('Pilih jumlah kolom desktop 3–6, kolom ponsel 2–4, dan ukuran icon 80–120 piksel.');
+                    || !in_array($desktopIconSize, $validIconSizes, true)
+                    || !in_array($mobileIconSize, $validIconSizes, true)) {
+                    throw new InvalidArgumentException('Pilih jumlah kolom desktop 3–6, kolom ponsel 2–4, dan ukuran icon desktop/ponsel 64–120 piksel.');
                 }
                 $pdo->beginTransaction();
                 $saveSetting = $pdo->prepare("INSERT INTO app_settings (setting_key,setting_value,updated_by) VALUES (:setting_key,:setting_value,:admin) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),updated_by=VALUES(updated_by)");
                 $saveSetting->execute(['setting_key'=>'catalog_grid_columns_desktop','setting_value'=>(string)$columns,'admin'=>$user['id']]);
                 $saveSetting->execute(['setting_key'=>'catalog_grid_columns_mobile','setting_value'=>(string)$mobileColumns,'admin'=>$user['id']]);
-                $saveSetting->execute(['setting_key'=>'catalog_icon_size','setting_value'=>(string)$iconSize,'admin'=>$user['id']]);
+                $saveSetting->execute(['setting_key'=>'catalog_icon_size_desktop','setting_value'=>(string)$desktopIconSize,'admin'=>$user['id']]);
+                $saveSetting->execute(['setting_key'=>'catalog_icon_size_mobile','setting_value'=>(string)$mobileIconSize,'admin'=>$user['id']]);
+                $saveSetting->execute(['setting_key'=>'catalog_icon_size','setting_value'=>(string)$desktopIconSize,'admin'=>$user['id']]);
                 $audit = $pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,details,ip_address) VALUES ('ADMIN',:actor,'CATALOG_LAYOUT_UPDATED','APP_SETTING','catalog_layout',:details,:ip)");
                 $audit->execute([
                     'actor'=>$user['id'],
-                    'details'=>json_encode(['desktop_columns'=>$columns,'mobile_columns'=>$mobileColumns,'icon_size_px'=>$iconSize], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
+                    'details'=>json_encode(['desktop_columns'=>$columns,'mobile_columns'=>$mobileColumns,'desktop_icon_size_px'=>$desktopIconSize,'mobile_icon_size_px'=>$mobileIconSize], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
                     'ip'=>substr((string)($_SERVER['REMOTE_ADDR'] ?? ''),0,45),
                 ]);
                 $pdo->commit();
@@ -703,15 +708,18 @@ $brandLogoStmt = $pdo->prepare("SELECT setting_value FROM app_settings WHERE set
 $brandLogoStmt->execute();
 $brandLogoUrl = trim((string) ($brandLogoStmt->fetchColumn() ?: ''));
 
-$layoutSettings = ['catalog_grid_columns_desktop' => '5', 'catalog_grid_columns_mobile' => '3', 'catalog_icon_size' => '100'];
-$layoutQuery = $pdo->prepare("SELECT setting_key,setting_value FROM app_settings WHERE setting_key IN ('catalog_grid_columns_desktop','catalog_grid_columns_mobile','catalog_icon_size')");
+$layoutSettings = ['catalog_grid_columns_desktop'=>'5','catalog_grid_columns_mobile'=>'3','catalog_icon_size'=>'100','catalog_icon_size_desktop'=>'','catalog_icon_size_mobile'=>''];
+$layoutQuery = $pdo->prepare("SELECT setting_key,setting_value FROM app_settings WHERE setting_key IN ('catalog_grid_columns_desktop','catalog_grid_columns_mobile','catalog_icon_size','catalog_icon_size_desktop','catalog_icon_size_mobile')");
 $layoutQuery->execute();
 foreach ($layoutQuery->fetchAll(PDO::FETCH_ASSOC) as $layoutRow) {
     if (isset($layoutSettings[$layoutRow['setting_key']])) $layoutSettings[$layoutRow['setting_key']] = (string)$layoutRow['setting_value'];
 }
 $gridColumns = in_array((int)$layoutSettings['catalog_grid_columns_desktop'], [3,4,5,6], true) ? (int)$layoutSettings['catalog_grid_columns_desktop'] : 5;
 $mobileGridColumns = in_array((int)$layoutSettings['catalog_grid_columns_mobile'], [2,3,4], true) ? (int)$layoutSettings['catalog_grid_columns_mobile'] : 3;
-$iconSize = in_array((int)$layoutSettings['catalog_icon_size'], [80,84,88,92,96,100,104,108,112,116,120], true) ? (int)$layoutSettings['catalog_icon_size'] : 100;
+$validIconSizes = [64,68,72,76,80,84,88,92,96,100,104,108,112,116,120];
+$legacyIconSize = in_array((int)$layoutSettings['catalog_icon_size'], $validIconSizes, true) ? (int)$layoutSettings['catalog_icon_size'] : 100;
+$desktopIconSize = in_array((int)$layoutSettings['catalog_icon_size_desktop'], $validIconSizes, true) ? (int)$layoutSettings['catalog_icon_size_desktop'] : $legacyIconSize;
+$mobileIconSize = in_array((int)$layoutSettings['catalog_icon_size_mobile'], $validIconSizes, true) ? (int)$layoutSettings['catalog_icon_size_mobile'] : $legacyIconSize;
 
 $csrf = admin_csrf_token();
 ?>
@@ -767,7 +775,7 @@ $csrf = admin_csrf_token();
 </article><?php endforeach; ?>
 </div><?php endif; ?></section>
 <section class="panel"><h2>Tata letak katalog game</h2>
-<p class="muted">Atur jumlah kolom desktop dan ponsel serta ukuran bingkai icon. Perubahan tersimpan di database dan langsung dipakai halaman depan. Tablet tetap menggunakan 3 kolom.</p>
+<p class="muted">Atur jumlah kolom dan ukuran icon secara terpisah untuk desktop dan ponsel. Tablet (561–900 px) tetap menggunakan 3 kolom dan ukuran icon desktop.</p>
 <?php if ($canManage): ?>
 <form method="post"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="save_catalog_layout">
 <div class="grid">
@@ -779,10 +787,14 @@ $csrf = admin_csrf_token();
 <select name="mobile_grid_columns">
 <?php foreach ([2,3,4] as $option): ?><option value="<?=$option?>" <?=$mobileGridColumns===$option?'selected':''?>><?=$option?> kolom</option><?php endforeach; ?>
 </select><span class="dimension-hint">Default 3 kolom pada layar hingga 560 px. Pilih 2 jika ingin ikon lebih besar.</span></label>
-<label>Ukuran icon
-<select name="icon_size">
-<?php foreach ([80,84,88,92,96,100,104,108,112,116,120] as $option): ?><option value="<?=$option?>" <?=$iconSize===$option?'selected':''?>><?=$option?> × <?=$option?> px</option><?php endforeach; ?>
-</select><span class="dimension-hint">Default 100 px. Bingkai dan gambar icon ikut menyesuaikan.</span></label>
+<label>Ukuran icon (desktop)
+<select name="desktop_icon_size">
+<?php foreach ([64,68,72,76,80,84,88,92,96,100,104,108,112,116,120] as $option): ?><option value="<?=$option?>" <?=$desktopIconSize===$option?'selected':''?>><?=$option?> × <?=$option?> px</option><?php endforeach; ?>
+</select><span class="dimension-hint">Default 100 px. Berlaku di desktop dan tablet.</span></label>
+<label>Ukuran icon (ponsel)
+<select name="mobile_icon_size">
+<?php foreach ([64,68,72,76,80,84,88,92,96,100,104,108,112,116,120] as $option): ?><option value="<?=$option?>" <?=$mobileIconSize===$option?'selected':''?>><?=$option?> × <?=$option?> px</option><?php endforeach; ?>
+</select><span class="dimension-hint">Berlaku pada layar hingga 560 px.</span></label>
 </div><div class="actions"><button type="submit">Simpan tata letak</button></div>
 </form>
 <?php else: ?><p class="muted">Akun ini hanya dapat melihat pengaturan. ADMIN atau SUPER_ADMIN diperlukan untuk mengubah tata letak.</p><?php endif; ?>
