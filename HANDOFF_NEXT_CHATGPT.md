@@ -1,3 +1,10 @@
+## Update — 2026-10-24: Pemulihan logo homepage pada PR #13
+
+- Homepage membaca `brand_logo_url` dari `app_settings` dan menampilkan gambar logo dengan fallback teks `PluQ-I`.
+- Menu **Template → Logo Header Halaman Depan** memulihkan unggah, pratinjau, ganti, hapus, validasi format, dan sinkronisasi GitHub sesuai implementasi sebelumnya.
+- Pengaturan grid katalog dan ukuran ikon katalog tetap dipertahankan.
+- PR #13 tetap terbuka dan belum digabung. Validasi sintaks PHP, tes, serta GitHub Actions perlu diperiksa setelah commit.
+
 ## Update — 2026-10-23: Pemulihan bingkai ikon pada PR #13
 
 - Pada branch `feature/supplier-price-pagination-fix-catalog-assets`, memperbaiki render kartu game di `public/assets/catalog.js` agar gambar icon dibungkus elemen `.game-icon-frame`; mempertahankan pemuatan game/banner independen berbasis `Promise.allSettled` yang sudah ada di branch ini.
