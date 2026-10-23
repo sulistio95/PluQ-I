@@ -1,3 +1,12 @@
+## Update — 2026-10-23: Integrasi validasi CSRF rating pelanggan
+
+- Menambahkan `order_rating_csrf_valid()` di `app/services/order_rating.php`. Fungsi menolak token kosong, tipe selain string, token sesi yang tidak valid, dan token yang tidak cocok; perbandingan memakai `hash_equals()`.
+- `public/order-status.php` kini menggunakan fungsi tersebut untuk memvalidasi token formulir rating dalam sesi khusus pelanggan.
+- Menambahkan `tests/order-rating-csrf.php` untuk token cocok, token tidak cocok, token kosong/tidak valid, token berbentuk array, dan token sesi yang hilang.
+- Verifikasi lokal terbaru: `php -l` untuk ketiga file terkait lulus; `php tests/order-rating-csrf.php` dan `php tests/order-rating-rules.php` lulus; `git diff --check` lulus.
+- Belum diuji melalui browser atau alur database nyata. Database lokal belum memiliki pesanan yang cocok, sehingga tidak dibuat transaksi palsu. Jangan mengaktifkan pembayaran live, pemesanan supplier, atau backup Google Drive untuk pengujian ini.
+- Perubahan kode dan catatan ini belum di-commit atau di-push pada saat catatan dibuat.
+
 ## Update — 2026-10-23: Rating pelanggan dan dashboard kualitas supplier (awal)
 
 - Fitur dikerjakan pada branch `feature/customer-supplier-rating`, PR draft #11 menuju `feature/admin-left-sidebar`, belum merge ke main.

@@ -1,6 +1,18 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Validate CSRF token against the dedicated customer-rating session token.
+ */
+function order_rating_csrf_valid(mixed $token, mixed $sessionToken): bool
+{
+    return is_string($token)
+        && $token !== ''
+        && is_string($sessionToken)
+        && $sessionToken !== ''
+        && hash_equals($sessionToken, $token);
+}
+
 /** Ratings are allowed only for paid orders with a final customer-visible outcome. */
 function order_rating_is_eligible(string $paymentStatus, string $orderStatus): bool
 {

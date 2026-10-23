@@ -61,8 +61,7 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
 
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $submittedCsrf = $_POST['csrf'] ?? null;
-                if (!is_string($submittedCsrf)
-                    || !hash_equals($_SESSION['order_rating_csrf'], $submittedCsrf)) {
+                if (!order_rating_csrf_valid($submittedCsrf, $_SESSION['order_rating_csrf'])) {
                     $error = 'Sesi formulir tidak valid atau sudah kedaluwarsa. Muat ulang halaman.';
                 } elseif (!$eligible) {
                     $error = 'Rating hanya tersedia setelah pesanan berstatus berhasil atau gagal.';
