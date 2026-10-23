@@ -46,9 +46,6 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
                 } elseif ($alreadyRated) {
                     $error = 'Pesanan ini sudah pernah diberi rating.';
                 } else {
-                    $rating = filter_var($_POST['rating'] ?? null, FILTER_VALIDATE_INT);
-                    $reason = (string)($_POST['reason'] ?? '');
-                    $comment = trim((string)($_POST['comment'] ?? ''));
                     $validated = order_rating_validate_submission($_POST['rating'] ?? null, $_POST['reason'] ?? null, $_POST['comment'] ?? null);
                     if ($validated['error'] !== null) {
                         $error = $validated['error'];
@@ -102,8 +99,7 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
     }
 }
 $esc = static fn(mixed $v): string => htmlspecialchars((string)($v ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-$eligible = $row && (string)$row['payment_status'] === 'PAID'
-    && in_array((string)$row['order_status'], ['SUCCESS','FAILED','REFUNDED'], true);
+$eligible = $row && order_rating_is_eligible((string)$row['payment_status'], (string)$row['order_status']);
 ?><!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Status Pesanan — PluQ-I</title><link rel="stylesheet" href="/assets/catalog.css">
