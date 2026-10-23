@@ -58,3 +58,5 @@ jobs:
         run: php tests/admin-authorization.php
       - name: Test admin login throttle cleanup scope
         run: php tests/admin-login-throttle-clear.php
+      - name: Test customer order rating rules
+        run: php tests/order-rating-rules.php
