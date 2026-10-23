@@ -27,9 +27,9 @@ Panel admin `/admin/supplier-quality.php` menampilkan:
 
 ## Database dan pengujian
 
-- Jalankan migration `database/migrations/013_order_ratings_and_supplier_quality.sql` setelah migration `012_pricing_rules_hybrid.sql`.
+- Jalankan migration `database/migrations/014_order_ratings_and_supplier_quality.sql` setelah migration `012_pricing_rules_hybrid.sql`.
 - CI quality workflow menjalankan `php tests/order-rating-rules.php`.
-- Workflow MySQL mengimpor migration 013 setelah migration 012.
+- Workflow MySQL mengimpor migration `013_game_username_check_protection.sql` lalu migration `014_order_ratings_and_supplier_quality.sql` setelah migration 012.
 - Setelah pull, jalankan:
   ```sh
   php -l app/services/order_rating.php
