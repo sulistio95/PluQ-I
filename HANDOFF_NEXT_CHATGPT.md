@@ -8,11 +8,11 @@
 - Langkah berikutnya: tarik pembaruan branch, periksa tabel `orders`, `providers`, `games`, dan migrasi 012/013; terapkan migrasi 014 hanya di `pluqi_local_test`; verifikasi constraint, insert/duplicate rejection, serta query dashboard. Jangan aktifkan pembayaran live, supplier fulfillment, atau backup Google Drive.
 
 - Pekerjaan awal ada pada branch `feature/customer-supplier-rating`, dibuat dari `feature/admin-left-sidebar`; belum merge ke `main`.
-- Menambahkan migration `013_order_ratings_and_supplier_quality.sql` (nomor 012 dipakai oleh `012_pricing_rules_hybrid.sql`). Tabel rating punya unique key per order, rating 1–5, alasan terstruktur, komentar opsional, dan referensi order/provider/game.
+- Menambahkan migration `014_order_ratings_and_supplier_quality.sql` (nomor 012 dipakai oleh `012_pricing_rules_hybrid.sql`). Tabel rating punya unique key per order, rating 1–5, alasan terstruktur, komentar opsional, dan referensi order/provider/game.
 - Halaman `public/order-status.php` menampilkan rating hanya untuk pesanan berbayar dengan status final SUCCESS/FAILED/REFUNDED; satu rating per order. Validasi bersama di `app/services/order_rating.php`.
 - Panel admin baru `/admin/supplier-quality.php` menampilkan sukses/gagal, persentase sukses, waktu proses rata-rata, rating pelanggan dan jumlah sampel, serta alasan rating.
 - Rating pelanggan tetap terpisah dari metrik kinerja objektif. Belum mengubah pemilihan supplier otomatis dan belum menggunakan rating Digiflazz dari panel.
-- Menambahkan `tests/order-rating-rules.php`; workflow PHP quality menjalankan tes tersebut dan workflow MySQL mengimpor migration 013.
+- Menambahkan `tests/order-rating-rules.php`; workflow PHP quality menjalankan tes tersebut dan workflow MySQL menjalankan migration 013 untuk perlindungan username game, lalu migration 014 untuk rating.
 - Dokumentasi: `docs/customer-rating-and-supplier-quality.md`.
 - **Belum diverifikasi** dengan PHP lint/tes lokal, MySQL nyata, browser, atau CI. Setelah pull jalankan:
   ```sh
@@ -1915,3 +1915,8 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - `app_settings` menyimpan `catalog_icon_size_desktop` dan `catalog_icon_size_mobile`; nilai lama `catalog_icon_size` tetap diperbarui ke ukuran desktop agar kompatibel dengan build lama. Tidak perlu migration.
 - `public/index.php` meneruskan dua CSS variables dan `public/assets/catalog.css` menerapkan ukuran ponsel pada lebar maksimal 560 px. Tablet 561–900 px tetap 3 kolom dan memakai ukuran desktop.
 - File diubah: `public/admin/template-settings.php`, `public/index.php`, `public/assets/catalog.css`, dan catatan ini. Belum menjalankan PHP lint, preflight, tes database, atau uji visual browser. Setelah pull, uji simpan/pemuatan ulang pengaturan dan pastikan ikon desktop/ponsel berubah secara independen. Belum merge ke `main`.
+
+## Update — 2026-10-23: CSRF rating pelanggan dan koreksi migration
+- Perlindungan CSRF rating: halaman status pesanan memakai sesi publik `PLUQI_RATING`, token acak diverifikasi dengan `hash_equals()`, dan token disertakan dalam formulir. Sesi rating terpisah dari sesi admin.
+- Pesan kesalahan migration di `public/order-status.php` dan `public/admin/supplier-quality.php` sudah menunjuk migration 014.
+- Pemeriksaan lokal terakhir: PHP lint kedua halaman lulus, `tests/order-rating-rules.php` lulus, dan `git diff --check` bersih. CSRF belum diuji melalui browser; belum commit atau push perubahan terbaru.

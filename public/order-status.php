@@ -8,6 +8,25 @@ header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
+// Dedicated public session for order-rating CSRF; separate from admin sessions.
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    $https = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+        || (strtolower(trim((string) (getenv('ADMIN_TRUST_PROXY_HTTPS') ?: 'false'))) === 'true'
+            && strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))) === 'https');
+    session_name('PLUQI_RATING');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/order-status.php',
+        'secure' => $https,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+if (empty($_SESSION['order_rating_csrf']) || !is_string($_SESSION['order_rating_csrf'])) {
+    $_SESSION['order_rating_csrf'] = bin2hex(random_bytes(32));
+}
+
 $orderId = trim((string)($_POST['merchantOrderId'] ?? $_GET['merchantOrderId'] ?? ''));
 $message = 'Nomor pesanan tidak valid atau tidak ditemukan.';
 $error = '';
@@ -41,7 +60,11 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
             $alreadyRated = $existingRating !== null;
 
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                if (!$eligible) {
+                $submittedCsrf = $_POST['csrf'] ?? null;
+                if (!is_string($submittedCsrf)
+                    || !hash_equals($_SESSION['order_rating_csrf'], $submittedCsrf)) {
+                    $error = 'Sesi formulir tidak valid atau sudah kedaluwarsa. Muat ulang halaman.';
+                } elseif (!$eligible) {
                     $error = 'Rating hanya tersedia setelah pesanan berstatus berhasil atau gagal.';
                 } elseif ($alreadyRated) {
                     $error = 'Pesanan ini sudah pernah diberi rating.';
@@ -95,7 +118,7 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
             if (isset($_GET['rated']) && $_GET['rated'] === '1') $message .= ' Terima kasih, rating Anda telah disimpan.';
         }
     } catch (Throwable $e) {
-        $error = 'Status pesanan atau rating belum dapat diperiksa. Pastikan migration 013 sudah diterapkan dan periksa log server.';
+        $error = 'Status pesanan atau rating belum dapat diperiksa. Pastikan migration 014 sudah diterapkan dan periksa log server.';
     }
 }
 $esc = static fn(mixed $v): string => htmlspecialchars((string)($v ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -117,6 +140,7 @@ $eligible = $row && order_rating_is_eligible((string)$row['payment_status'], (st
 <p class="rating-muted">Rating hanya dapat dikirim satu kali untuk pesanan ini. Penilaian Anda tidak otomatis menentukan kesalahan supplier.</p>
 <form method="post" action="/order-status.php">
 <input type="hidden" name="merchantOrderId" value="<?= $esc($orderId) ?>">
+<input type="hidden" name="csrf" value="<?= $esc($_SESSION['order_rating_csrf']) ?>">
 <label for="rating">Rating</label><select id="rating" name="rating" required>
 <option value="">Pilih bintang</option><option value="5">5 — Sangat baik</option><option value="4">4 — Baik</option><option value="3">3 — Cukup</option><option value="2">2 — Kurang</option><option value="1">1 — Sangat buruk</option>
 </select>

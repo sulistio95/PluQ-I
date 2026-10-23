@@ -25,7 +25,7 @@ try {
     $reasons = $pdo->query("SELECT r.reason,COUNT(*) AS total,ROUND(AVG(r.rating),2) AS avg_rating
         FROM order_ratings r GROUP BY r.reason ORDER BY total DESC, r.reason")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-    $error = 'Data belum dapat dimuat. Terapkan migration 013_order_ratings_and_supplier_quality.sql, lalu muat ulang halaman.';
+    $error = 'Data belum dapat dimuat. Terapkan migration 014_order_ratings_and_supplier_quality.sql, lalu muat ulang halaman.';
 }
 $esc = static fn(mixed $v): string => htmlspecialchars((string)($v ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 function quality_duration(mixed $seconds): string {
