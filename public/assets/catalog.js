@@ -366,17 +366,23 @@
     scheduleUsernameCheck();
   });
 
-  Promise.all([getJson('/api/games'), getJson('/api/banners')]).then(([gameResult, bannerResult]) => {
-    games = Array.isArray(gameResult.data) ? gameResult.data : [];
-    banners = Array.isArray(bannerResult.data) ? bannerResult.data : [];
-    renderGames();
-    if (banners.length) {
-      setBanner();
-      if (banners.length > 1) bannerTimer = setInterval(setBanner, 3000);
+  // Load games and banners independently; one failed endpoint must not block the other.
+  Promise.allSettled([getJson('/api/games'), getJson('/api/banners')]).then((results) => {
+    const [gameResult, bannerResult] = results;
+    if (gameResult.status === 'fulfilled') {
+      games = Array.isArray(gameResult.value.data) ? gameResult.value.data : [];
+      renderGames();
+    } else {
+      gamesBox.innerHTML = '<div class="notice">Katalog game belum dapat dimuat. Pastikan database dan migrasi sudah dipasang.</div>';
+      $('game-count').textContent = '';
     }
-  }).catch(() => {
-    gamesBox.innerHTML = '<div class="notice">Katalog belum siap. Pastikan database dan migrasi sudah dipasang.</div>';
-    $('game-count').textContent = '';
+    if (bannerResult.status === 'fulfilled') {
+      banners = Array.isArray(bannerResult.value.data) ? bannerResult.value.data : [];
+      if (banners.length) {
+        setBanner();
+        if (banners.length > 1) bannerTimer = setInterval(setBanner, 3000);
+      }
+    }
   });
 
   window.addEventListener('pagehide', () => {
