@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/app/bootstrap.php';
 require_once PLUQI_ROOT . '/config/database.php';
+require_once PLUQI_ROOT . '/app/services/order_rating.php';
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
@@ -33,8 +34,7 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
 
         if ($row) {
             $finalStatus = (string)$row['order_status'];
-            $eligible = (string)$row['payment_status'] === 'PAID'
-                && in_array($finalStatus, ['SUCCESS','FAILED','REFUNDED'], true);
+            $eligible = order_rating_is_eligible((string)$row['payment_status'], $finalStatus);
             $stmt = $pdo->prepare('SELECT rating,reason,comment,created_at FROM order_ratings WHERE order_id=:order_id LIMIT 1');
             $stmt->execute(['order_id'=>$row['id']]);
             $existingRating = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -49,9 +49,13 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
                     $rating = filter_var($_POST['rating'] ?? null, FILTER_VALIDATE_INT);
                     $reason = (string)($_POST['reason'] ?? '');
                     $comment = trim((string)($_POST['comment'] ?? ''));
-                    if ($rating === false || $rating < 1 || $rating > 5 || !array_key_exists($reason, $ratingReasons) || strlen($comment) > 1000) {
-                        $error = 'Rating atau alasan tidak valid. Periksa kembali formulir.';
+                    $validated = order_rating_validate_submission($_POST['rating'] ?? null, $_POST['reason'] ?? null, $_POST['comment'] ?? null);
+                    if ($validated['error'] !== null) {
+                        $error = $validated['error'];
                     } else {
+                        $rating = (int)$validated['rating'];
+                        $reason = (string)$validated['reason'];
+                        $comment = (string)($validated['comment'] ?? '');
                         try {
                             $stmt = $pdo->prepare("INSERT INTO order_ratings
                                 (order_id,provider_id,game_id,order_status_at_rating,rating,reason,comment)
