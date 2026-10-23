@@ -1427,3 +1427,11 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Dropdown Game sekarang hanya memuat game berstatus `ACTIVE` yang memiliki setidaknya satu pemetaan supplier aktif.
 - Filter game tertentu juga memastikan game masih aktif. Pencarian nama/kode, urutan harga modal, harga modal, harga jual/keuntungan, ketersediaan, dan waktu sinkronisasi dipertahankan.
 - Perubahan kode tersimpan di commit `2ec17236141872d4cab710ab0cedfddcdad62a1b`. Belum menjalankan PHP lint, tes database, atau tes browser; lakukan verifikasi lokal sebelum merge. Tidak ada data katalog yang dihapus dan sinkronisasi supplier tidak diubah.
+
+## Update — 2026-10-23: Tes regresi filter Harga Modal Supplier
+
+- Menambahkan `tests/supplier-prices-filtering.php`, pemeriksaan regresi tingkat sumber untuk memastikan halaman hanya menampilkan produk dengan pemetaan supplier aktif dan game aktif; dropdown dan filter game juga dibatasi pada game aktif.
+- Pemeriksaan memastikan kolom harga modal, harga jual, keuntungan, ketersediaan, dan waktu sinkronisasi tetap ada, serta halaman tetap bersifat baca-saja.
+- Workflow `.github/workflows/php-quality.yml` kini menjalankan tes tersebut.
+- Tes ini tidak memakai database atau `.env` dan tidak mengubah katalog supplier. Karena sifatnya pemeriksaan sumber, tes ini bukan pengganti tes integrasi SQL dengan database MySQL sementara atau uji browser.
+- Perubahan berada di branch `feature/filter-supplier-prices-to-active-games`. Status lint dan GitHub Actions setelah perubahan ini masih harus diverifikasi; jangan merge ke `main` sebelum hasil workflow terbaru diperiksa.
