@@ -235,6 +235,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
+            if ($action === 'save_catalog_layout') {
+                $columns = filter_var($_POST['grid_columns'] ?? null, FILTER_VALIDATE_INT);
+                $mobileColumns = filter_var($_POST['mobile_grid_columns'] ?? null, FILTER_VALIDATE_INT);
+                $desktopIconSize = filter_var($_POST['desktop_icon_size'] ?? null, FILTER_VALIDATE_INT);
+                $mobileIconSize = filter_var($_POST['mobile_icon_size'] ?? null, FILTER_VALIDATE_INT);
+                $validIconSizes = [64,68,72,76,80,84,88,92,96,100,104,108,112,116,120];
+                if (!in_array($columns,[3,4,5,6],true) || !in_array($mobileColumns,[2,3,4],true) || !in_array($desktopIconSize,$validIconSizes,true) || !in_array($mobileIconSize,$validIconSizes,true)) throw new InvalidArgumentException('Pengaturan kolom atau ukuran icon tidak valid.');
+                $pdo->beginTransaction();
+                try {
+                    $save = $pdo->prepare('INSERT INTO app_settings (setting_key,setting_value,updated_by) VALUES (:k,:v,:admin) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),updated_by=VALUES(updated_by)');
+                    foreach (['catalog_grid_columns_desktop'=>(string)$columns,'catalog_grid_columns_mobile'=>(string)$mobileColumns,'catalog_icon_size_desktop'=>(string)$desktopIconSize,'catalog_icon_size_mobile'=>(string)$mobileIconSize,'catalog_icon_size'=>(string)$desktopIconSize] as $k=>$v) $save->execute(['k'=>$k,'v'=>$v,'admin'=>$user['id']]);
+                    $audit=$pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,details,ip_address) VALUES ('ADMIN',:actor,'CATALOG_LAYOUT_UPDATED','SETTING','catalog_layout',:details,:ip)");
+                    $audit->execute(['actor'=>$user['id'],'details'=>json_encode(['desktop_columns'=>$columns,'mobile_columns'=>$mobileColumns,'desktop_icon_size'=>$desktopIconSize,'mobile_icon_size'=>$mobileIconSize]),'ip'=>substr((string)($_SERVER['REMOTE_ADDR']??''),0,45)]);
+                    $pdo->commit();
+                } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $e; }
+                header('Location: /admin/template-settings.php?layout_saved=1'); exit;
+            }
             if ($action === 'save_game_icon') {
                 $gameId = filter_var($_POST['game_id'] ?? null, FILTER_VALIDATE_INT);
                 if (!$gameId || $gameId < 1) throw new InvalidArgumentException('Game yang dipilih tidak valid.');
@@ -315,6 +332,16 @@ if (isset($_GET['edit'])) {
     }
 }
 $banners = $pdo->query('SELECT id,title,image_url,target_url,sort_order,status FROM banners ORDER BY sort_order,id DESC')->fetchAll(PDO::FETCH_ASSOC);
+$layoutSettings=['catalog_grid_columns_desktop'=>'5','catalog_grid_columns_mobile'=>'3','catalog_icon_size'=>'100','catalog_icon_size_desktop'=>'','catalog_icon_size_mobile'=>''];
+$layoutQuery=$pdo->prepare("SELECT setting_key,setting_value FROM app_settings WHERE setting_key IN ('catalog_grid_columns_desktop','catalog_grid_columns_mobile','catalog_icon_size','catalog_icon_size_desktop','catalog_icon_size_mobile')");
+$layoutQuery->execute();
+foreach($layoutQuery->fetchAll(PDO::FETCH_ASSOC) as $row) if(isset($layoutSettings[$row['setting_key']])) $layoutSettings[$row['setting_key']]=(string)$row['setting_value'];
+$gridColumns=in_array((int)$layoutSettings['catalog_grid_columns_desktop'],[3,4,5,6],true)?(int)$layoutSettings['catalog_grid_columns_desktop']:5;
+$mobileGridColumns=in_array((int)$layoutSettings['catalog_grid_columns_mobile'],[2,3,4],true)?(int)$layoutSettings['catalog_grid_columns_mobile']:3;
+$validIconSizes=[64,68,72,76,80,84,88,92,96,100,104,108,112,116,120];
+$legacyIconSize=in_array((int)$layoutSettings['catalog_icon_size'],$validIconSizes,true)?(int)$layoutSettings['catalog_icon_size']:100;
+$desktopIconSize=in_array((int)$layoutSettings['catalog_icon_size_desktop'],$validIconSizes,true)?(int)$layoutSettings['catalog_icon_size_desktop']:$legacyIconSize;
+$mobileIconSize=in_array((int)$layoutSettings['catalog_icon_size_mobile'],$validIconSizes,true)?(int)$layoutSettings['catalog_icon_size_mobile']:$legacyIconSize;
 $activeGames = $pdo->query("SELECT id,slug,name,icon_url FROM games WHERE status='ACTIVE' ORDER BY sort_order,name")->fetchAll(PDO::FETCH_ASSOC);
 
 $csrf = admin_csrf_token();
@@ -347,6 +374,14 @@ $csrf = admin_csrf_token();
 <?php if (!$banners): ?><tr><td colspan="5" class="muted">Belum ada banner tersimpan.</td></tr><?php endif; ?>
 <?php foreach ($banners as $banner): ?><tr><td><img class="thumb" src="<?=admin_escape($banner['image_url'])?>" alt="<?=admin_escape($banner['title'])?>" loading="lazy"></td><td><?=admin_escape($banner['title'])?><div class="muted small"><?=admin_escape($banner['image_url'])?></div><div class="muted small">Tujuan: <?=admin_escape($banner['target_url'] ?: 'Tidak ada')?></div></td><td><?=number_format((int)$banner['sort_order'])?></td><td><?=admin_escape($banner['status'])?></td><td><div class="actions"><a href="/admin/template-settings.php?edit=<?=(int)$banner['id']?>">Edit</a><?php if ($canManage): ?><?php if ($banner['status']==='ACTIVE'): ?><form class="inline" method="post" onsubmit="return confirm('Nonaktifkan banner ini?')"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="deactivate"><input type="hidden" name="id" value="<?=(int)$banner['id']?>"><button type="submit">Nonaktifkan</button></form><?php endif; ?><form class="inline" method="post" onsubmit="return confirm('Hapus banner ini secara permanen? File lokal yang terkait juga akan dihapus.')"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?=(int)$banner['id']?>"><button type="submit">Hapus</button></form><?php endif; ?></div></td></tr><?php endforeach; ?>
 </tbody></table></div></section>
+<section class="panel"><h2>Tata letak katalog game</h2>
+<p class="muted">Atur jumlah kolom dan ukuran icon desktop serta ponsel. Tablet menggunakan 3 kolom.</p>
+<?php if ($canManage): ?><form method="post"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="save_catalog_layout"><div class="grid">
+<label>Kolom desktop<select name="grid_columns"><?php foreach ([3,4,5,6] as $v): ?><option value="<?=$v?>" <?=$gridColumns===$v?'selected':''?>><?=$v?> kolom</option><?php endforeach; ?></select></label>
+<label>Kolom ponsel<select name="mobile_grid_columns"><?php foreach ([2,3,4] as $v): ?><option value="<?=$v?>" <?=$mobileGridColumns===$v?'selected':''?>><?=$v?> kolom</option><?php endforeach; ?></select></label>
+<label>Ukuran icon desktop<select name="desktop_icon_size"><?php foreach ([64,68,72,76,80,84,88,92,96,100,104,108,112,116,120] as $v): ?><option value="<?=$v?>" <?=$desktopIconSize===$v?'selected':''?>><?=$v?> × <?=$v?> px</option><?php endforeach; ?></select></label>
+<label>Ukuran icon ponsel<select name="mobile_icon_size"><?php foreach ([64,68,72,76,80,84,88,92,96,100,104,108,112,116,120] as $v): ?><option value="<?=$v?>" <?=$mobileIconSize===$v?'selected':''?>><?=$v?> × <?=$v?> px</option><?php endforeach; ?></select></label>
+</div><div class="actions"><button type="submit">Simpan tata letak</button></div></form><?php else: ?><p class="muted">Akun hanya dapat melihat pengaturan.</p><?php endif; ?></section>
 <section class="panel"><h2>Icon Game List</h2>
 <p class="muted">Hanya game yang dicentang dan tersimpan aktif pada menu <a href="/admin/game-mappings.php">Game List</a> yang tampil di sini. Unggah icon untuk mengisi kolom <code>games.icon_url</code> yang dipakai katalog halaman depan. Format JPG/PNG/WebP, maksimal 5 MB. Hapus hanya menghapus icon, bukan game atau mapping supplier.</p>
 <p class="dimension-hint"><strong>Saran ukuran icon: 512 × 512 px (persegi/1:1).</strong> Gunakan gambar yang fokus pada logo game, dengan sedikit ruang kosong di sekelilingnya agar tidak terpotong saat ditampilkan. Ukuran ini adalah rekomendasi, bukan batas wajib.</p>
