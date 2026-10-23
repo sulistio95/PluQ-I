@@ -1,63 +1,130 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__) . '/app/bootstrap.php';
+require_once PLUQI_ROOT . '/config/database.php';
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
-$orderId = (string)($_GET['merchantOrderId'] ?? '');
-$title = 'Status pesanan PluQ';
+$orderId = trim((string)($_POST['merchantOrderId'] ?? $_GET['merchantOrderId'] ?? ''));
 $message = 'Nomor pesanan tidak valid atau tidak ditemukan.';
+$error = '';
+$row = null;
+$alreadyRated = false;
+$ratingReasons = [
+    'FAST_AND_SMOOTH' => 'Proses cepat dan lancar',
+    'SLOW_PROCESS' => 'Proses terlalu lambat',
+    'ITEM_NOT_RECEIVED' => 'Item belum diterima',
+    'ORDER_FAILED' => 'Pesanan gagal',
+    'SUPPORT_EXPERIENCE' => 'Pengalaman menghubungi dukungan',
+    'OTHER' => 'Alasan lainnya',
+];
+
 if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
     try {
-        require_once PLUQI_ROOT . '/config/database.php';
-        $stmt = database()->prepare("SELECT o.payment_status,o.order_status,
-          (SELECT r.status FROM refunds r WHERE r.order_id=o.id ORDER BY r.id DESC LIMIT 1) AS refund_status
-          FROM orders o
-          JOIN payment_transactions pt ON pt.order_id=o.id
-          WHERE o.public_id=:public_id AND pt.merchant_order_id=:merchant_id LIMIT 1");
-        $stmt->execute(['public_id' => $orderId, 'merchant_id' => $orderId]);
-        $row = $stmt->fetch();
-        if ($row) {
-            $paymentStatus = (string)$row['payment_status'];
-            $orderStatus = (string)$row['order_status'];
-            $refundStatus = (string)($row['refund_status'] ?? '');
+        $pdo = database();
+        $stmt = $pdo->prepare("SELECT o.id,o.public_id,o.payment_status,o.order_status,o.created_at,o.fulfilled_at,
+            (SELECT r.status FROM refunds r WHERE r.order_id=o.id ORDER BY r.id DESC LIMIT 1) AS refund_status
+            FROM orders o JOIN payment_transactions pt ON pt.order_id=o.id
+            WHERE o.public_id=:public_id AND pt.merchant_order_id=:merchant_id LIMIT 1");
+        $stmt->execute(['public_id'=>$orderId,'merchant_id'=>$orderId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
-            if ($paymentStatus === 'PAID') {
-                if ($orderStatus === 'FAILED' && in_array($refundStatus, ['PENDING', 'PROCESSING'], true)) {
-                    $message = 'Pembayaran berhasil diterima, tetapi top-up gagal. Pengembalian dana sedang menunggu atau dalam proses pemeriksaan admin.';
-                } elseif ($orderStatus === 'FAILED' && $refundStatus === 'SUCCESS') {
-                    $message = 'Pembayaran diterima, top-up gagal, dan pengembalian dana telah berhasil.';
+        if ($row) {
+            $finalStatus = (string)$row['order_status'];
+            $eligible = (string)$row['payment_status'] === 'PAID'
+                && in_array($finalStatus, ['SUCCESS','FAILED','REFUNDED'], true);
+            $stmt = $pdo->prepare('SELECT rating,reason,comment,created_at FROM order_ratings WHERE order_id=:order_id LIMIT 1');
+            $stmt->execute(['order_id'=>$row['id']]);
+            $existingRating = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            $alreadyRated = $existingRating !== null;
+
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                if (!$eligible) {
+                    $error = 'Rating hanya tersedia setelah pesanan berstatus berhasil atau gagal.';
+                } elseif ($alreadyRated) {
+                    $error = 'Pesanan ini sudah pernah diberi rating.';
                 } else {
-                    $orderMessage = match ($orderStatus) {
-                        'PENDING' => 'Pesanan menunggu diproses.',
-                        'QUEUED' => 'Pembayaran diterima. Pesanan masuk antrean.',
-                        'PROCESSING' => 'Pembayaran diterima. Top-up sedang diproses.',
-                        'RETRYING' => 'Top-up masih diproses supplier. Status akan diperbarui setelah pemeriksaan berikutnya.',
-                        'SUCCESS' => 'Top-up berhasil.',
-                        'FAILED' => 'Top-up gagal. Silakan hubungi admin untuk pemeriksaan pengembalian dana.',
-                        'REFUND_PENDING' => 'Top-up gagal. Pengembalian dana menunggu proses.',
-                        'REFUNDED' => 'Top-up gagal dan dana telah dikembalikan.',
-                        'MANUAL_REVIEW' => 'Pembayaran diterima. Pesanan sedang diperiksa admin sebelum tindakan lanjutan.',
-                        default => 'Pembayaran diterima. Status pesanan sedang diperiksa.',
-                    };
-                    $message = 'Pembayaran berhasil diterima. ' . $orderMessage;
+                    $rating = filter_var($_POST['rating'] ?? null, FILTER_VALIDATE_INT);
+                    $reason = (string)($_POST['reason'] ?? '');
+                    $comment = trim((string)($_POST['comment'] ?? ''));
+                    if ($rating === false || $rating < 1 || $rating > 5 || !array_key_exists($reason, $ratingReasons) || strlen($comment) > 1000) {
+                        $error = 'Rating atau alasan tidak valid. Periksa kembali formulir.';
+                    } else {
+                        try {
+                            $stmt = $pdo->prepare("INSERT INTO order_ratings
+                                (order_id,provider_id,game_id,order_status_at_rating,rating,reason,comment)
+                                SELECT id,provider_id,game_id,:status,:rating,:reason,:comment
+                                FROM orders WHERE id=:order_id AND payment_status='PAID'
+                                  AND order_status IN ('SUCCESS','FAILED','REFUNDED')");
+                            $stmt->execute([
+                                'status'=>$finalStatus,'rating'=>$rating,'reason'=>$reason,
+                                'comment'=>$comment !== '' ? $comment : null,'order_id'=>$row['id'],
+                            ]);
+                            if ($stmt->rowCount() === 1) {
+                                header('Location: /order-status.php?merchantOrderId=' . rawurlencode($orderId) . '&rated=1', true, 303);
+                                exit;
+                            }
+                            $error = 'Status pesanan berubah atau rating tidak dapat disimpan. Muat ulang halaman.';
+                        } catch (PDOException $e) {
+                            if ((string)$e->getCode() === '23000') {
+                                $alreadyRated = true;
+                                $error = 'Pesanan ini sudah pernah diberi rating.';
+                            } else {
+                                throw $e;
+                            }
+                        }
+                    }
                 }
-            } else {
-                $message = match ($paymentStatus) {
-                    'FAILED' => 'Pembayaran gagal. Jangan melakukan pembayaran ulang untuk nomor pesanan ini sebelum memeriksa statusnya.',
-                    'EXPIRED' => 'Waktu pembayaran telah berakhir.',
-                    'REFUND_PENDING' => 'Pengembalian dana sedang menunggu proses.',
-                    'REFUNDED' => 'Dana telah dikembalikan.',
-                    default => 'Pembayaran masih menunggu konfirmasi Duitku. Muat ulang halaman ini beberapa saat lagi.',
-                };
             }
+
+            $message = match ($finalStatus) {
+                'SUCCESS' => 'Top-up berhasil.',
+                'FAILED' => 'Top-up gagal. Silakan simpan nomor pesanan untuk pemeriksaan admin.',
+                'REFUNDED' => 'Top-up gagal dan pengembalian dana telah selesai.',
+                'QUEUED' => 'Pembayaran diterima. Pesanan masuk antrean.',
+                'PROCESSING' => 'Pembayaran diterima. Top-up sedang diproses.',
+                'RETRYING' => 'Top-up masih diproses supplier.',
+                'MANUAL_REVIEW' => 'Pesanan sedang diperiksa admin.',
+                default => (string)$row['payment_status'] === 'PAID'
+                    ? 'Pembayaran diterima. Status pesanan sedang diperiksa.'
+                    : 'Pembayaran masih menunggu konfirmasi Duitku.',
+            };
+            if (isset($_GET['rated']) && $_GET['rated'] === '1') $message .= ' Terima kasih, rating Anda telah disimpan.';
         }
     } catch (Throwable $e) {
-        $message = 'Status pesanan belum dapat diperiksa. Coba lagi nanti.';
+        $error = 'Status pesanan atau rating belum dapat diperiksa. Pastikan migration 012 sudah diterapkan dan periksa log server.';
     }
 }
-$safeTitle = htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-$safeMessage = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-$safeOrder = htmlspecialchars($orderId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-echo '<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.$safeTitle.'</title><link rel="stylesheet" href="/assets/catalog.css"></head><body><main><section class="account-panel"><h1>'.$safeTitle.'</h1><p>'.$safeMessage.'</p><p class="muted">Nomor pesanan: '.$safeOrder.'</p><button type="button" onclick="location.reload()">Periksa kembali</button><p><a href="/">Kembali ke katalog</a></p></section></main></body></html>';
+$esc = static fn(mixed $v): string => htmlspecialchars((string)($v ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$eligible = $row && (string)$row['payment_status'] === 'PAID'
+    && in_array((string)$row['order_status'], ['SUCCESS','FAILED','REFUNDED'], true);
+?><!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Status Pesanan — PluQ-I</title><link rel="stylesheet" href="/assets/catalog.css">
+<style>
+.rating-panel{margin-top:24px;padding:18px;border:1px solid #343943;border-radius:12px;background:#15171d;color:#f3f4f6}
+.rating-panel label{display:block;margin:12px 0 6px}.rating-panel select,.rating-panel textarea,.rating-panel button{width:100%;padding:11px;border:1px solid #343943;border-radius:8px;background:#0c0d10;color:#f3f4f6;font:inherit}
+.rating-panel textarea{min-height:90px;resize:vertical}.rating-panel button{margin-top:14px;background:#d1fae5;color:#111827;font-weight:700;cursor:pointer}
+.rating-error{padding:10px;border-radius:8px;background:#3b1d22;color:#fecaca}.rating-muted{color:#9ca3af;font-size:13px}
+</style></head><body><main><section class="account-panel">
+<h1>Status Pesanan PluQ-I</h1><p><?= $esc($message) ?></p>
+<?php if ($error !== ''): ?><p class="rating-error"><?= $esc($error) ?></p><?php endif; ?>
+<?php if ($orderId !== '' && preg_match('/^[a-f0-9]{26}$/D',$orderId)): ?><p class="muted">Nomor pesanan: <?= $esc($orderId) ?></p><?php endif; ?>
+<?php if ($row && $eligible && !$alreadyRated): ?>
+<section class="rating-panel"><h2>Bagaimana pengalaman top-up Anda?</h2>
+<p class="rating-muted">Rating hanya dapat dikirim satu kali untuk pesanan ini. Penilaian Anda tidak otomatis menentukan kesalahan supplier.</p>
+<form method="post" action="/order-status.php">
+<input type="hidden" name="merchantOrderId" value="<?= $esc($orderId) ?>">
+<label for="rating">Rating</label><select id="rating" name="rating" required>
+<option value="">Pilih bintang</option><option value="5">5 — Sangat baik</option><option value="4">4 — Baik</option><option value="3">3 — Cukup</option><option value="2">2 — Kurang</option><option value="1">1 — Sangat buruk</option>
+</select>
+<label for="reason">Alasan penilaian</label><select id="reason" name="reason" required><option value="">Pilih alasan</option>
+<?php foreach ($ratingReasons as $key=>$label): ?><option value="<?= $esc($key) ?>"><?= $esc($label) ?></option><?php endforeach; ?>
+</select>
+<label for="comment">Komentar tambahan (opsional)</label><textarea id="comment" name="comment" maxlength="1000" placeholder="Ceritakan pengalaman Anda"></textarea>
+<button type="submit">Kirim rating</button></form></section>
+<?php elseif ($alreadyRated): ?><section class="rating-panel"><h2>Rating sudah diterima</h2><p>Terima kasih. Pesanan ini sudah memiliki rating dan tidak dapat dinilai ulang.</p></section>
+<?php endif; ?>
+<p><a href="/">Kembali ke katalog</a></p></section></main></body></html>
