@@ -1,5 +1,12 @@
 ## Update — 2026-10-23: Rating pelanggan dan dashboard kualitas supplier (awal)
 
+- Fitur dikerjakan pada branch `feature/customer-supplier-rating`, PR draft #11 menuju `feature/admin-left-sidebar`, belum merge ke main.
+- **Koreksi nomor migrasi:** nomor 013 sudah dipakai `013_game_username_check_protection.sql`. Migrasi rating harus memakai `014_order_ratings_and_supplier_quality.sql`; workflow MySQL harus menjalankan 013 game-username dahulu lalu 014 rating.
+- Database lokal `pluqi_local_test` berisi tabel inti dan catatan migrasi 001–013, termasuk `013_game_username_check_protection`; migrasi rating belum diterapkan. Gunakan hanya database `pluqi_local_test` untuk uji berikutnya.
+- PHP lint untuk `app/services/order_rating.php`, `public/order-status.php`, `public/admin/supplier-quality.php`, `php tests/order-rating-rules.php`, dan `git diff --check` sebelumnya lulus; working tree lokal bersih/sinkron saat diuji. Ini belum membuktikan integrasi database atau browser.
+- Form rating hanya tersedia untuk pesanan PAID dengan status final SUCCESS/FAILED/REFUNDED; satu rating per order. Dashboard menunjukkan hasil supplier dan umpan balik pelanggan, tetapi rating bukan bukti otomatis supplier bersalah.
+- Langkah berikutnya: tarik pembaruan branch, periksa tabel `orders`, `providers`, `games`, dan migrasi 012/013; terapkan migrasi 014 hanya di `pluqi_local_test`; verifikasi constraint, insert/duplicate rejection, serta query dashboard. Jangan aktifkan pembayaran live, supplier fulfillment, atau backup Google Drive.
+
 - Pekerjaan awal ada pada branch `feature/customer-supplier-rating`, dibuat dari `feature/admin-left-sidebar`; belum merge ke `main`.
 - Menambahkan migration `013_order_ratings_and_supplier_quality.sql` (nomor 012 dipakai oleh `012_pricing_rules_hybrid.sql`). Tabel rating punya unique key per order, rating 1–5, alasan terstruktur, komentar opsional, dan referensi order/provider/game.
 - Halaman `public/order-status.php` menampilkan rating hanya untuk pesanan berbayar dengan status final SUCCESS/FAILED/REFUNDED; satu rating per order. Validasi bersama di `app/services/order_rating.php`.
