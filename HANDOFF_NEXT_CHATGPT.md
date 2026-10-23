@@ -1435,3 +1435,12 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Workflow `.github/workflows/php-quality.yml` kini menjalankan tes tersebut.
 - Tes ini tidak memakai database atau `.env` dan tidak mengubah katalog supplier. Karena sifatnya pemeriksaan sumber, tes ini bukan pengganti tes integrasi SQL dengan database MySQL sementara atau uji browser.
 - Perubahan berada di branch `feature/filter-supplier-prices-to-active-games`. Status lint dan GitHub Actions setelah perubahan ini masih harus diverifikasi; jangan merge ke `main` sebelum hasil workflow terbaru diperiksa.
+
+
+## Update — 2026-10-23: Pagination harga supplier dan ketahanan pemuatan katalog
+
+- Menambahkan pagination bernomor pada **Harga Modal Supplier**, ukuran halaman dapat dipilih 25/50/100/200 item, dan jumlah halaman mengikuti hasil filter. Filter serta urutan tetap dipertahankan saat berpindah halaman.
+- Menghapus batas tetap 200 baris; query memakai `LIMIT/OFFSET` sesuai halaman. Katalog supplier tetap hanya dibaca.
+- Memperbaiki inisialisasi frontend agar `/api/games` dan `/api/banners` dimuat secara independen memakai `Promise.allSettled`. Kegagalan endpoint banner tidak lagi membatalkan render daftar game/icon, dan sebaliknya.
+- Perubahan berada pada `public/admin/supplier-prices.php` dan `public/assets/catalog.js`. Wajib menjalankan lint PHP, tes regresi, syntax JavaScript, dan uji browser. Jika URL endpoint atau file gambar sendiri gagal, penyebab backend/berkasnya masih perlu diperiksa melalui Network/console.
+- Branch kerja: `feature/supplier-price-pagination-fix-catalog-assets`. Jangan gabungkan sebelum pemeriksaan lokal dan GitHub Actions selesai.
