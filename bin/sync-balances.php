@@ -17,20 +17,22 @@ $providers = [
 ];
 $failed = false;
 
-foreach ($providers as $code => $requiredEnvironment) {
-    $configured = true;
-    foreach ($requiredEnvironment as $key) {
-        if (trim((string) getenv($key)) === '') {
-            $configured = false;
-            break;
-        }
-    }
-    if (!$configured) {
-        fwrite(STDERR, $code . ": skipped (credentials not configured).\n");
-        continue;
-    }
-
+foreach ($providers as $code => $requiredCredentials) {
     try {
+        // Use the same source as the admin API settings page: encrypted app_settings
+        // values take precedence over environment variables.
+        $configured = true;
+        foreach ($requiredCredentials as $key) {
+            if (trim(pluqi_api_config_value($key)) === '') {
+                $configured = false;
+                break;
+            }
+        }
+        if (!$configured) {
+            fwrite(STDOUT, $code . ": skipped (credentials not configured).\n");
+            continue;
+        }
+
         $result = sync_provider_balance($pdo, $code);
         if (!empty($result['skipped'])) {
             fwrite(STDOUT, $code . ": skipped (provider disabled).\n");

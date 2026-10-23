@@ -215,7 +215,10 @@ function admin_money(mixed $amount): string {
 :root{color-scheme:dark;--bg:#0c0d10;--panel:#15171d;--line:#292d36;--text:#f3f4f6;--muted:#9ca3af;--accent:#a7f3d0}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1500px;margin:auto;padding:24px}h1,h2{margin:0 0 14px}h1{font-size:24px}h2{font-size:18px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}label{display:grid;gap:6px;color:var(--muted)}input,select,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.actions{display:flex;gap:8px;align-items:end}.actions a{color:var(--accent)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{text-align:left;border-bottom:1px solid var(--line);padding:10px}th{color:var(--muted);font-weight:600}.status{font-size:12px;border:1px solid var(--line);border-radius:5px;padding:3px 6px}.error{padding:10px;background:#3b1d22;border-radius:7px;margin:12px 0}.login{max-width:420px;margin:10vh auto}.stat{font-size:24px;font-weight:700}.form-grid{display:grid;gap:12px}.small{font-size:12px;max-width:240px;overflow-wrap:anywhere}@media(max-width:600px){main{padding:12px}.panel{padding:12px}}
 </style>
-</head><body><main>
+<link rel="stylesheet" href="/assets/admin-sidebar.css">
+</head><body class="<?= $user ? 'admin-layout' : '' ?>">
+<?php if ($user): require PLUQI_ROOT . '/app/views/admin_sidebar.php'; endif; ?>
+<main>
 <?php if (!$user): ?>
 <section class="panel login"><h1>Admin PluQ-I</h1><p class="muted">Masuk untuk memeriksa transaksi dan settlement.</p>
 <?php if ($error !== ''): ?><div class="error"><?=admin_escape($error)?></div><?php endif; ?>
@@ -227,7 +230,7 @@ function admin_money(mixed $amount): string {
 </form></section>
 <?php else: ?>
 <header class="bar"><div><h1>Panel Admin PluQ-I</h1><div class="muted">Masuk sebagai <?=admin_escape($user['username'])?> · <?=admin_escape($user['role'])?></div></div>
-<nav><a href="/admin/api-settings.php" style="color:#a7f3d0;margin-right:14px">Pengaturan API</a><a href="/admin/game-mappings.php" style="color:#a7f3d0;margin-right:14px">Game List</a><a href="/admin/template-settings.php" style="color:#a7f3d0;margin-right:14px">Pengaturan Template</a><a href="/admin/pricing-settings.php" style="color:#a7f3d0;margin-right:14px">Pengaturan Keuntungan</a><a href="/admin/supplier-prices.php" style="color:#a7f3d0;margin-right:14px">Harga Modal Supplier</a><?php if (admin_can_manage_settings($user)): ?><a href="/admin/reconcile.php" style="color:#a7f3d0">Rekonsiliasi Duitku</a><?php endif; ?></nav>
+
 <form method="post"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><button name="logout" value="1" type="submit">Keluar</button></form></header>
 <?php if ($error !== ''): ?><div class="error"><?=admin_escape($error)?></div><?php endif; ?>
 <section class="panel"><div class="bar"><h2>Filter transaksi</h2><span class="muted">Maksimal 200 baris per pencarian</span></div>

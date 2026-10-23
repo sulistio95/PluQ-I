@@ -1,3 +1,78 @@
+## Update — 2026-10-23: Hapus logo lama dari GitHub dengan aman
+
+- `public/admin/template-settings.php` kini menambahkan fungsi penghapusan logo header melalui GitHub Contents API: mengambil SHA file pada branch konfigurasi terlebih dahulu, lalu menghapus file dengan commit terpisah.
+- Saat logo diganti, penghapusan file lama baru dilakukan setelah logo baru berhasil dikomit ke GitHub dan URL baru tersimpan di database. Saat logo dihapus dari panel, URL database dikosongkan dahulu sebelum file lama dibersihkan.
+- Penghapusan dibatasi ketat ke `public/uploads/brand-logos/<32-hex>.(jpg|png|webp)`; URL eksternal, icon game, dan path lain tidak dihapus. File yang sudah tidak ada di GitHub dianggap sudah bersih.
+- Jika pembersihan file lama gagal, perubahan logo tetap berlaku, kegagalan dicatat di log PHP, dan panel menampilkan peringatan `old_logo_cleanup=failed`. Token GitHub tetap harus disimpan privat dan memiliki izin Contents: Read and write.
+- Perubahan telah dikomit langsung ke branch `feature/admin-left-sidebar`, commit `2458119` dan `caebe86`. Belum diuji di lingkungan lokal atau dengan token GitHub sungguhan.
+- Logo lama yang sudah telanjur menjadi file yatim di GitHub tidak dihapus massal oleh perubahan ini. Periksa referensi database terlebih dahulu sebelum pembersihan satu kali.
+- Langkah lokal: pulihkan file logo yang sengaja dipindahkan saat sinkronisasi (`git restore public/uploads/brand-logos/01777c2b96ea69718d056589a6292878.png`), lalu `git pull --ff-only origin feature/admin-left-sidebar`, jalankan `php -l public/admin/template-settings.php` dan `git diff --check`. Uji alur ganti logo dan hapus logo; pastikan file lama hilang dari branch GitHub hanya jika benar-benar tidak lagi dipakai.
+## Update — 2026-10-22: Jumlah kolom katalog ponsel bisa diatur
+
+- Panel **Pengaturan Template → Tata letak katalog game** kini memiliki pilihan jumlah game per baris untuk ponsel: 2, 3, atau 4 kolom; default 3.
+- Desktop tetap dapat diatur 3–6 kolom; tablet tetap 3 kolom. Ukuran icon tetap punya pengaturan tersendiri.
+- Nilai ponsel disimpan pada `app_settings.catalog_grid_columns_mobile`; tidak membutuhkan migrasi karena memakai tabel pengaturan yang sudah ada.
+- Frontend membaca nilai tersebut dan menerapkannya hanya pada layar hingga 560 px.
+- Perubahan sudah ditulis ke branch `feature/admin-left-sidebar`; setelah `git pull`, jalankan lint PHP untuk `public/index.php` dan `public/admin/template-settings.php`, serta `git diff --check`. Verifikasi visual di browser lokal. Belum diuji di ponsel atau hosting.
+
+## Update — 2026-10-22: Ikon game dari admin disimpan ke GitHub
+
+- `public/admin/template-settings.php` kini mengirim setiap icon game baru ke GitHub Contents API setelah file lolos validasi upload lokal, sebelum URL icon diperbarui di database.
+- Konfigurasi wajib di `.env` privat server: `GITHUB_UPLOAD_TOKEN`, `GITHUB_UPLOAD_REPOSITORY` (format `owner/repo`), dan `GITHUB_UPLOAD_BRANCH`. `.env.example` hanya berisi nilai contoh/non-rahasia.
+- Gunakan fine-grained personal access token yang dibatasi ke repository `sulistio95/PluQ-I` dengan izin **Contents: Read and write**. Jangan masukkan token ke GitHub, frontend, chat, atau commit.
+- Path gambar yang dikomit: `public/uploads/game-icons/<random-name>.(jpg|png|webp)`. Database tetap menyimpan URL lokal `/uploads/game-icons/...`, sehingga tampilan lokal/hosting memakai file di `public/`. File icon lama yang sudah dikomit tidak dihapus otomatis saat diganti/dihapus dari katalog.
+- Upload icon akan gagal dengan pesan konfigurasi/API jika token, repo, branch, atau izin belum benar; file lokal sementara dibersihkan saat proses simpan gagal. Banner tidak ikut disinkronkan ke GitHub.
+- **Belum diuji dengan token GitHub sungguhan.** Setelah pull, jalankan `php -l public/admin/template-settings.php` dan `git diff --check`, atur rahasia hanya di `.env` lokal, lalu uji satu icon non-kritis. Pastikan `GITHUB_UPLOAD_BRANCH` menunjuk branch yang benar-benar dipakai deployment; saat ini contoh di `.env.example` menggunakan `feature/admin-left-sidebar`.
+
+## Update — 2026-10-22: Satu sumber sinkronisasi katalog
+
+- Keputusan: hanya tombol **Sinkronkan katalog** di Pengaturan API yang melakukan request katalog ke Digiflazz/VIPayment.
+- Game List sekarang membaca daftar game dari tabel cache `provider_products`; tombolnya hanya memuat cache lokal, bukan memanggil API supplier.
+- Pratinjau katalog di Pengaturan API juga membaca cache lokal. Untuk memperbarui data, jalankan sinkronisasi supplier secara eksplisit.
+- Sinkronisasi tetap menyimpan katalog supplier meskipun belum ada pemetaan game aktif, sehingga alur awal tidak melingkar. Setelah game dipilih di Game List, produk toko untuk game tersebut dibangun dari cache yang tersimpan tanpa request API tambahan.
+- Saat pemetaan supplier diubah, produk yang tidak lagi dipetakan oleh supplier itu ditandai `OUT_OF_STOCK`; data dan riwayat tidak dihapus.
+- Perubahan hanya untuk pengelolaan katalog. Pembayaran, order supplier, dan backup Google Drive tetap nonaktif. Jalankan lint PHP, tes katalog yang tersedia, dan `git diff --check` lokal setelah pull; kemudian verifikasi alur: sinkronisasi pertama → Game List → pilih/simpan game → katalog produk.
+  
+## Handoff terbaru — 2026-10-21: Dropdown ZZZ
+
+- Perbaikan pada branch `feature/admin-left-sidebar`: Zenless Zone Zero kini harus menampilkan User ID + dropdown Server / Region (Asia, America, Europe, TW / HK / MO).
+- Tes regresi ditambahkan untuk slug aktif `zenless-zone-zero-zzz` dan nama `Zenless Zone Zero (ZZZ)`, karena entri tersebut memiliki 15 produk; slug `zenless-zone-zero` adalah INACTIVE dan tidak memiliki produk.
+- Pilihan server adalah placeholder UI, bukan kode supplier terverifikasi. Checkout untuk schema server tetap diblokir. Pembayaran, order supplier, dan backup Google Drive tetap nonaktif.
+- Setelah pull, jalankan `php -l app/services/game_fields.php`, `php tests/game-account-schema.php`, dan `git diff --check`. Kemudian refresh frontend dengan hard refresh dan cek dropdown ZZZ.
+
+## Update — 2026-10-21: Field Server / Region untuk Zenless Zone Zero
+
+- Atas laporan pengguna, `app/services/game_fields.php` kini mengenali `Zenless Zone Zero`/slug `zenless-zone-zero` dan menampilkan field wajib **Server / Region** selain User ID.
+- Tes regresi ditambahkan pada `tests/game-account-schema.php`, termasuk memastikan checkout Zenless tetap diblokir karena pemetaan target akun supplier belum ditinjau. Jangan membuka checkout hanya karena field sudah tampil.
+- Pengguna mengonfirmasi katalog VIPayment sudah disinkronkan dan item game muncul. Fokus masalah yang tersisa adalah field akun Zenless; Digiflazz belum digunakan karena masih registrasi.
+- Perubahan kode berada di `feature/admin-left-sidebar`; belum diuji lokal/CI setelah perubahan ini dan belum merge ke `main`. Setelah pull, jalankan tes schema akun. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+## Update — 2026-10-21: Transisi kaca pecah dibatalkan
+
+- Atas permintaan pengguna, animasi kaca pecah dihapus dari `public/assets/catalog.js` dan `public/assets/catalog.css`; klik game kembali membuka form secara langsung.
+- Tidak ada perubahan pada tiga ikon game lokal yang belum dilacak. Jangan menghapusnya tanpa instruksi.
+
+## Update — 2026-10-21: Animasi kaca pecah saat membuka form game
+
+- Menambahkan transisi ringan berbasis SVG/CSS pada `public/assets/catalog.js` dan `public/assets/catalog.css`: saat game diklik dari katalog, retakan kaca muncul sebentar sebelum form akun/nominal dibuka.
+- Tidak memakai library eksternal; klik ganda selama animasi diabaikan untuk mencegah pemanggilan transisi bertumpuk.
+- Navigasi langsung melalui URL `?game=...` dan tombol kembali tetap menggunakan alur sebelumnya. Preferensi `prefers-reduced-motion` melewati animasi.
+- Belum diuji di browser nyata. Verifikasi lokal tetap diperlukan untuk memastikan durasi dan tampilan sesuai pada desktop/ponsel; tidak ada pembayaran atau pemesanan supplier yang diaktifkan.
+
+## Verifikasi CI — pelacakan transaksi admin (2026-10-20)
+
+- GitHub Actions **PHP quality checks** lulus pada commit dokumentasi dc49bfc3a504cb4dc82f90b966589d52c03f014d, run [#828](https://github.com/sulistio95/PluQ-I/actions/runs/39395576680). Job mencakup pemeriksaan sintaks JavaScript, lint seluruh file PHP, dan tes regresi yang ada.
+- Hasil ini mengonfirmasi lint PHP/sintaks pada snapshot tersebut, bukan uji browser atau integrasi query terhadap database MySQL/MariaDB nyata. Uji halaman pencarian/detail masih perlu dilakukan lokal setelah database dan migration aktif.
+- Workflow CI lain yang tidak ditampilkan pada run ini belum dinyatakan lulus. Fitur tetap hanya baca dan tidak menjalankan pembayaran atau order supplier.
+
+## Update — 2026-10-20: Pencarian dan detail transaksi admin
+
+- Menambahkan halaman **Cari Transaksi** di `public/admin/transaction-search.php`. Pencarian dapat memakai ID publik pesanan, nomor merchant Duitku, referensi gateway, atau referensi transaksi supplier; hasil dibatasi 200 baris.
+- Menambahkan halaman **Detail Transaksi** di `public/admin/transaction-detail.php`, yang menampilkan ringkasan pesanan, status pembayaran/pesanan, error terakhir, catatan gateway, referensi supplier, refund, dan linimasa dari cap waktu/status yang memang tersedia di database.
+- Menambahkan tautan **Cari Transaksi** ke navigasi admin melalui `app/views/admin_sidebar.php`. Halaman pencarian dan detail memerlukan sesi admin; keluaran dinamis di-escape dan query memakai prepared statements.
+- Batasan yang disengaja: linimasa ini belum merupakan audit trail lengkap untuk setiap callback, permintaan HTTP, atau percobaan retry. Beberapa status gateway/refund tidak memiliki waktu kejadian yang ditampilkan oleh skema saat ini. Belum ada tindakan retry/refund dari halaman detail.
+- Verifikasi PHP lint, integrasi database, tampilan browser, dan GitHub Actions untuk commit ini belum dilakukan pada saat catatan ditulis. Uji lokal dengan migration database yang sudah diterapkan sebelum digunakan. Jangan mengaktifkan pembayaran, pemesanan supplier, atau backup Drive selama pengujian awal.
+
 ## Update — 2026-10-19: Sinkronisasi katalog dari panel admin
 
 - Menambahkan tombol **Sinkronkan katalog VIPayment** dan **Sinkronkan katalog Digiflazz** pada Pengaturan API. Berbeda dari tombol pratinjau VIPayment, tombol sinkronisasi memanggil service katalog dan menyimpan produk/harga yang cocok dengan pemetaan game aktif ke database.
@@ -1577,3 +1652,239 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Penyebabnya adalah database lokal belum memiliki tabel yang didefinisikan oleh `database/migrations/013_game_username_check_protection.sql`; migration ini membuat `game_username_check_limits` dan `game_username_check_cache`.
 - Memperbarui `bin/preflight.php` untuk mewajibkan dua tabel tersebut dan memeriksa migration `013_game_username_check_protection`. Commit perbaikan preflight: `934d2d3a78f8ae06a90e53667ee1509a27463fdf` pada branch `fix/vipayment-nickname-lookup`.
 - Langkah berikutnya: tarik branch, terapkan migration 013 pada database `pluqi_local_test`, jalankan `php bin/preflight.php` dan `php tests/game-username-vipayment.php`, lalu coba lagi endpoint. Jangan aktifkan pembayaran atau supplier order. API nickname live belum dinyatakan berhasil.
+
+
+## 2026-10-20 — Navigasi panel admin dipindahkan ke sidebar kiri
+
+- Menambahkan komponen bersama `app/views/admin_sidebar.php` dan stylesheet `public/assets/admin-sidebar.css` agar menu admin konsisten pada Dashboard/Transaksi, Pengaturan API, Game List, Pengaturan Template, Pengaturan Keuntungan, Harga Modal Supplier, dan Rekonsiliasi Duitku.
+- Sidebar berada di sisi kiri pada layar desktop. Pada layar sempit, menu berubah menjadi bar navigasi horizontal yang dapat digulir agar tetap dapat digunakan di ponsel tanpa JavaScript tambahan.
+- Menu aktif diberi penanda `aria-current="page"`; tautan Rekonsiliasi Duitku hanya ditampilkan jika akun lolos `admin_can_manage_settings()`. Kredensial, alur otorisasi, dan endpoint transaksi tidak diubah oleh pekerjaan tata letak ini.
+- Link menu atas yang duplikat di dashboard dan link “kembali ke panel” pada halaman pengaturan dihapus karena navigasi bersama sekarang tersedia melalui sidebar.
+- Perubahan ada pada branch `feature/admin-left-sidebar`, diturunkan dari `fix/vipayment-nickname-lookup`. Belum digabung ke `main`. Lakukan PHP lint, `php bin/preflight.php`, tes regresi terkait admin, dan `git diff --check` setelah branch ditarik. Pemeriksaan visual browser masih diperlukan.
+- Tidak ada perubahan atau aktivasi pembayaran, supplier ordering, maupun backup Google Drive. Pertahankan tiga banner JPG lokal yang belum terlacak; jangan menjalankan perintah reset/clean yang menghapus file lokal.
+
+
+## Update — 2026-10-20: Penggeser horizontal tabel Harga Modal Supplier
+
+- Menambahkan scrollbar horizontal kedua di bagian atas tabel Harga Modal Supplier (`public/admin/supplier-prices.php`), dengan posisi sticky agar tetap mudah dijangkau saat halaman digulir vertikal.
+- Scrollbar atas disinkronkan dua arah dengan tabel utama; pengguna dapat menggeser kolom ke kiri/kanan tanpa harus turun sampai bagian bawah tabel. Tabel mempertahankan scrollbar bawaan sebagai alternatif.
+- Lebar penggeser menyesuaikan lebar tabel saat ukuran layar berubah. Tidak mengubah query harga, filter, urutan harga, otorisasi, atau proses transaksi.
+- Perubahan dikirim ke branch `feature/admin-left-sidebar`; belum di-merge ke `main`. Perlu lint PHP, pemeriksaan CI, dan uji visual desktop/mobile sebelum dinyatakan terverifikasi. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Verifikasi CI — penggeser Harga Modal Supplier (2026-10-20)
+
+- GitHub Actions `PHP quality checks` pada commit `45d9016a8a7216ff12467c03fafc740ec06a38ec` selesai dengan status **success**.
+- Hasil CI tidak menggantikan uji visual browser. Perlu pengguna memeriksa penggeser horizontal atas pada halaman Harga Modal Supplier, termasuk saat halaman digulir vertikal dan pada layar sempit.
+
+
+## Update — 2026-10-20: Perbaikan teks intro yang bertumpuk dengan banner homepage
+
+- Memisahkan area banner promosi dari teks “Top up game lebih praktis” dan “Pilih game dan temukan nominal yang tersedia.”; teks kini berada tepat di bawah banner, bukan di atas gambar.
+- Area banner menggunakan rasio 16:5, tinggi minimum untuk layar kecil dan batas tinggi maksimum agar gambar tidak menutupi konten. Banner tetap dapat diklik jika konfigurasi memiliki target URL; pergantian banner 3 detik tidak diubah.
+- Perubahan pada `public/index.php` dan `public/assets/catalog.css`, branch `feature/admin-left-sidebar`. Catatan handoff dan audit diperbarui. Perlu lint/CI serta pemeriksaan visual desktop dan ponsel; belum merge ke `main`.
+
+
+## Update — 2026-10-20: Banner saja pada form akun dan pemilihan nominal
+
+- Pada tampilan setelah pelanggan memilih game, banner promosi tetap berada di bagian atas. Kolom pencarian game dan teks intro homepage disembunyikan selama form data akun dan nominal ditampilkan.
+- Saat pelanggan menekan **Kembali ke game**, teks intro dan pencarian ditampilkan kembali. Tidak mengubah alur pemuatan form, produk, pergantian banner otomatis 3 detik, atau logika harga.
+- Implementasi pada `public/index.php` dan `public/assets/catalog.js` di branch `feature/admin-left-sidebar`; commit kode: `45d4a5b02042acab0210de60e420e1fd7c1a0ee2` dan `adf7e95db84d3e9af154f23888444a113aa27ee8`.
+- Belum menjalankan lint/CI atau pemeriksaan visual browser untuk perubahan ini. Setelah pull, uji memilih game, pastikan hanya banner yang tersisa di bagian atas form akun/nominal, lalu tekan kembali dan pastikan pencarian serta intro muncul lagi. Belum merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: Branding footer toko
+
+- Mengganti teks footer halaman storefront dari `PluQ · Katalog shared-hosting` menjadi `PluQ.I Official Store` di `public/index.php`.
+- Commit kode: `8588cd6654ed510c3d58aa55132812224a360f28` pada branch `feature/admin-left-sidebar`.
+- Perubahan hanya teks footer; alur katalog, akun, nominal, banner, dan pembayaran tidak diubah. Belum merge ke `main`; hasil CI dan tampilan browser perlu diverifikasi.
+
+
+## Update — 2026-10-20: Pratinjau katalog dapat memilih supplier
+
+- Panel **Pengaturan API → Pratinjau daftar game dan layanan** kini menyediakan pilihan VIPayment atau Digiflazz. VIPayment menggunakan `vipayment_game_services()`; Digiflazz menggunakan `digiflazz_price_list()` dan menampilkan field produk yang dikembalikan API, termasuk status buyer/seller bila tersedia.
+- Pratinjau tetap baca-saja: tidak menulis katalog database, tidak mengubah pemetaan, dan tidak membuat pesanan. Untuk menyimpan harga ke katalog toko, gunakan tombol **Sinkronkan katalog VIPayment/Digiflazz** setelah mapping aktif di Game List disiapkan.
+- API custom belum bisa dipratinjau secara generik. Profil custom saat ini hanya menyimpan base URL dan kredensial; endpoint katalog, autentikasi spesifik, dan bentuk respons memerlukan adapter terpisah dari dokumentasi resmi provider. UI menjelaskan batasan ini dan tidak mengirim request spekulatif ke endpoint custom.
+- Commit kode: `6415ccc59e62060abffcab86863ad41e6b40d955` pada branch `feature/admin-left-sidebar`; belum merge ke `main`.
+- CI, lint, dan tes browser belum diverifikasi untuk commit ini. Setelah pull, jalankan `php -l public/admin/api-settings.php`, `php bin/preflight.php`, tes regresi terkait, dan `git diff --check`; uji pratinjau kedua supplier dengan kredensial valid. Jangan mengaktifkan pembayaran, supplier ordering, atau backup Google Drive.
+
+
+## Verifikasi CI — pratinjau katalog supplier (2026-10-20)
+
+- GitHub Actions **PHP quality checks** untuk commit `6415ccc59e62060abffcab86863ad41e6b40d955` selesai dengan status **success**, run #819: https://github.com/sulistio95/PluQ-I/actions/runs/39391595762.
+- Ini hanya hasil workflow yang dikonfigurasi; belum membuktikan request API live untuk kedua supplier atau perilaku browser. Uji lokal dengan kredensial valid dan pemeriksaan tampilan masih diperlukan.
+- Dukungan API custom tetap memerlukan adapter katalog berdasarkan dokumentasi provider; tidak ada endpoint custom yang dipanggil. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+## 2026-10-20 — Uji browser lokal halaman transaksi admin
+
+- Pengguna menarik branch `feature/admin-left-sidebar` ke `f2421cb` dengan `git pull --ff-only`; file `public/admin/transaction-search.php` dan `public/admin/transaction-detail.php` tersedia secara lokal dan keduanya lolos `php -l`.
+- Pengujian awal melalui `curl` tanpa sesi login menerima HTTP 302 menuju `/admin/` pada kedua halaman, sesuai perlindungan sesi admin.
+- Pengguna kemudian mengonfirmasi pengujian browser setelah login berhasil. Log server menunjukkan `GET /admin/transaction-detail.php` dan `GET /assets/admin-sidebar.css` merespons HTTP 200.
+- Database belum memiliki transaksi, sehingga pencarian/detail transaksi nyata belum dapat diverifikasi terhadap data pesanan. Ini bukan kegagalan pengujian: belum ada data untuk dicari.
+- Status: akses dan pemuatan halaman dasar terverifikasi secara lokal; query dengan transaksi nyata dan detail relasi pembayaran/supplier/refund masih menunggu fixture transaksi terkontrol. Tidak ada pembayaran atau order supplier sungguhan yang dijalankan.
+- Tiga banner lokal yang belum terlacak harus dipertahankan. Jangan merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: CLI sinkronisasi membaca kredensial panel admin
+
+- Temuan: `bin/sync-balances.php` dan `bin/sync-catalog.php` sebelumnya memeriksa kredensial hanya melalui `getenv()`, sedangkan `pluqi_api_config_value()` mendahulukan kredensial terenkripsi di `app_settings`. Akibatnya, kredensial yang hanya disimpan melalui Pengaturan API bisa membuat sinkronisasi CLI salah melewati supplier.
+- Kedua skrip kini memeriksa kredensial melalui `pluqi_api_config_value()`, menyamakan sumber konfigurasi dengan panel admin. Supplier tanpa kredensial tetap dilewati; kesalahan pembacaan/dekripsi atau pemanggilan API ditangani sebagai kegagalan, bukan dianggap saldo nol.
+- Perubahan hanya memperbaiki pemilihan sumber kredensial pada CLI. Belum ada bukti uji runtime dengan database/kredensial pengguna dan belum diklaim lint/CI lulus. Setelah menarik commit, jalankan lint, preflight, lalu `php bin/sync-balances.php`; pastikan hasil VIPAY mencatat saldo aktual dan `last_balance_check_at` terisi. Jangan menampilkan API ID/Key di log atau chat.
+- Jika saldo aktual VIPayment Rp1.130, batas pakai pada reserve 50% adalah Rp565 sebelum dikurangi komitmen aktif; harga modal Rp1 dapat tersedia jika seluruh syarat lain lolos. Pembayaran, order supplier, dan backup Google Drive tetap nonaktif.
+
+
+## Lanjutan 2026-10-20 — Filter katalog supplier available
+- Perubahan `app/services/catalog.php` pada branch `feature/admin-left-sidebar`: query katalog pelanggan kini menambahkan `p.status='ACTIVE'`. SKU yang supplier laporkan `empty` tidak lagi ditampilkan; SKU yang masih `ACTIVE` tetapi gagal pemeriksaan saldo/cadangan tetap muncul dengan `is_available=false` agar frontend bisa memberi label Habis/tidak tersedia.
+- Ini memisahkan status katalog supplier dari kelayakan saldo lokal. Tidak ada status produk yang diaktifkan manual, tidak ada transaksi supplier/pembayaran yang dibuat, dan tidak ada perubahan pada `main`.
+- Wajib uji lokal: jalankan sinkronisasi katalog, buka game Mobile Legends, pastikan SKU `empty` hilang dan SKU `available` dengan saldo tak cukup tetap terlihat tidak dapat dibeli. Pastikan checkout menolak produk saat saldo/cadangan tidak cukup.
+- CI dan uji database/browser belum dijalankan dari perubahan ini; jangan klaim lulus sebelum ada hasil nyata.
+
+
+## 2026-10-20 — Bingkai ikon game lingkaran motif bulan sabit
+- Tampilan kartu game diperbarui agar ikon dibungkus lingkaran dengan bingkai emas gelap dan aksen bulan sabit di pinggiran kanan atas. Gambar asli tetap berasal dari unggahan panel admin; format file, URL ikon, database, dan proses unggah tidak diubah.
+- Perubahan hanya pada `public/assets/catalog.css` dan markup ikon di `public/assets/catalog.js`.
+- Wajib uji lokal setelah pull: buka halaman depan, pastikan ikon lama dan ikon yang diunggah tampil bulat, bingkai tidak menutupi nama game, placeholder tanpa ikon tetap rapi, serta tampilan desktop dan seluler tidak terpotong.
+- Belum diuji di browser/CI dan belum di-merge ke `main`.
+
+## Update 2026-10-20 — Perataan kartu katalog game
+
+- CSS `public/assets/catalog.css` diperbarui agar kartu game tersusun vertikal dengan tinggi minimum konsisten; area nama game menyediakan ruang dua baris dan membungkus kata panjang. Tujuannya menjaga ikon tetap sejajar walau nama game berbeda panjang.
+- Bingkai ikon bulat bermotif bulan sabit tetap digunakan. Tidak ada perubahan JavaScript, upload icon/banner, database, atau checkout.
+- Commit CSS: `97750176d2eba70379f6571e21744e2d42d90805` pada `feature/admin-left-sidebar`.
+- Belum diuji visual browser/CI. Setelah pull, periksa kartu dengan nama pendek dan panjang pada desktop dan ponsel. Jangan merge ke `main` tanpa audit berikutnya; pertahankan tiga banner JPG lokal yang belum terlacak.
+
+## Update 2026-10-20 — Grid desktop lima kolom dan ikon lebih besar
+
+- `public/assets/catalog.css` mengatur grid game desktop menjadi lima kartu per baris; sisa game otomatis turun ke baris berikutnya. Pada lebar layar di bawah 900px dipakai tiga kolom, dan breakpoint ponsel yang ada tetap aktif.
+- Bingkai ikon diperbesar dari 70px ke 92px. Motif bulan sabit dan area nama dua baris dipertahankan.
+- Commit CSS: `c0bf54d1f6264c12bd4ecf89437c2077d55afa12` pada branch `feature/admin-left-sidebar`.
+- Belum ada uji visual browser/CI. Setelah pull, cek desktop/tablet/ponsel. Jangan merge ke `main` tanpa audit lanjutan dan pertahankan tiga banner JPG lokal yang belum terlacak.
+
+
+## Update 2026-10-20 — Menghapus aksen lingkaran kecil pada ikon game
+
+- Menghapus pseudo-element bulan sabit/lingkaran kecil di pojok kanan atas bingkai ikon melalui `public/assets/catalog.css`, karena tampak mengganggu setelah ukuran ikon diperbesar.
+- Bingkai lingkaran dan warna emas gelap tetap dipertahankan; ukuran ikon 92px, grid desktop lima kolom, dan breakpoint tablet/ponsel tidak diubah.
+- Commit CSS: `8a2cb4ac6efa6e67a97770fb066382dba95c4c90` pada branch `feature/admin-left-sidebar`.
+- Belum diuji visual di browser dan belum merge ke `main`. Setelah pull, lakukan hard refresh dan periksa ikon di desktop serta ponsel.
+
+
+## Update 2026-10-20 — Pengaturan grid dan ukuran icon katalog
+
+- Bagian **Pengaturan Template → Tata letak katalog game** kini menyimpan jumlah kolom desktop (3–6) dan ukuran icon (80–120 px) ke tabel `app_settings`, memakai prepared statement/upsert, pemeriksaan rentang nilai, CSRF dan pembatasan peran admin yang sudah ada. Perubahan dicatat di audit log.
+- Halaman depan membaca pengaturan tersimpan dan mengirimkannya sebagai CSS variables. Nilai default saat belum tersimpan atau database settings tidak dapat dibaca: 5 kolom desktop dan icon 100 px. Tablet tetap 3 kolom dan ponsel 2 kolom.
+- File berubah: `public/admin/template-settings.php`, `public/assets/catalog.css`, dan `public/index.php`. Commits: `d98e1f3210eb8d146f955871763fb19b40679d16`, `dc4c834bdd7a1dc2057662757b8496e67ca0b281`, `175236425db904b07e366096fcfc1991bb483261` pada branch `feature/admin-left-sidebar`.
+- Belum menjalankan PHP lint, `bin/preflight.php`, tes database, CI pascaperubahan, atau verifikasi visual browser. Setelah pull, uji simpan/pemuatan ulang kedua pengaturan, tampilan desktop/tablet/ponsel, dan `git diff --check`. Tidak memerlukan migration baru karena memakai tabel `app_settings` yang sudah ada. Belum merge ke `main`; pertahankan tiga banner JPG lokal yang belum terlacak. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: Pertahankan form game saat halaman di-refresh
+
+- Temuan: pemilihan game hanya disimpan di variabel JavaScript (`activeGame`), sedangkan URL tidak berubah. Saat refresh, browser kembali memuat halaman katalog tanpa konteks game terpilih.
+- `public/assets/catalog.js` kini menambahkan slug game terpilih ke parameter URL `?game=<slug>`; saat halaman dibuka atau di-refresh, aplikasi memulihkan form game jika slug masih tersedia di katalog.
+- Tombol **Kembali ke game** membersihkan parameter game. Tombol Back/Forward browser juga menangani perubahan state URL tanpa memaksa pelanggan kembali ke halaman yang salah.
+- Commit: `8fa78d11455d39dfd3245d0bc795a0dcbb821f14` pada branch `feature/admin-left-sidebar`.
+- Verifikasi otomatis dan browser masih perlu dijalankan. Uji: pilih game, pastikan URL memuat `?game=slug`, refresh dan pastikan form game tetap tampil; gunakan Back/Forward browser dan tombol **Kembali ke game**. Data yang sudah diketik ke kolom ID belum dipersistenkan, sehingga setelah refresh kolom akun akan kosong demi menghindari penyimpanan data akun pelanggan di URL.
+- Pengaturan **Pengaturan Template → Tata letak katalog game** telah tersedia pada branch ini untuk jumlah kolom desktop 3–6 dan ukuran ikon 80–120 px; gunakan ukuran 104 atau 108 px untuk memperbesar ikon sedikit dari default 100 px. Desktop default tetap lima kolom; tablet tiga kolom dan ponsel dua kolom.
+- Belum merge ke `main`. Jangan aktifkan pembayaran, supplier ordering, atau backup Google Drive. Pertahankan tiga banner JPG lokal yang belum terlacak.
+ 
+
+## Update — 2026-10-20: Branding dan perataan header halaman awal
+
+- `public/index.php`: nama brand header diubah dari `PluQ` menjadi `PluQ-i`; footer diubah dari `PluQ.I Official Store` menjadi `PluQ-i Official Store`.
+- `public/assets/catalog.css`: header `.top` diberi lebar maksimum dan padding horizontal yang mengikuti container utama agar tulisan brand sejajar dengan sisi kiri banner.
+- Commit kode: `9697591a5d02badfe267e1c515952bd99719eadc` (brand/footer) dan `4d2f1cc2ebc94f17df6e1f937608cd14957a574a` (alignment), branch `feature/admin-left-sidebar`.
+- Belum diverifikasi visual di browser; setelah pull, lakukan hard refresh dan periksa alignment desktop serta mobile.
+- Belum merge ke `main`; jangan mengaktifkan pembayaran atau supplier ordering.
+
+
+## Update — 2026-10-21: Perataan lebar banner homepage
+
+- Berdasarkan tangkapan layar pengguna, banner tampak lebih sempit dan tidak segaris dengan kolom pencarian. `public/assets/catalog.css` kini memberi margin horizontal 12px pada `.hero` agar tepi banner sejajar dengan area input pencarian yang memakai padding horizontal 24px di dalam `main`.
+- Perubahan hanya tata letak banner; rasio 16:5, pergantian banner, katalog, dan alur transaksi tidak diubah.
+- Commit CSS: a52ecee9b9be5daa4497abc8cb50d1b39a13dd5e. Belum diverifikasi visual di browser; setelah pull lakukan hard refresh dan cek desktop serta ponsel. Belum merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif. Pertahankan tiga banner JPG lokal yang belum terlacak.
+
+
+## Koreksi lanjutan — 2026-10-21: Lebar banner terhadap kolom pencarian
+
+- Pengguna melaporkan penyesuaian margin 12px sebelumnya tidak mengubah tampilan secara nyata. Kolom pencarian memiliki padding horizontal 24px di desktop, sehingga margin banner perlu 24px agar tepi banner mengikuti lebar input, bukan 12px.
+- CSS .hero kini memakai margin horizontal 24px pada desktop dan 14px pada breakpoint ponsel agar mengikuti padding .search-row yang responsif.
+- Commit CSS: 48835eefe64b62babffd5200df55d1e9946c9d44. Belum diverifikasi visual browser. Setelah pull, hard refresh dan bandingkan tepi kiri/kanan banner dengan input pencarian. Belum merge ke main; pertahankan tiga banner JPG lokal dan jangan aktifkan pembayaran, supplier ordering, atau backup Drive.
+
+
+## Update — 2026-10-21: Samakan lebar banner dengan kolom pencarian
+
+- Menyesuaikan `.hero` agar memakai lebar penuh area konten `main` (`width:100%; box-sizing:border-box`) dan menghapus margin horizontal tambahan. Ini membuat sisi kanan banner sejajar dengan sisi kanan kolom pencarian, bukan hanya mengandalkan posisi tengah.
+- Pada breakpoint ponsel, margin horizontal khusus banner juga dihapus agar banner tetap mengikuti lebar konten yang sama. Rasio banner dan mekanisme slider tidak berubah.
+- Commit CSS: 86483f95cbbc63ee6a281e4caffc2b2abe267735. Belum diverifikasi secara visual di browser; lakukan pull dan hard refresh. Belum merge ke `main`; jangan hapus tiga banner JPG lokal yang belum terlacak atau mengaktifkan pembayaran/order supplier/backup Drive.
+
+
+## Update — 2026-10-21: Koreksi field akun Genshin, Honkai Star Rail, dan Magic Chess GoGo
+
+- Atas laporan pengguna, `app/services/game_fields.php` kini memetakan Genshin Impact dan Honkai: Star Rail ke field `user_id` + `server` (label **Server / Region**), bukan `zone_id`.
+- Magic Chess GoGo kini dikenali sebagai game yang membutuhkan `user_id` + `zone_id`.
+- Menambahkan tes regresi di `tests/game-account-schema.php`. Checkout untuk skema yang belum ditinjau tetap diblokir; field server saat ini masih input teks, belum dropdown yang mengambil pilihan dari API. Implementasi dropdown API harus mengikuti struktur respons supplier yang benar dan validasi server-side, bukan menebak pilihan.
+- Perubahan dikirim ke `feature/admin-left-sidebar`; belum diuji lokal/CI dan belum merge ke `main`. Setelah pull, jalankan `php tests/game-account-schema.php`. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-21: Audit pemetaan field akun game
+
+- Membuat `docs/game-account-field-mapping.md` untuk mencatat field yang benar: Mobile Legends = User ID + Zone ID; Genshin Impact = User ID + Server/Region; Honkai: Star Rail = User ID + Server/Region; Magic Chess GoGo = User ID + Zone ID; Zenless Zone Zero = User ID + Server/Region.
+- Audit dokumentasi publik VIPayment menemukan `type=services` mengembalikan properti `server` pada tiap record layanan, tetapi dokumentasi tidak menyatakan bahwa nilai itu adalah daftar server akun pelanggan. Endpoint order menerima `data_no` dan `data_zone`; dokumentasi yang ditinjau tidak mendefinisikan endpoint server-list khusus.
+- Karena itu, jangan membangun dropdown dengan menganggap properti SKU `server` sebagai opsi akun. Selanjutnya verifikasi respons katalog nyata yang sudah disanitasi dan format target tiap game, lalu implementasikan opsi dropdown dengan nilai kode yang tervalidasi di sisi server.
+- Saat ini field Server/Region masih berupa teks; dropdown dinamis dan transformasi server/zone ke parameter order belum diverifikasi. Checkout skema yang belum ditinjau harus tetap diblokir. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-21: Dropdown Server / Region sementara
+
+- Genshin Impact dan Honkai: Star Rail kini menampilkan dropdown Server / Region dengan opsi Asia, America, Europe, dan TW / HK / MO.
+- Nilai option `asia`, `america`, `europe`, `tw_hk_mo` bersifat UI sementara, bukan kode API VIPayment yang terverifikasi. Jangan mengirim nilai tersebut langsung ke order supplier.
+- `game_account_schema_is_supported()` tetap memblokir checkout untuk schema dengan field `server` yang belum dipetakan. Magic Chess GoGo tetap User ID + Zone ID.
+- Tes regresi diperbarui untuk memastikan pilihan dropdown dan gate checkout. Perubahan belum diuji lokal/CI dan belum merge ke main. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## Perbaikan sintaks — 2026-10-21
+
+- Setelah pengguna menarik perubahan dropdown server, `php -l app/services/game_fields.php` menemukan `validation_regex` terpotong pada field server dan blok fungsi tidak tertutup.
+- Memperbaiki file di commit `ac6704885939a0cf12c64ef96abd9a6619d6b620`. Perbaikan belum diverifikasi melalui eksekusi PHP lokal atau CI; pengguna perlu menarik commit tersebut dan mengulang tes.
+
+## Handoff — Audit mapping region VIPayment (2026-10-21)
+
+- Audit dokumentasi publik selesai: belum ada bukti untuk mengirim pilihan region Genshin/HSR/ZZZ lewat `data_zone` atau `post_additional_data`. `additional_target` untuk `get-nickname` didokumentasikan sebagai zone ID; `server` katalog adalah atribut SKU yang maknanya untuk region akun belum terverifikasi.
+- Tidak ada perubahan kode/transaksi. Checkout untuk schema server tetap diblokir.
+- Kode lookup Genshin/HSR yang ada belum terverifikasi pada VIPayment; ZZZ belum didukung lookup. Audit berikutnya dapat meninjau apakah tombol pemeriksaan nickname perlu dinonaktifkan untuk game tersebut sampai kodenya terbukti.
+- Jika pengguna memilih tidak menelusuri lebih lanjut, nonaktifkan ketiga game sementara (jangan hapus produk/riwayat permanen). Jangan mengaktifkan pembayaran, order supplier, atau backup Drive.
+
+
+## Update — 2026-10-23: Logo header dapat diubah dari Pengaturan Template
+
+- Menambahkan panel **Pengaturan Template → Logo Header Halaman Depan** untuk unggah/ganti logo, melihat pratinjau, atau menghapus logo agar tulisan `PluQ-i` tampil kembali.
+- Logo memakai validasi unggahan JPG/PNG/WebP, batas 5 MB, dimensi maksimum 8000×8000 dan 25 megapiksel; form dilindungi CSRF dan hanya peran admin yang boleh mengubah.
+- URL logo disimpan pada `app_settings.brand_logo_url` tanpa migration. File disimpan di `public/uploads/brand-logos/` dan dikirim ke GitHub Contents API menggunakan token privat, repository, dan branch yang sama dengan unggahan icon game.
+- Halaman depan menampilkan logo secara responsif; jika pengaturan kosong atau logo dihapus, teks `PluQ-i` menjadi fallback. Perubahan lanjutan pada commit `245811976885037e2888663364055d44b0068643` dan `caebe865e527eec4e47f76492dcae2e74bf8352c` menambahkan penghapusan otomatis file logo lama dari GitHub saat logo diganti atau dihapus melalui panel. Penghapusan dibatasi ke `public/uploads/brand-logos/`; jika gagal, perubahan setting tetap berlaku dan panel menampilkan peringatan.
+- Berkas kode: `public/admin/template-settings.php`, `public/index.php`, dan `public/assets/catalog.css`.
+- Status verifikasi: perubahan ditulis ke branch `feature/admin-left-sidebar`; lint PHP, `bin/preflight.php`, uji database, CI, dan tampilan browser lokal belum dijalankan. Setelah sinkronisasi lokal, jalankan `php -l public/admin/template-settings.php`, `php -l public/index.php`, `php bin/preflight.php`, tes terkait, dan `git diff --check`; lalu uji unggah/ganti/hapus logo di panel serta tampilan desktop/ponsel. Jangan aktifkan pembayaran, order supplier, atau backup Google Drive.
+
+
+## Lanjutan — 2026-10-23: Pembersihan otomatis logo GitHub
+
+- Perubahan di `public/admin/template-settings.php` sudah tersedia pada `feature/admin-left-sidebar`: saat mengganti logo, upload baru dikomit ke GitHub, pengaturan diperbarui, lalu logo lama dihapus; saat menghapus logo, pengaturan dikosongkan, lalu file logo terkait dihapus dari GitHub. Logo eksternal atau path di luar folder brand logo tidak dihapus.
+- Jika pembersihan GitHub gagal, panel memberi peringatan `old_logo_cleanup=failed`; logo yang baru dipilih atau fallback teks tetap berlaku. Log PHP hanya menyimpan pesan kesalahan, bukan token.
+- Validasi lokal yang sudah dilaporkan pengguna: `php -l public/admin/template-settings.php` lulus, `git diff --check` bersih, working tree sinkron dengan branch. Ini belum membuktikan GitHub API berjalan saat runtime karena belum diuji lewat panel dengan konfigurasi token yang aktif.
+- Langkah pengguna berikutnya cukup lewat panel admin: unggah/ganti logo, lalu periksa logo yang tampil; setelah itu uji tombol hapus dan pastikan teks `PluQ-i` kembali. Tidak perlu menjalankan perintah terminal setiap kali mengelola logo. Jika muncul peringatan, periksa konfigurasi privat server (`GITHUB_UPLOAD_TOKEN`, `GITHUB_UPLOAD_REPOSITORY`, `GITHUB_UPLOAD_BRANCH`) dan izin token Contents: Read and write.
+
+
+## Lanjutan — 2026-10-23: Hapus otomatis semua logo yang tidak terpakai
+
+- `public/admin/template-settings.php` kini memiliki `brand_logo_cleanup_unused_from_github()` yang membaca isi folder `public/uploads/brand-logos/` pada branch yang dikonfigurasi, mempertahankan hanya logo yang URL-nya aktif di `app_settings.brand_logo_url`, lalu menghapus file logo lain melalui GitHub Contents API.
+- Sweep dijalankan otomatis setelah upload/ganti logo maupun setelah logo dihapus melalui panel. Saat logo dihapus, tidak ada logo aktif sehingga semua file logo bernama hasil unggahan yang cocok pola ketat di folder tersebut dianggap tidak terpakai dan dibersihkan.
+- Pembersihan hanya menyentuh nama file 32 karakter heksadesimal dengan ekstensi JPG/PNG/WebP di folder brand logo; tidak menyentuh game icons atau file lain. Jika GitHub gagal memberi daftar file atau menghapus salah satu file, proses menampilkan peringatan pada panel dan mencatat pesan di PHP error log.
+- Commit kode: `74afa7028242f730faeb5a32fa217a8b6a0797f1`; validasi respons daftar GitHub: `5777d7a8f766853fca0cc8ad08e2e8da1d011404`, branch `feature/admin-left-sidebar`.
+- Belum ada pengujian runtime dengan token GitHub dari server. Setelah sinkronisasi lokal, cukup uji melalui panel: ganti logo dan pastikan hanya logo baru tersisa di folder GitHub; kemudian hapus logo dan pastikan folder tidak lagi memiliki file logo hasil unggahan. Jika muncul peringatan, cek variabel privat `GITHUB_UPLOAD_TOKEN`, `GITHUB_UPLOAD_REPOSITORY`, `GITHUB_UPLOAD_BRANCH` dan izin Contents: Read and write.
+
+
+## Update — 2026-10-23: Ukuran icon katalog desktop dan ponsel terpisah
+
+- Pengaturan Template → Tata letak katalog game memisahkan ukuran icon desktop dan ponsel, masing-masing 64–120 px dengan kenaikan 4 px. Pengaturan jumlah kolom desktop (3–6) dan ponsel (2–4) tetap ada.
+- `app_settings` menyimpan `catalog_icon_size_desktop` dan `catalog_icon_size_mobile`; nilai lama `catalog_icon_size` tetap diperbarui ke ukuran desktop agar kompatibel dengan build lama. Tidak perlu migration.
+- `public/index.php` meneruskan dua CSS variables dan `public/assets/catalog.css` menerapkan ukuran ponsel pada lebar maksimal 560 px. Tablet 561–900 px tetap 3 kolom dan memakai ukuran desktop.
+- File diubah: `public/admin/template-settings.php`, `public/index.php`, `public/assets/catalog.css`, dan catatan ini. Belum menjalankan PHP lint, preflight, tes database, atau uji visual browser. Setelah pull, uji simpan/pemuatan ulang pengaturan dan pastikan ikon desktop/ponsel berubah secara independen. Belum merge ke `main`.

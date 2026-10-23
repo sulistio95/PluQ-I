@@ -9,6 +9,7 @@ if (PHP_SAPI !== 'cli') {
 require dirname(__DIR__) . '/app/bootstrap.php';
 require PLUQI_ROOT . '/config/database.php';
 require PLUQI_ROOT . '/app/services/catalog_sync.php';
+require_once PLUQI_ROOT . '/app/services/api_secret_crypto.php';
 
 $pdo = database();
 $providers = [
@@ -17,20 +18,21 @@ $providers = [
 ];
 $failed = false;
 
-foreach ($providers as $code => $requiredEnvironment) {
-    $configured = true;
-    foreach ($requiredEnvironment as $key) {
-        if (trim((string) getenv($key)) === '') {
-            $configured = false;
-            break;
-        }
-    }
-    if (!$configured) {
-        fwrite(STDERR, $code . ": skipped (credentials not configured).\n");
-        continue;
-    }
-
+foreach ($providers as $code => $requiredCredentials) {
     try {
+        // Match the admin settings credential source instead of checking getenv() alone.
+        $configured = true;
+        foreach ($requiredCredentials as $key) {
+            if (trim(pluqi_api_config_value($key)) === '') {
+                $configured = false;
+                break;
+            }
+        }
+        if (!$configured) {
+            fwrite(STDOUT, $code . ": skipped (credentials not configured).\n");
+            continue;
+        }
+
         $result = $code === 'DIGI'
             ? sync_digiflazz_catalog($pdo)
             : sync_vipayment_catalog($pdo);

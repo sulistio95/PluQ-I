@@ -41,6 +41,7 @@ foreach ($optionalFields as $fieldName => $fieldLabel) { $allFields[$fieldName] 
 $message = '';
 $error = '';
 $catalogPreview = null;
+$catalogPreviewProvider = 'VIPayment';
 $catalogSyncResult = null;
 $csrf = admin_csrf_token();
 
@@ -159,23 +160,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
    $catalogSyncResult = $providerCode === 'DIGI' ? sync_digiflazz_catalog($pdo) : sync_vipayment_catalog($pdo);
    if (!empty($catalogSyncResult['skipped'])) {
     $message = $providerCode . ' dilewati karena supplier dinonaktifkan.';
-   } elseif ((int)($catalogSyncResult['mapped'] ?? 0) === 0) {
-    $error = 'Sinkronisasi dibatalkan karena tidak ada layanan yang cocok dengan pemetaan game aktif. Periksa Game List dan simpan pemetaan sebelum mencoba lagi.';
-    $catalogSyncResult = null;
    } else {
-    $message = sprintf('Sinkronisasi %s selesai: %d layanan dibaca, %d layanan dipetakan ke game PluQ-I. Tidak ada pesanan dibuat.', $providerCode, (int)$catalogSyncResult['seen'], (int)$catalogSyncResult['mapped']);
+    $mappedCount = (int)($catalogSyncResult['mapped'] ?? 0);
+    $message = $mappedCount > 0
+     ? sprintf('Sinkronisasi %s selesai: %d layanan disimpan ke katalog lokal, %d dipetakan ke game PluQ-I. Tidak ada pesanan dibuat.', $providerCode, (int)$catalogSyncResult['seen'], $mappedCount)
+     : sprintf('Sinkronisasi %s selesai: %d layanan disimpan ke katalog lokal. Belum ada pemetaan game aktif; buka Game List untuk memilih game. Tidak ada pesanan dibuat.', $providerCode, (int)$catalogSyncResult['seen']);
    }
   } catch (Throwable $e) {
    $error = 'Sinkronisasi katalog gagal: ' . $e->getMessage();
   }
- } elseif (isset($_POST['preview_vipayment_catalog'])) {
+ } elseif (isset($_POST['preview_provider_catalog'])) {
   try {
-   require_once PLUQI_ROOT . '/app/services/vipayment.php';
-   $catalogPreview = vipayment_game_services(null, null);
-   if (!is_array($catalogPreview)) throw new RuntimeException('Format katalog VIPayment tidak valid.');
-   $message = 'Daftar layanan VIPayment berhasil diambil untuk pratinjau baca-saja. Database katalog tidak diubah dan tidak ada pesanan dibuat.';
+   $previewProvider = strtoupper(trim((string)($_POST['preview_catalog_provider'] ?? 'VIPAY')));
+   $providerCode = match ($previewProvider) { 'VIPAY' => 'VIPAY', 'DIGI' => 'DIGI', default => throw new RuntimeException('Penyedia katalog tidak valid.') };
+   $providerStmt = $pdo->prepare('SELECT id FROM providers WHERE code=:code LIMIT 1');
+   $providerStmt->execute(['code' => $providerCode]);
+   $providerId = $providerStmt->fetchColumn();
+   if ($providerId === false) throw new RuntimeException('Data supplier belum tersedia di database.');
+   $cacheStmt = $pdo->prepare('SELECT raw_data FROM provider_products WHERE provider_id=:provider_id ORDER BY id LIMIT 1000');
+   $cacheStmt->execute(['provider_id' => (int)$providerId]);
+   $catalogPreview = [];
+   foreach ($cacheStmt->fetchAll(PDO::FETCH_COLUMN) as $rawData) {
+    if (!is_string($rawData) || $rawData === '') continue;
+    $decoded = json_decode($rawData, true);
+    if (is_array($decoded)) $catalogPreview[] = $decoded;
+   }
+   if ($catalogPreview === []) throw new RuntimeException('Belum ada katalog tersimpan. Jalankan Sinkronkan katalog untuk supplier ini terlebih dahulu.');
+   $catalogPreviewProvider = $providerCode === 'VIPAY' ? 'VIPayment' : 'Digiflazz';
+   $message = 'Katalog tersimpan berhasil dimuat untuk pratinjau. Tidak ada permintaan API supplier yang dilakukan.';
   } catch (Throwable $e) {
-   $error = 'Pengambilan katalog VIPayment gagal: ' . $e->getMessage();
+   $error = 'Pratinjau katalog tersimpan gagal: ' . $e->getMessage();
   }
  } elseif (isset($_POST['check_duitku'])) {
   try {
@@ -232,8 +246,10 @@ function api_settings_escape(mixed $value): string { return htmlspecialchars((st
 <style>
 :root{color-scheme:dark;--bg:#0c0d10;--panel:#15171d;--line:#292d36;--text:#f3f4f6;--muted:#9ca3af;--accent:#a7f3d0}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}a{color:var(--accent)}.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}label{display:grid;gap:6px;color:var(--muted)}input,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.notice{padding:10px;border-radius:7px;margin:12px 0;background:#183329}.error{padding:10px;border-radius:7px;margin:12px 0;background:#3b1d22}.status{font-size:12px;padding:3px 7px;border:1px solid var(--line);border-radius:5px}.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}.note{font-size:13px}@media(max-width:600px){main{padding:12px}.panel{padding:12px}}
-</style></head><body><main>
-<header class="bar"><div><h1>Pengaturan API</h1><div class="muted">Kredensial gateway dan supplier — akun <?=api_settings_escape($user['username'])?></div></div><a href="/admin/">Kembali ke panel admin</a></header>
+</style>
+<link rel="stylesheet" href="/assets/admin-sidebar.css"></head><body class="admin-layout">
+<?php require PLUQI_ROOT . '/app/views/admin_sidebar.php'; ?><main>
+<header class="bar"><div><h1>Pengaturan API</h1><div class="muted">Kredensial gateway dan supplier — akun <?=api_settings_escape($user['username'])?></div></div></header>
 <?php if ($message !== ''): ?><div class="notice"><?=api_settings_escape($message)?></div><?php endif; ?>
 <?php if ($error !== ''): ?><div class="error"><?=api_settings_escape($error)?></div><?php endif; ?>
 <section class="panel"><h2>Status konfigurasi</h2><p class="muted">Status hanya menunjukkan apakah nilai tersedia, bukan apakah kredensial diterima oleh layanan.</p>
@@ -288,15 +304,18 @@ function api_settings_escape(mixed $value): string { return htmlspecialchars((st
 <form method="post" class="actions"><input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>"><button type="submit" name="check_duitku" value="1">Validasi konfigurasi Duitku</button><button type="submit" name="check_digiflazz" value="1">Periksa saldo Digiflazz</button><button type="submit" name="check_vipayment" value="1">Periksa saldo VIPayment</button></form>
 </section>
 <section class="panel"><h2>Sinkronisasi katalog ke database</h2>
-<p class="muted">Langkah ini berbeda dari pratinjau: sistem mengambil daftar harga supplier dan menyimpan produk yang cocok dengan pemetaan aktif pada menu Game List. Simpan pemetaan game terlebih dahulu. Permintaan ini hanya membaca katalog supplier; tidak membuat pesanan atau pembayaran.</p>
+<p class="muted">Ini satu-satunya tindakan yang menarik katalog dari API supplier dan memperbarui cache lokal. Game List serta pratinjau di bawah membaca cache ini, bukan melakukan permintaan API baru. Produk untuk game yang sudah dipetakan juga diperbarui; tidak ada pesanan atau pembayaran yang dibuat.</p>
 <form method="post" class="actions"><input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>"><button type="submit" name="sync_provider_catalog" value="VIPAY">Sinkronkan katalog VIPayment</button><button type="submit" name="sync_provider_catalog" value="DIGI">Sinkronkan katalog Digiflazz</button></form>
 <?php if (is_array($catalogSyncResult) && empty($catalogSyncResult['skipped'])): ?>
 <p><strong>Hasil:</strong> <?=api_settings_escape($catalogSyncResult['provider'] ?? '')?> — <?= (int)($catalogSyncResult['seen'] ?? 0) ?> layanan diproses, <?= (int)($catalogSyncResult['mapped'] ?? 0) ?> dipetakan ke game.</p>
 <?php endif; ?>
 </section>
-<section class="panel"><h2>Pratinjau katalog VIPayment</h2>
-<p class="muted">Mengambil daftar layanan API secara langsung. Fitur ini hanya menampilkan data; tidak menyimpan/mengubah katalog dan tidak mengirim pesanan.</p>
-<form method="post" class="actions"><input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>"><button type="submit" name="preview_vipayment_catalog" value="1">Ambil daftar game dan layanan</button></form>
+<section class="panel"><h2>Pratinjau katalog tersimpan</h2>
+<p class="muted">Pratinjau membaca data yang terakhir disimpan saat sinkronisasi katalog. Membuka pratinjau tidak memanggil API supplier dan tidak mengubah katalog atau membuat pesanan.</p>
+<form method="post" class="actions"><input type="hidden" name="csrf" value="<?=api_settings_escape($csrf)?>">
+<label>Supplier katalog<select name="preview_catalog_provider" required><option value="VIPAY">VIPayment</option><option value="DIGI">Digiflazz</option></select></label>
+<button type="submit" name="preview_provider_catalog" value="1">Lihat katalog tersimpan</button></form>
+<p class="muted note">API custom belum bisa dipratinjau otomatis karena format endpoint, autentikasi, dan struktur respons berbeda-beda. Perlu adapter khusus berdasarkan dokumentasi resmi masing-masing API; profil custom yang tersimpan saat ini hanya menyimpan kredensial dan base URL.</p>
 <?php if (is_array($catalogPreview)): ?>
 <?php
 $catalogRows = array_values(array_filter($catalogPreview, 'is_array'));
@@ -306,14 +325,14 @@ foreach ($catalogRows as $catalogRow) {
  if (is_scalar($gameName) && trim((string)$gameName) !== '') $gameNames[(string)$gameName] = true;
 }
 ?>
-<p><strong>Total layanan:</strong> <?=count($catalogRows)?> &nbsp; <strong>Game/kategori teridentifikasi:</strong> <?=count($gameNames)?></p>
+<p><strong>Penyedia:</strong> <?=api_settings_escape($catalogPreviewProvider)?> &nbsp; <strong>Total layanan:</strong> <?=count($catalogRows)?> &nbsp; <strong>Game/kategori teridentifikasi:</strong> <?=count($gameNames)?></p>
 <?php if (!$catalogRows): ?><p class="muted">API mengembalikan daftar kosong.</p><?php else: ?>
 <div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px">Game/kategori</th><th style="text-align:left;padding:8px">Layanan</th><th style="text-align:left;padding:8px">Kode</th><th style="text-align:left;padding:8px">Status</th><th style="text-align:left;padding:8px">Harga</th></tr></thead><tbody>
 <?php foreach (array_slice($catalogRows, 0, 100) as $catalogRow):
  $gameName = $catalogRow['game'] ?? $catalogRow['category'] ?? $catalogRow['game_name'] ?? '';
  $serviceName = $catalogRow['name'] ?? $catalogRow['service'] ?? $catalogRow['layanan'] ?? $catalogRow['product_name'] ?? '';
  $serviceCode = $catalogRow['code'] ?? $catalogRow['service_code'] ?? $catalogRow['buyer_sku_code'] ?? $catalogRow['id'] ?? '';
- $serviceStatus = $catalogRow['status'] ?? $catalogRow['service_status'] ?? '';
+ $serviceStatus = $catalogRow['status'] ?? $catalogRow['service_status'] ?? (($catalogRow['buyer_product_status'] ?? false) && ($catalogRow['seller_product_status'] ?? false) ? 'available' : 'unavailable');
  $servicePrice = $catalogRow['price'] ?? $catalogRow['harga'] ?? $catalogRow['cost'] ?? '';
 ?>
 <tr><?php foreach ([$gameName,$serviceName,$serviceCode,$serviceStatus,$servicePrice] as $cell): ?><td style="padding:8px;border-top:1px solid var(--line);vertical-align:top"><?=api_settings_escape(is_scalar($cell) ? $cell : json_encode($cell))?></td><?php endforeach; ?></tr>
