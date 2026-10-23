@@ -31,7 +31,7 @@ $checks = [
     'selling price calculation remains available' =>
         str_contains($source, 'AS selling_price'),
     'profit remains displayed' =>
-        str_contains($source, "supplier_prices_money($sell-$base)"),
+        str_contains($source, 'supplier_prices_money($sell-$base)'),
     'catalog remains read-only and no fulfillment is triggered' =>
         str_contains($source, 'tidak mengubah harga dan tidak membuat pesanan'),
 ];
