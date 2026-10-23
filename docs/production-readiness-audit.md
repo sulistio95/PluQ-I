@@ -1,3 +1,12 @@
+## 2026-10-23 — Rating pelanggan dan kualitas supplier (implementasi awal)
+
+- Ditambahkan migration 013 `order_ratings`, validasi aturan rating, form rating di halaman status order, dan panel admin kualitas supplier.
+- Form hanya muncul untuk pembayaran PAID dengan order status SUCCESS/FAILED/REFUNDED; satu rating per order dijaga unique constraint. Rating pelanggan tidak dianggap sebagai bukti otomatis kesalahan supplier.
+- Panel admin memakai status transaksi dan waktu fulfillment dari database serta menampilkan rata-rata rating pelanggan dan jumlah sampel. Data belum boleh memengaruhi pemilihan supplier otomatis.
+- Tes aturan rating ditambahkan ke PHP quality workflow; migration 013 ditambahkan ke workflow MySQL.
+- Belum ada hasil lint/CI/database/browser pascaperubahan. Terapkan migration 013 setelah migration 012, lalu verifikasi input invalid, duplicate rating, status yang belum final, agregasi dashboard, dan responsif browser.
+- Pembayaran live, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
 ## 2026-10-21 — Dropdown Server / Region Zenless Zone Zero (perbaikan)
 
 - Penyebab dropdown tidak muncul: aturan field server sebelumnya hanya memberi tipe `select` pada Genshin Impact dan Honkai: Star Rail; ZZZ menerima tipe `text`.
