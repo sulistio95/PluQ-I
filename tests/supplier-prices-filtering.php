@@ -42,11 +42,11 @@ $checks = [
     'catalog remains read-only and no fulfillment is triggered' =>
         str_contains($source, 'tidak mengubah harga dan tidak membuat pesanan'),
     'supplier price page size is selectable and bounded' =>
-        str_contains($source, "in_array($perPage, [25, 50, 100, 200], true)"),
+        str_contains($source, 'in_array($perPage, [25, 50, 100, 200], true)'),
     'supplier price query uses dynamic pagination instead of fixed 200 rows' =>
         str_contains($source, 'LIMIT " . $perPage . " OFFSET " . $offset') && !str_contains($source, 'LIMIT 200'),
     'pagination links preserve active filters and sort order' =>
-        str_contains($source, "$queryBase=$filters") && str_contains($source, "$queryBase['sort']=$sort"),
+        str_contains($source, '$queryBase=$filters') && str_contains($source, '$queryBase[\\'sort\\']=$sort'),
     'homepage loads games and banners independently' =>
         str_contains($jsSource, 'Promise.allSettled([getJson(\'/api/games\'), getJson(\'/api/banners\')])'),
 ];
