@@ -1,3 +1,10 @@
+## Update — 2026-10-23: Pemulihan bingkai ikon pada PR #13
+
+- Pada branch `feature/supplier-price-pagination-fix-catalog-assets`, memperbaiki render kartu game di `public/assets/catalog.js` agar gambar icon dibungkus elemen `.game-icon-frame`; mempertahankan pemuatan game/banner independen berbasis `Promise.allSettled` yang sudah ada di branch ini.
+- Memulihkan gaya bingkai lingkaran emas dan tata letak kartu pada `public/assets/catalog.css`. Ukuran bingkai saat ini 100 × 100 px; pengaturan ukuran dari panel admin belum dipindahkan pada perubahan ini.
+- Tidak menggabungkan keseluruhan `feature/admin-left-sidebar`; hanya port perubahan markup/style yang terkait langsung dengan bingkai ikon. Aset gambar sudah dipulihkan dalam commit sebelumnya `874aeb09e62c1186ed8842b34e589496153e4fe2`.
+- Validasi browser dan uji visual lokal belum dilakukan. Periksa workflow GitHub Actions setelah commit ini, lalu tarik branch dan pastikan icon game tampil dalam bingkai emas di browser.
+
 ## Update — 2026-10-19: Sinkronisasi katalog dari panel admin
 
 - Menambahkan tombol **Sinkronkan katalog VIPayment** dan **Sinkronkan katalog Digiflazz** pada Pengaturan API. Berbeda dari tombol pratinjau VIPayment, tombol sinkronisasi memanggil service katalog dan menyimpan produk/harga yang cocok dengan pemetaan game aktif ke database.
