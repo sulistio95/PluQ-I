@@ -1,3 +1,23 @@
+## Update — 2026-10-23: Rating pelanggan dan dashboard kualitas supplier (awal)
+
+- Pekerjaan awal ada pada branch `feature/customer-supplier-rating`, dibuat dari `feature/admin-left-sidebar`; belum merge ke `main`.
+- Menambahkan migration `013_order_ratings_and_supplier_quality.sql` (nomor 012 dipakai oleh `012_pricing_rules_hybrid.sql`). Tabel rating punya unique key per order, rating 1–5, alasan terstruktur, komentar opsional, dan referensi order/provider/game.
+- Halaman `public/order-status.php` menampilkan rating hanya untuk pesanan berbayar dengan status final SUCCESS/FAILED/REFUNDED; satu rating per order. Validasi bersama di `app/services/order_rating.php`.
+- Panel admin baru `/admin/supplier-quality.php` menampilkan sukses/gagal, persentase sukses, waktu proses rata-rata, rating pelanggan dan jumlah sampel, serta alasan rating.
+- Rating pelanggan tetap terpisah dari metrik kinerja objektif. Belum mengubah pemilihan supplier otomatis dan belum menggunakan rating Digiflazz dari panel.
+- Menambahkan `tests/order-rating-rules.php`; workflow PHP quality menjalankan tes tersebut dan workflow MySQL mengimpor migration 013.
+- Dokumentasi: `docs/customer-rating-and-supplier-quality.md`.
+- **Belum diverifikasi** dengan PHP lint/tes lokal, MySQL nyata, browser, atau CI. Setelah pull jalankan:
+  ```sh
+  php -l app/services/order_rating.php
+  php -l public/order-status.php
+  php -l public/admin/supplier-quality.php
+  php tests/order-rating-rules.php
+  git diff --check
+  ```
+- Tes integrasi database dan browser masih wajib. Pastikan migration 013 dijalankan setelah 012.
+- Duitku live, supplier fulfillment, dan Google Drive backup tetap nonaktif.
+
 ## Update — 2026-10-23: Hapus logo lama dari GitHub dengan aman
 
 - `public/admin/template-settings.php` kini menambahkan fungsi penghapusan logo header melalui GitHub Contents API: mengambil SHA file pada branch konfigurasi terlebih dahulu, lalu menghapus file dengan commit terpisah.
