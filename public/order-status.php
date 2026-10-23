@@ -95,7 +95,7 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
             if (isset($_GET['rated']) && $_GET['rated'] === '1') $message .= ' Terima kasih, rating Anda telah disimpan.';
         }
     } catch (Throwable $e) {
-        $error = 'Status pesanan atau rating belum dapat diperiksa. Pastikan migration 012 sudah diterapkan dan periksa log server.';
+        $error = 'Status pesanan atau rating belum dapat diperiksa. Pastikan migration 013 sudah diterapkan dan periksa log server.';
     }
 }
 $esc = static fn(mixed $v): string => htmlspecialchars((string)($v ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
