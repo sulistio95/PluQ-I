@@ -1,3 +1,11 @@
+## Update — 2026-10-24: Pratinjau logo dan duplikasi Icon Game List
+
+- Commit pada branch PR #13: `21b3a3d4c054d08809a8bbcb98f9d917f7b9f22c`.
+- Memperbaiki pembacaan `brand_logo_url` pada `public/admin/template-settings.php`, sehingga pratinjau logo Template mengambil nilai dari `app_settings` dan hanya menerima path unggahan logo lokal dengan format yang diizinkan.
+- Menghapus bagian **Icon Game List** yang terduplikasi di Pengaturan Template; tersisa satu bagian untuk mengelola icon.
+- Verifikasi lewat pembacaan file GitHub: query memuat `brand_logo_url` dan judul `Icon Game List` hanya muncul sekali. Lint PHP dan pemeriksaan browser belum dijalankan; pengguna perlu pull branch dan menjalankan `php -l public/admin/template-settings.php`, lalu memeriksa pratinjau logo serta memastikan bagian Icon Game List tampil sekali.
+- PR #13 tetap terbuka dan belum digabung. Pembayaran, pesanan supplier, dan backup Drive tetap nonaktif.
+
 ## Update — 2026-10-24: Pemulihan logo homepage pada PR #13
 
 - Homepage membaca `brand_logo_url` dari `app_settings` dan menampilkan gambar logo dengan fallback teks `PluQ-I`.
