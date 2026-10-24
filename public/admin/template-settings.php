@@ -682,9 +682,17 @@ $banners = $pdo->query('SELECT id,title,image_url,target_url,sort_order,status F
 $layoutSettings=['catalog_grid_columns_desktop'=>'5','catalog_grid_columns_mobile'=>'3','catalog_icon_size'=>'100','catalog_icon_size_desktop'=>'','catalog_icon_size_mobile'=>''];
 if (($_GET['brand_logo_saved'] ?? '') === '1') $notice = 'Logo header berhasil disimpan ke GitHub dan diterapkan pada halaman depan.';
 if (($_GET['brand_logo_deleted'] ?? '') === '1') $notice = 'Logo header dihapus. Tulisan PluQ-i ditampilkan kembali.';
-$layoutQuery=$pdo->prepare("SELECT setting_key,setting_value FROM app_settings WHERE setting_key IN ('catalog_grid_columns_desktop','catalog_grid_columns_mobile','catalog_icon_size','catalog_icon_size_desktop','catalog_icon_size_mobile')");
+$brandLogoUrl = '';
+$layoutQuery=$pdo->prepare("SELECT setting_key,setting_value FROM app_settings WHERE setting_key IN ('catalog_grid_columns_desktop','catalog_grid_columns_mobile','catalog_icon_size','catalog_icon_size_desktop','catalog_icon_size_mobile','brand_logo_url')");
 $layoutQuery->execute();
-foreach($layoutQuery->fetchAll(PDO::FETCH_ASSOC) as $row) if(isset($layoutSettings[$row['setting_key']])) $layoutSettings[$row['setting_key']]=(string)$row['setting_value'];
+foreach($layoutQuery->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    if ($row['setting_key'] === 'brand_logo_url') {
+        $candidateLogoUrl = trim((string)$row['setting_value']);
+        if (preg_match('~^/uploads/brand-logos/[a-f0-9]{32}\\.(?:jpg|png|webp)$~D', $candidateLogoUrl)) $brandLogoUrl = $candidateLogoUrl;
+        continue;
+    }
+    if(isset($layoutSettings[$row['setting_key']])) $layoutSettings[$row['setting_key']]=(string)$row['setting_value'];
+}
 $gridColumns=in_array((int)$layoutSettings['catalog_grid_columns_desktop'],[3,4,5,6],true)?(int)$layoutSettings['catalog_grid_columns_desktop']:5;
 $mobileGridColumns=in_array((int)$layoutSettings['catalog_grid_columns_mobile'],[2,3,4],true)?(int)$layoutSettings['catalog_grid_columns_mobile']:3;
 $validIconSizes=[64,68,72,76,80,84,88,92,96,100,104,108,112,116,120];
@@ -751,18 +759,5 @@ $csrf = admin_csrf_token();
 <label>Ukuran icon desktop<select name="desktop_icon_size"><?php foreach ([64,68,72,76,80,84,88,92,96,100,104,108,112,116,120] as $v): ?><option value="<?=$v?>" <?=$desktopIconSize===$v?'selected':''?>><?=$v?> × <?=$v?> px</option><?php endforeach; ?></select></label>
 <label>Ukuran icon ponsel<select name="mobile_icon_size"><?php foreach ([64,68,72,76,80,84,88,92,96,100,104,108,112,116,120] as $v): ?><option value="<?=$v?>" <?=$mobileIconSize===$v?'selected':''?>><?=$v?> × <?=$v?> px</option><?php endforeach; ?></select></label>
 </div><div class="actions"><button type="submit">Simpan tata letak</button></div></form><?php else: ?><p class="muted">Akun hanya dapat melihat pengaturan.</p><?php endif; ?></section>
-<section class="panel"><h2>Icon Game List</h2>
-<p class="muted">Hanya game yang dicentang dan tersimpan aktif pada menu <a href="/admin/game-mappings.php">Game List</a> yang tampil di sini. Unggah icon untuk mengisi kolom <code>games.icon_url</code> yang dipakai katalog halaman depan. Format JPG/PNG/WebP, maksimal 5 MB. Hapus hanya menghapus icon, bukan game atau mapping supplier.</p>
-<p class="dimension-hint"><strong>Saran ukuran icon: 512 × 512 px (persegi/1:1).</strong> Gunakan gambar yang fokus pada logo game, dengan sedikit ruang kosong di sekelilingnya agar tidak terpotong saat ditampilkan. Ukuran ini adalah rekomendasi, bukan batas wajib.</p>
-<?php if (!$activeGames): ?><p class="muted">Belum ada game aktif. Pilih dan simpan game terlebih dahulu di Game List.</p><?php else: ?>
-<div class="icon-matrix">
-<?php foreach ($activeGames as $game): ?><article class="icon-card">
-<div class="icon-card-head"><?php if (!empty($game['icon_url'])): ?><img class="game-icon-thumb" src="<?=admin_escape($game['icon_url'])?>" alt="<?=admin_escape($game['name'])?>" loading="lazy"><?php else: ?><div class="game-icon-thumb" style="display:grid;place-items:center;color:var(--muted);font-size:11px;text-align:center">Belum ada icon</div><?php endif; ?><div><strong><?=admin_escape($game['name'])?></strong><div class="muted small"><?=admin_escape($game['slug'])?></div></div></div>
-<?php if ($canManage): ?>
-<form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="save_game_icon"><input type="hidden" name="game_id" value="<?=(int)$game['id']?>"><label>File icon (JPG/PNG/WebP, maks. 5 MB)<input type="file" name="game_icon_file" accept="image/jpeg,image/png,image/webp" required></label><div class="actions"><button type="submit">Unggah/Ganti</button></div></form>
-<?php if (!empty($game['icon_url'])): ?><form method="post" onsubmit="return confirm('Hapus icon game ini? Game tetap ada di Game List.')"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="delete_game_icon"><input type="hidden" name="game_id" value="<?=(int)$game['id']?>"><button type="submit">Hapus icon</button></form><?php endif; ?>
-<?php else: ?><span class="muted">Hanya lihat</span><?php endif; ?>
-</article><?php endforeach; ?>
-</div><?php endif; ?></section>
 <section class="panel"><h2>Catatan tampilan</h2><ul><li>Gunakan gambar landscape yang responsif untuk banner Mobile Legends, HOK, Free Fire, PUBG, atau promosi lain.</li><li>Slider publik harus menampilkan banner aktif, dengan tombol sebelumnya/berikutnya, indikator slide, perulangan, jeda saat kursor berada di atas slider, dan dukungan geser pada ponsel.</li><li>Unggahan dibatasi ke JPG/PNG/WebP, maksimal 5 MB dan pemeriksaan dimensi; file diberi nama acak dan disimpan di public/uploads/banners.</li><li>Nonaktifkan hanya menyembunyikan banner. Hapus menghapus baris banner dan file lokal yang cocok; gambar pada URL eksternal tidak dihapus dari situs asalnya.</li><li>Game yang dicentang/aktif pada Game List muncul pada bagian Icon Game List. Menghapus icon mengosongkan icon_url tanpa menghapus game.</li><li>Icon lokal berada di public/uploads/game-icons; pastikan PHP dapat menulis folder tersebut. Pengujian visual slider dan icon di browser masih perlu dilakukan.</li></ul></section>
 </main></body></html>
