@@ -1,3 +1,8 @@
+## Update 2026-10-24 — Ukuran pratinjau logo
+- Commit kode: `489f892870ead0929881f39ea1098b3cb3058d80`.
+- Pratinjau logo di Pengaturan Template dibatasi dengan CSS: lebar maksimum 180 px dan tinggi maksimum 80 px; rasio gambar tetap dipertahankan (`object-fit: contain`).
+- Belum diuji dengan PHP lint atau browser lokal. PR #13 tetap terbuka dan belum digabung.
+
 ## Update — 2026-10-24: Pratinjau logo dan duplikasi Icon Game List
 
 - Commit pada branch PR #13: `21b3a3d4c054d08809a8bbcb98f9d917f7b9f22c`.
