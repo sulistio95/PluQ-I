@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, integration/pre-main-2026-10]
 
 jobs:
   php-tests:
