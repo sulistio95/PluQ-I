@@ -92,17 +92,17 @@ jobs:
           FROM games g JOIN providers pr ON pr.code = 'DIGI'
           WHERE g.slug = 'rating-integration-game';
           INSERT INTO orders (public_id, game_id, product_id, provider_id, customer_game_data, base_price, selling_price, admin_fee, payment_status, order_status)
-          SELECT 'ratingtest012345678901234567', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','rating-test'), 1000, 1500, 1000, 'PAID', 'SUCCESS'
+          SELECT 'abcdef0123456789abcdef0123', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','rating-test'), 1000, 1500, 1000, 'PAID', 'SUCCESS'
           FROM games g JOIN products p ON p.game_id = g.id
           WHERE g.slug = 'rating-integration-game' AND p.provider_product_code = 'rating-integration-sku';
           INSERT INTO order_ratings (order_id, provider_id, game_id, order_status_at_rating, rating, reason, comment)
           SELECT o.id, o.provider_id, o.game_id, o.order_status, 5, 'FAST_AND_SMOOTH', 'integration test'
-          FROM orders o WHERE o.public_id = 'ratingtest012345678901234567';
+          FROM orders o WHERE o.public_id = 'abcdef0123456789abcdef0123';
           SQL
           if mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" <<'SQL'
           INSERT INTO order_ratings (order_id, provider_id, game_id, order_status_at_rating, rating, reason, comment)
           SELECT o.id, o.provider_id, o.game_id, o.order_status, 4, 'OTHER', 'duplicate integration test'
-          FROM orders o WHERE o.public_id = 'ratingtest012345678901234567';
+          FROM orders o WHERE o.public_id = 'abcdef0123456789abcdef0123';
           SQL
           then
             echo "FAIL: duplicate rating for the same order was accepted"
