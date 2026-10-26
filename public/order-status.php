@@ -102,18 +102,38 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
                 }
             }
 
-            $message = match ($finalStatus) {
-                'SUCCESS' => 'Top-up berhasil.',
-                'FAILED' => 'Top-up gagal. Silakan simpan nomor pesanan untuk pemeriksaan admin.',
-                'REFUNDED' => 'Top-up gagal dan pengembalian dana telah selesai.',
-                'QUEUED' => 'Pembayaran diterima. Pesanan masuk antrean.',
-                'PROCESSING' => 'Pembayaran diterima. Top-up sedang diproses.',
-                'RETRYING' => 'Top-up masih diproses supplier.',
-                'MANUAL_REVIEW' => 'Pesanan sedang diperiksa admin.',
-                default => (string)$row['payment_status'] === 'PAID'
-                    ? 'Pembayaran diterima. Status pesanan sedang diperiksa.'
-                    : 'Pembayaran masih menunggu konfirmasi Duitku.',
-            };
+            $paymentStatus = (string)$row['payment_status'];
+            $refundStatus = (string)($row['refund_status'] ?? '');
+
+            if ($paymentStatus === 'PAID') {
+                if ($finalStatus === 'FAILED' && in_array($refundStatus, ['PENDING', 'PROCESSING'], true)) {
+                    $message = 'Pembayaran berhasil diterima, tetapi top-up gagal. Pengembalian dana sedang menunggu atau dalam proses pemeriksaan admin.';
+                } elseif ($finalStatus === 'FAILED' && $refundStatus === 'SUCCESS') {
+                    $message = 'Pembayaran diterima, top-up gagal, dan pengembalian dana telah berhasil.';
+                } else {
+                    $orderMessage = match ($finalStatus) {
+                        'PENDING' => 'Pesanan menunggu diproses.',
+                        'QUEUED' => 'Pembayaran diterima. Pesanan masuk antrean.',
+                        'PROCESSING' => 'Pembayaran diterima. Top-up sedang diproses.',
+                        'RETRYING' => 'Top-up masih diproses supplier. Status akan diperbarui setelah pemeriksaan berikutnya.',
+                        'SUCCESS' => 'Top-up berhasil.',
+                        'FAILED' => 'Top-up gagal. Silakan hubungi admin untuk pemeriksaan pengembalian dana.',
+                        'REFUND_PENDING' => 'Top-up gagal. Pengembalian dana menunggu proses.',
+                        'REFUNDED' => 'Top-up gagal dan dana telah dikembalikan.',
+                        'MANUAL_REVIEW' => 'Pembayaran diterima. Pesanan sedang diperiksa admin sebelum tindakan lanjutan.',
+                        default => 'Pembayaran diterima. Status pesanan sedang diperiksa.',
+                    };
+                    $message = 'Pembayaran berhasil diterima. ' . $orderMessage;
+                }
+            } else {
+                $message = match ($paymentStatus) {
+                    'FAILED' => 'Pembayaran gagal. Jangan melakukan pembayaran ulang untuk nomor pesanan ini sebelum memeriksa statusnya.',
+                    'EXPIRED' => 'Waktu pembayaran telah berakhir.',
+                    'REFUND_PENDING' => 'Pengembalian dana sedang menunggu proses.',
+                    'REFUNDED' => 'Dana telah dikembalikan.',
+                    default => 'Pembayaran masih menunggu konfirmasi Duitku. Muat ulang halaman ini beberapa saat lagi.',
+                };
+            }
             if (isset($_GET['rated']) && $_GET['rated'] === '1') $message .= ' Terima kasih, rating Anda telah disimpan.';
         }
     } catch (Throwable $e) {
