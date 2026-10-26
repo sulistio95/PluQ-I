@@ -17,7 +17,7 @@ $error = '';
 try {
     $providers = $pdo->query("SELECT pr.id,pr.code,pr.name,
         (SELECT COUNT(*) FROM orders o WHERE o.provider_id=pr.id AND o.payment_status='PAID' AND o.order_status='SUCCESS') AS successful_orders,
-        (SELECT COUNT(*) FROM orders o WHERE o.provider_id=pr.id AND o.payment_status='PAID' AND o.order_status IN ('FAILED','REFUNDED')) AS failed_orders,
+        (SELECT COUNT(*) FROM orders o WHERE o.provider_id=pr.id AND o.payment_status IN ('PAID','REFUNDED') AND o.order_status IN ('FAILED','REFUNDED')) AS failed_orders,
         (SELECT ROUND(AVG(TIMESTAMPDIFF(SECOND,o.created_at,o.fulfilled_at))) FROM orders o WHERE o.provider_id=pr.id AND o.payment_status='PAID' AND o.order_status='SUCCESS' AND o.fulfilled_at IS NOT NULL AND o.fulfilled_at>=o.created_at) AS avg_success_seconds,
         (SELECT COUNT(*) FROM order_ratings r WHERE r.provider_id=pr.id) AS rating_count,
         (SELECT ROUND(AVG(r.rating),2) FROM order_ratings r WHERE r.provider_id=pr.id) AS avg_customer_rating
@@ -54,4 +54,4 @@ function quality_duration(mixed $seconds): string {
 <?php foreach ($reasons as $r): ?><tr><td><?= $esc(str_replace('_',' ',(string)$r['reason'])) ?></td><td><?= (int)$r['total'] ?></td><td><?= $esc(number_format((float)$r['avg_rating'],2,',','.')) ?> / 5</td></tr><?php endforeach; ?>
 <?php if (!$reasons): ?><tr><td colspan="3">Belum ada rating pelanggan.</td></tr><?php endif; ?>
 </tbody></table></div></section>
-<?php endif; ?><p class="muted">Catatan: tingkat berhasil dihitung dari pesanan berbayar yang berstatus SUCCESS dibandingkan pesanan berbayar berstatus FAILED atau REFUNDED. Pesanan yang masih berjalan tidak masuk penyebut.</p></main></body></html>
+<?php endif; ?><p class="muted">Catatan: tingkat berhasil dihitung dari pesanan berbayar sukses dibandingkan pesanan berbayar gagal atau refund. Pesanan yang masih berjalan tidak masuk penyebut. Pesanan refund dihitung ketika payment_status berstatus PAID atau REFUNDED.</p></main></body></html>
