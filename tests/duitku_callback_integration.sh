@@ -8,10 +8,10 @@ set -euo pipefail
 : "${DUITKU_MERCHANT_CODE:?DUITKU_MERCHANT_CODE is required}"
 : "${DUITKU_API_KEY:?DUITKU_API_KEY is required}"
 
-order_id="abcdef0123456789abcdef0123"
+order_id="PAYCALL20261027abcdef12345"
 merchant="${DUITKU_MERCHANT_CODE}"
 amount="2500"
-signature="$(php -r 'echo hash_hmac("sha256", getenv("DUITKU_MERCHANT_CODE") . "2500" . "abcdef0123456789abcdef0123", getenv("DUITKU_API_KEY"));')"
+signature="$(php -r 'echo hash_hmac("sha256", getenv("DUITKU_MERCHANT_CODE") . "2500" . "PAYCALL20261027abcdef12345", getenv("DUITKU_API_KEY"));')"
 
 
 # Invalid signatures and signed callbacks with the wrong amount must not mutate state.
@@ -29,7 +29,7 @@ if [ "${invalid_signature_code}" != "400" ]; then
 fi
 
 wrong_amount="2501"
-wrong_amount_signature="$(php -r 'echo hash_hmac("sha256", getenv("DUITKU_MERCHANT_CODE") . "2501" . "abcdef0123456789abcdef0123", getenv("DUITKU_API_KEY"));')"
+wrong_amount_signature="$(php -r 'echo hash_hmac("sha256", getenv("DUITKU_MERCHANT_CODE") . "2501" . "PAYCALL20261027abcdef12345", getenv("DUITKU_API_KEY"));')"
 wrong_amount_code="$(curl --silent --output /tmp/pluq-callback-wrong-amount.json --write-out '%{http_code}' \
   --data-urlencode "merchantCode=${merchant}" \
   --data-urlencode "amount=${wrong_amount}" \
@@ -49,7 +49,7 @@ $pdo = new PDO(
     getenv("DB_USERNAME"), getenv("DB_PASSWORD"),
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
-$orderId = "abcdef0123456789abcdef0123";
+$orderId = "PAYCALL20261027abcdef12345";
 $q = $pdo->prepare("SELECT status FROM payment_transactions WHERE merchant_order_id = ?");
 $q->execute([$orderId]);
 if ($q->fetchColumn() !== "PENDING") { fwrite(STDERR, "Invalid callback must not change payment state.\\n"); exit(1); }
@@ -91,7 +91,7 @@ $pdo = new PDO(
     getenv("DB_PASSWORD"),
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
-$orderId = "abcdef0123456789abcdef0123";
+$orderId = "PAYCALL20261027abcdef12345";
 $q = $pdo->prepare("SELECT status FROM payment_transactions WHERE merchant_order_id = ?");
 $q->execute([$orderId]);
 if ($q->fetchColumn() !== "PAID") { fwrite(STDERR, "Expected payment status PAID.\\n"); exit(1); }
@@ -120,7 +120,7 @@ $pdo = new PDO(
     getenv("DB_USERNAME"), getenv("DB_PASSWORD"),
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
-$orderId = "abcdef0123456789abcdef0123";
+$orderId = "PAYCALL20261027abcdef12345";
 $q = $pdo->prepare("SELECT status FROM payment_transactions WHERE merchant_order_id = ?");
 $q->execute([$orderId]);
 if ($q->fetchColumn() !== "PAID") {
