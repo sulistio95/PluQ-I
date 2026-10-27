@@ -179,8 +179,8 @@ if ((int)$q->fetchColumn() !== 1) { fwrite(STDERR, "Failed payment must not enqu
 echo "Duitku failed-payment state integration test passed.\\n";
 '
 
-# A later contradictory success callback must not rewrite a terminal FAILED payment.
-# It must preserve the payment result and raise an auditable manual-review flag.
+# A late successful callback after a recorded failure must record the money as PAID,
+# preserve an auditable conflict, and keep the order out of automatic fulfillment.
 conflict_signature="$(php -r 'echo hash_hmac("sha256", getenv("DUITKU_MERCHANT_CODE") . "2500" . "fedcba9876543210fedcba9876", getenv("DUITKU_API_KEY"));')"
 curl --fail --silent --show-error \
   --data-urlencode "merchantCode=${merchant}" \
@@ -210,15 +210,15 @@ $pdo = new PDO(
 $orderId = "fedcba9876543210fedcba9876";
 $q = $pdo->prepare("SELECT status FROM payment_transactions WHERE merchant_order_id = ?");
 $q->execute([$orderId]);
-if ($q->fetchColumn() !== "FAILED") {
-    fwrite(STDERR, "Conflicting callback must not overwrite terminal FAILED payment.\\n"); exit(1);
+if ($q->fetchColumn() !== "PAID") {
+    fwrite(STDERR, "Late successful callback must record the payment transaction as PAID.\\n"); exit(1);
 }
 $q = $pdo->prepare("SELECT payment_status, order_status, last_error FROM orders WHERE public_id = ?");
 $q->execute([$orderId]);
 $row = $q->fetch(PDO::FETCH_ASSOC);
-if (!$row || $row["payment_status"] !== "FAILED" || $row["order_status"] !== "MANUAL_REVIEW"
-    || !str_contains((string)$row["last_error"], "Conflicting terminal Duitku callback")) {
-    fwrite(STDERR, "Conflicting callback must preserve payment and flag order for manual review.\\n"); exit(1);
+if (!$row || $row["payment_status"] !== "PAID" || $row["order_status"] !== "MANUAL_REVIEW"
+    || !str_contains((string)$row["last_error"], "Late successful Duitku callback")) {
+    fwrite(STDERR, "Late success must be recorded as paid and flagged for manual review.\\n"); exit(1);
 }
 $q = $pdo->prepare("SELECT COUNT(*) FROM audit_logs WHERE action = ? AND entity_type = ? AND entity_id = (SELECT id FROM orders WHERE public_id = ?)");
 $q->execute(["DUITKU_TERMINAL_CALLBACK_CONFLICT", "ORDER", $orderId]);
