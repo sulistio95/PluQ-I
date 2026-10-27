@@ -1479,3 +1479,15 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Homepage membaca konfigurasi database dan memakai default bila belum tersedia. Tablet 561–900 px tetap menggunakan 3 kolom.
 - CSS katalog memakai variabel konfigurasi untuk grid dan ukuran bingkai icon.
 - Perubahan sudah dikirim ke branch PR #13, tetapi lint PHP, tes lokal, dan GitHub Actions pada commit terbaru masih harus diperiksa sebelum merge.
+
+
+## Phase 4 — Integrasi gabungan berbasis main (2026-10-27)
+
+- Branch kandidat: `integration/phase4-combined-2026-10`, dibuat langsung dari baseline resmi `main` `52341bf38f1a3434dbe0f6a4ec817cd7a5c7f70f`. Branch `main` tidak diubah.
+- Draft PR validasi: https://github.com/sulistio95/PluQ-I/pull/24. Jangan merge ke `main` sebelum review akhir. PR #22 untuk merge seluruh branch sidebar ditutup tanpa merge karena konflik; fitur dipindahkan secara selektif.
+- Supplier-price pagination (25/50/100/200 per halaman) diadaptasi ke layout sidebar. Query tetap mewajibkan pemetaan supplier aktif dan game aktif; tes regresi filter/pagination dipasang pada workflow PHP quality. Pemuatan `/api/games` dan `/api/banners` terpisah memakai `Promise.allSettled`.
+- Integrasi UI admin sidebar, pencarian/detail transaksi, pengaturan template/logo/icon, pemetaan field akun, pengecekan nickname VIPayment yang didukung, dan proteksi cache/rate limit. Migration 013 (`game_username_check_protection`) disusun setelah migrations 011/012.
+- Integrasi customer rating dan dashboard kualitas supplier; migration 014 (`order_ratings_and_supplier_quality`) menyusul 013. Tes rating rules dan CSRF ditambahkan ke workflow.
+- Provider-budget architecture tetap memakai implementasi `main`: `provider_budget_reservations` (migration 011) dan `provider_budget.php`; tidak mengimpor migration 009/ `provider_balance_reservations` secara massal karena skema/statusnya berbeda. Implementasi saat ini mengunci baris provider dan mengecek kapasitas lagi sebelum order masuk antrean supplier. Bila kapasitas tidak tersedia setelah pembayaran, pesanan masuk `MANUAL_REVIEW`; hal ini menghindari pemenuhan tanpa cadangan, tetapi dapat membutuhkan rekonsiliasi manual.
+- Mem-port perbaikan callback terlambat: callback sukses Duitku yang datang setelah status gagal kini memperbarui transaksi/pesanan menjadi `PAID`, menempatkan order pada `MANUAL_REVIEW`, mencatat konflik di audit log, dan tidak memasukkan order ke antrean supplier otomatis. Tes integrasi MySQL pada `tests/duitku_callback_integration.sh` disesuaikan untuk memverifikasi perilaku ini.
+- Status keselamatan: jangan aktifkan pembayaran, supplier ordering, atau backup Google Drive. CI menggunakan database MySQL sementara; tidak ada pemanggilan Duitku/VIPayment/Digiflazz live, transaksi nyata, migrasi database hosting, atau uji browser/ponsel dalam fase ini. Uji visual dan hosting tetap menjadi langkah terpisah sebelum deployment.
