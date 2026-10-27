@@ -80,10 +80,12 @@ if (preg_match('/^[a-f0-9]{26}$/D', $orderId)) {
                                 (order_id,provider_id,game_id,order_status_at_rating,rating,reason,comment)
                                 SELECT id,provider_id,game_id,:status,:rating,:reason,:comment
                                 FROM orders WHERE id=:order_id AND payment_status='PAID'
+                                  AND order_status=:current_status
                                   AND order_status IN ('SUCCESS','FAILED','REFUNDED')");
                             $stmt->execute([
                                 'status'=>$finalStatus,'rating'=>$rating,'reason'=>$reason,
                                 'comment'=>$comment !== '' ? $comment : null,'order_id'=>$row['id'],
+                                'current_status'=>$finalStatus,
                             ]);
                             if ($stmt->rowCount() === 1) {
                                 header('Location: /order-status.php?merchantOrderId=' . rawurlencode($orderId) . '&rated=1', true, 303);
