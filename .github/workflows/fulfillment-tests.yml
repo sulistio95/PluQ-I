@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, integration/pre-main-2026-10]
 
 jobs:
   php-tests:
@@ -78,9 +78,38 @@ jobs:
       - name: Apply schema and migrations
         run: |
           set -eu
-          for sql in database/schema.mysql.sql database/migrations/002_catalog_and_operations.sql database/migrations/003_checkout_payment.sql database/migrations/004_supplier_manual_review_status.sql database/migrations/005_order_manual_review_status.sql database/migrations/006_monthly_settlements.sql database/migrations/007_admin_drive_folder_setting.sql database/migrations/008_admin_login_rate_limit.sql database/migrations/009_refund_order_latest_index.sql database/migrations/010_checkout_payload_fingerprint.sql database/migrations/011_provider_budget_reservations.sql database/migrations/012_pricing_rules_hybrid.sql; do
+          for sql in database/schema.mysql.sql database/migrations/002_catalog_and_operations.sql database/migrations/003_checkout_payment.sql database/migrations/004_supplier_manual_review_status.sql database/migrations/005_order_manual_review_status.sql database/migrations/006_monthly_settlements.sql database/migrations/007_admin_drive_folder_setting.sql database/migrations/008_admin_login_rate_limit.sql database/migrations/009_refund_order_latest_index.sql database/migrations/010_checkout_payload_fingerprint.sql database/migrations/011_provider_budget_reservations.sql database/migrations/012_pricing_rules_hybrid.sql database/migrations/013_game_username_check_protection.sql database/migrations/014_order_ratings_and_supplier_quality.sql; do
             mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" < "$sql"
           done
+      - name: Test customer rating insert and duplicate rejection against MySQL
+        run: |
+          set -eu
+          mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" <<'SQL'
+          INSERT INTO games (slug, name, status)
+          VALUES ('rating-integration-game', 'Rating Integration Game', 'ACTIVE');
+          INSERT INTO products (game_id, provider_id, provider_product_code, name, base_price, selling_price, status)
+          SELECT g.id, pr.id, 'rating-integration-sku', 'Rating Integration Product', 1000, 1500, 'ACTIVE'
+          FROM games g JOIN providers pr ON pr.code = 'DIGI'
+          WHERE g.slug = 'rating-integration-game';
+          INSERT INTO orders (public_id, game_id, product_id, provider_id, customer_game_data, base_price, selling_price, admin_fee, payment_status, order_status)
+          SELECT 'abcdef0123456789abcdef0123', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','rating-test'), 1000, 1500, 1000, 'PAID', 'SUCCESS'
+          FROM games g JOIN products p ON p.game_id = g.id
+          WHERE g.slug = 'rating-integration-game' AND p.provider_product_code = 'rating-integration-sku';
+          INSERT INTO order_ratings (order_id, provider_id, game_id, order_status_at_rating, rating, reason, comment)
+          SELECT o.id, o.provider_id, o.game_id, o.order_status, 5, 'FAST_AND_SMOOTH', 'integration test'
+          FROM orders o WHERE o.public_id = 'abcdef0123456789abcdef0123';
+          SQL
+          if mysql -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" <<'SQL'
+          INSERT INTO order_ratings (order_id, provider_id, game_id, order_status_at_rating, rating, reason, comment)
+          SELECT o.id, o.provider_id, o.game_id, o.order_status, 4, 'OTHER', 'duplicate integration test'
+          FROM orders o WHERE o.public_id = 'abcdef0123456789abcdef0123';
+          SQL
+          then
+            echo "FAIL: duplicate rating for the same order was accepted"
+            exit 1
+          else
+            echo "PASS: duplicate rating rejected by database unique constraint"
+          fi
       - name: Test provider budget capacity, idempotency, concurrency, and stale-balance boundary against MySQL
         run: php tests/provider-budget-reservation-mysql-integration.php
       - name: Stress concurrent checkout idempotency and verify deadlock recovery with mocked Duitku
@@ -100,10 +129,10 @@ jobs:
           SELECT g.id, pr.id, 'integration-sku', 'Integration Product', 1000, 1500, 'ACTIVE'
           FROM games g JOIN providers pr ON pr.code = 'DIGI' WHERE g.slug = 'integration-game';
           INSERT INTO orders (public_id, game_id, product_id, provider_id, customer_game_data, base_price, selling_price, admin_fee, payment_status, order_status)
-          SELECT 'abcdef0123456789abcdef0123', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','123'), 1000, 1500, 1000, 'PENDING', 'PENDING'
+          SELECT 'cafebabefeedface0123456789', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','123'), 1000, 1500, 1000, 'PENDING', 'PENDING'
           FROM games g JOIN products p ON p.game_id = g.id WHERE g.slug = 'integration-game' AND p.provider_product_code = 'integration-sku';
           INSERT INTO payment_transactions (order_id, gateway, merchant_order_id, amount, status)
-          SELECT id, 'DUITKU', public_id, 2500, 'PENDING' FROM orders WHERE public_id = 'abcdef0123456789abcdef0123';
+          SELECT id, 'DUITKU', public_id, 2500, 'PENDING' FROM orders WHERE public_id = 'cafebabefeedface0123456789';
           INSERT INTO orders (public_id, game_id, product_id, provider_id, customer_game_data, base_price, selling_price, admin_fee, payment_status, order_status)
           SELECT 'fedcba9876543210fedcba9876', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','789'), 1000, 1500, 1000, 'PENDING', 'PENDING'
           FROM games g JOIN products p ON p.game_id = g.id WHERE g.slug = 'integration-game' AND p.provider_product_code = 'integration-sku';
