@@ -38,6 +38,8 @@ jobs:
         run: php tests/duitku-callback-result-state.php
       - name: Test Duitku transaction status response validation
         run: php tests/duitku-transaction-status.php
+      - name: Test late successful payment callback requires manual review
+        run: php tests/duitku-late-success-review.php
       - name: Test admin Duitku cooldown regression guard
         run: php tests/reconcile-cooldown-regression.php
       - name: Test checkout request fingerprint
