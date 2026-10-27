@@ -87,17 +87,28 @@
       const image = game.icon_url
         ? '<img loading="lazy" src="' + escapeHtml(game.icon_url) + '" alt="">'
         : '<img alt="" aria-hidden="true">';
-      return '<button class="game" type="button" data-slug="' + escapeHtml(game.slug) + '">' + image + '<span class="game-name">' + escapeHtml(game.name) + '</span></button>';
+      return '<button class="game" type="button" data-slug="' + escapeHtml(game.slug) + '"><span class="game-icon-frame">' + image + '</span><span class="game-name">' + escapeHtml(game.name) + '</span></button>';
     }).join('');
   }
 
-  function showCatalog() {
+  function updateGameUrl(slug, replace = false) {
+    const url = new URL(window.location.href);
+    if (slug) url.searchParams.set('game', slug);
+    else url.searchParams.delete('game');
+    const method = replace ? 'replaceState' : 'pushState';
+    window.history[method]({gameSlug: slug || null}, '', url.pathname + url.search + url.hash);
+  }
+
+  function showCatalog(updateHistory = true) {
+    if (updateHistory) updateGameUrl(null, true);
     if (usernameTimer) clearTimeout(usernameTimer);
     usernameRequestId++;
     gameFields = [];
     gameMeta = {username_check_available:false,checkout_supported:false};
     $('catalog-view').classList.remove('hidden');
     $('product-view').classList.add('hidden');
+    $('hero-copy').classList.remove('hidden');
+    $('search-row').classList.remove('hidden');
     $('customer-email-wrap').classList.add('hidden');
     search.disabled = false;
     activeGame = null;
@@ -208,7 +219,8 @@
     }, 800);
   }
 
-  async function showProducts(game) {
+  async function showProducts(game, updateHistory = true) {
+    if (updateHistory) updateGameUrl(game.slug);
     if (usernameTimer) clearTimeout(usernameTimer);
     usernameRequestId++;
     activeGame = game;
@@ -216,6 +228,9 @@
     accountDataValid = false;
     $('catalog-view').classList.add('hidden');
     $('product-view').classList.remove('hidden');
+    // Keep the banner visible, but hide homepage-only intro and game search on the account/nominal view.
+    $('hero-copy').classList.add('hidden');
+    $('search-row').classList.add('hidden');
     $('selected-game').textContent = game.name;
     search.disabled = true;
     productsBox.innerHTML = '<div class="notice">Memuat produk...</div>';
@@ -340,7 +355,13 @@
     const game = games.find((item) => item.slug === button.dataset.slug);
     if (game) showProducts(game);
   });
-  $('back').addEventListener('click', showCatalog);
+  $('back').addEventListener('click', () => showCatalog());
+  window.addEventListener('popstate', () => {
+    const slug = new URL(window.location.href).searchParams.get('game');
+    const game = slug ? games.find((item) => item.slug === slug) : null;
+    if (game) showProducts(game, false);
+    else showCatalog(false);
+  });
   $('account-form').addEventListener('submit', (event) => event.preventDefault());
   function invalidateQuoteOnAccountChange() {
     accountDataValid = false;
@@ -366,17 +387,27 @@
     scheduleUsernameCheck();
   });
 
-  Promise.all([getJson('/api/games'), getJson('/api/banners')]).then(([gameResult, bannerResult]) => {
-    games = Array.isArray(gameResult.data) ? gameResult.data : [];
-    banners = Array.isArray(bannerResult.data) ? bannerResult.data : [];
-    renderGames();
-    if (banners.length) {
-      setBanner();
-      if (banners.length > 1) bannerTimer = setInterval(setBanner, 3000);
+  // Load games and banners independently; one failed endpoint must not block the other.
+  Promise.allSettled([getJson('/api/games'), getJson('/api/banners')]).then((results) => {
+    const [gameResult, bannerResult] = results;
+    if (gameResult.status === 'fulfilled') {
+      games = Array.isArray(gameResult.value.data) ? gameResult.value.data : [];
+      renderGames();
+      const requestedSlug = new URL(window.location.href).searchParams.get('game');
+      const requestedGame = requestedSlug ? games.find((item) => item.slug === requestedSlug) : null;
+      if (requestedGame) showProducts(requestedGame, false);
+      else if (requestedSlug) updateGameUrl(null, true);
+    } else {
+      gamesBox.innerHTML = '<div class="notice">Katalog game belum dapat dimuat. Pastikan database dan migrasi sudah dipasang.</div>';
+      $('game-count').textContent = '';
     }
-  }).catch(() => {
-    gamesBox.innerHTML = '<div class="notice">Katalog belum siap. Pastikan database dan migrasi sudah dipasang.</div>';
-    $('game-count').textContent = '';
+    if (bannerResult.status === 'fulfilled') {
+      banners = Array.isArray(bannerResult.value.data) ? bannerResult.value.data : [];
+      if (banners.length) {
+        setBanner();
+        if (banners.length > 1) bannerTimer = setInterval(setBanner, 3000);
+      }
+    }
   });
 
   window.addEventListener('pagehide', () => {

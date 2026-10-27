@@ -1,3 +1,42 @@
+## 2026-10-21 — Dropdown Server / Region Zenless Zone Zero (perbaikan)
+
+- Penyebab dropdown tidak muncul: aturan field server sebelumnya hanya memberi tipe `select` pada Genshin Impact dan Honkai: Star Rail; ZZZ menerima tipe `text`.
+- `app/services/game_fields.php` kini memberi ZZZ dropdown UI Asia, America, Europe, dan TW / HK / MO. Tes regresi mencakup slug aktif `zenless-zone-zero-zzz` / nama `Zenless Zone Zero (ZZZ)`.
+- Nilai opsi masih placeholder UI, belum diverifikasi sebagai kode order supplier. Checkout tetap diblokir untuk skema server yang belum dipetakan. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+## 2026-10-21 — Field Server / Region untuk Zenless Zone Zero
+
+- `app/services/game_fields.php` mengenali Zenless Zone Zero berdasarkan nama/slug dan menambahkan field wajib **Server / Region** setelah User ID.
+- `tests/game-account-schema.php` menguji kedua field dan memastikan checkout tetap ditolak sampai dukungan/pemetaan akun supplier ditinjau.
+- Katalog VIPayment telah disinkronkan menurut konfirmasi pengguna; masalah yang dilaporkan kini khusus pada field akun. Digiflazz belum digunakan.
+- Status validasi: tes lokal dan CI pascaperubahan belum dijalankan. Belum merge ke `main`. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+## 2026-10-21 — Transisi kaca pecah dibatalkan
+
+- Animasi SVG/CSS kaca pecah dihapus atas permintaan pengguna karena tidak bekerja sebagaimana diharapkan.
+- Pemilihan game kembali memakai alur langsung `showProducts(game)`. Tidak ada dependensi baru.
+
+## 2026-10-21 — Transisi kaca pecah pada katalog
+
+- Added a lightweight SVG/CSS glass-crack transition before the game account/product form opens from a catalog click.
+- No external animation dependency was added. Repeated clicks are guarded during the short transition; browsers requesting reduced motion skip it.
+- Existing URL/history behavior and direct `?game=` restoration remain unchanged in code. Browser-level appearance, mobile performance, and back-navigation regression still require local verification.
+- No payment, supplier-ordering, or backup behavior was enabled by this UI change.
+
+## 2026-10-20 — Hasil CI untuk pelacakan transaksi admin
+
+- GitHub Actions **PHP quality checks** lulus pada commit dc49bfc3a504cb4dc82f90b966589d52c03f014d, run [#828](https://github.com/sulistio95/PluQ-I/actions/runs/39395576680). Langkah lint PHP dan pemeriksaan sintaks JavaScript sukses.
+- Ini belum memverifikasi query dengan database yang sudah dimigrasi, sesi login di browser, tampilan responsif, atau kelengkapan log transaksi. Pengujian lokal/integrasi tersebut tetap pending.
+- Jangan menyimpulkan seluruh workflow lulus berdasarkan satu run. Pembayaran, supplier fulfillment, dan backup Drive tetap nonaktif.
+
+## 2026-10-20 — Admin transaction search and detail
+
+- Added `public/admin/transaction-search.php`: authenticated search across the public order ID, payment merchant ID, gateway reference, and supplier references, with a bounded 200-row result set.
+- Added `public/admin/transaction-detail.php`: order summary, current payment/order statuses, last stored error, gateway records, supplier transaction records, refund statuses, and a chronological view of known timestamps.
+- Added the **Cari Transaksi** navigation item in `app/views/admin_sidebar.php`. SQL queries use prepared statements; displayed values are escaped; these pages do not mutate orders or call payment/supplier APIs.
+- Coverage limitation: this is a best-effort timeline assembled from existing records, not a full immutable event log. The current display does not capture every callback/HTTP attempt/retry with a timestamp, and some gateway/refund status rows lack event timestamps. No retry/refund action is exposed.
+- PHP lint, schema-backed integration testing, browser verification, and CI for these commits remain pending. Do not describe this as fully verified until those checks pass. Payment checkout, supplier fulfillment, and Drive backup remain disabled.
+
 ## Admin catalog sync — 2026-10-19
 
 - Added explicit admin actions to persist VIPayment or Digiflazz catalog data after supplier game mappings have been saved.
@@ -1337,3 +1376,344 @@ Read-only source review of `bin/worker-queue.php`, `bin/sync-balances.php`, `bin
 - Jika game (termasuk Free Fire dan HOK saat ini) memang tidak mendukung lookup, area status tetap kosong dan field ID game tetap ada; kondisi tidak didukung tidak dilaporkan sebagai kegagalan permintaan yang tidak pernah dilakukan.
 - Perubahan kode ada pada branch `fix/username-status-without-label`. PHP/JS lint dan uji browser belum dikonfirmasi.
 - Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Koreksi kode khusus VIPayment Get Nickname
+
+- Pengguna memberikan daftar kode resmi dari komentar fitur VIPayment Get Nickname. Kode lookup Free Fire adalah `free-fire`, bukan kode produk top-up `ff5-s13`; daftar juga mencantumkan `mobile-legends`, `mobile-legends-region`, `pubgm`, `valorant`, `genshin-impact`, `honkai-star-rail`, dan `pointblank`.
+- Mengganti pemetaan cek nickname agar memakai kode khusus Game Feature berdasarkan game, bukan memilih kode produk VIPAY termurah dari tabel katalog. Kode lookup dipisahkan dari kode top-up. Honor of Kings tetap tidak didukung karena tidak tercantum pada daftar yang diberikan.
+- Endpoint tetap memakai `type=get-nickname`, `target=user_id`, dan `additional_target=zone_id/server` (kosong untuk game yang hanya memerlukan User ID). Pengecekan nickname tidak membuat order supplier.
+- Menambahkan tes unit pemetaan kode untuk delapan kode yang tersedia dalam daftar. Tes lokal dan panggilan API VIPayment live belum dijalankan pada saat commit; hasil nickname Free Fire perlu diuji dari browser dan log server setelah update.
+- Tetap jangan aktifkan pembayaran, pemesanan supplier, atau backup Google Drive selama pengujian.
+
+
+## 2026-10-20 — Pengecekan nickname dipisahkan dari supplier
+
+- Arah arsitektur diperbarui sesuai keputusan pengguna: pengecekan nickname tidak lagi memanggil endpoint Game Feature VIPayment atau memakai kode produk Digiflazz/VIPayment. Dibuat adapter terpisah `app/services/game_username_check.php` untuk API Game Check eksternal melalui HTTPS, cURL, validasi TLS, timeout, dan IPv4.
+- Kandidat API yang dipilih untuk integrasi awal adalah Game Check by Evo Game Store: `https://gamecheck.evogamestore.com/api/v1/check`. Dokumentasinya menyebut 8 game dan mewajibkan API key gratis melalui halaman request. API key disimpan di environment server `GAME_CHECK_API_KEY`, bukan JavaScript atau GitHub. Referensi dokumentasi: https://game-check.evogamestore.com/.
+- Cakupan awal yang dipetakan: Mobile Legends, Mobile Legends Region, Free Fire/Free Fire MAX, PUBG Mobile, Valorant, Genshin Impact, Honkai: Star Rail, dan Point Blank. Game lain—termasuk Honor of Kings—belum didukung oleh layanan ini dan harus menampilkan kondisi tidak tersedia, bukan mengklaim semua game dapat diverifikasi.
+- Metadata cek nickname kini tidak bergantung pada katalog produk, saldo, atau status supplier. Kode game checker dipisahkan dari kode produk top-up. Tambahan `GAME_CHECK_API_KEY=` dimasukkan ke `.env.example`.
+- Tes pemetaan schema diperbarui. Belum ada panggilan API live karena API key pengguna belum dikonfigurasi; PHP lint, browser, serta workflow CI perlu diverifikasi setelah perubahan. Tidak ada order supplier, pembayaran, atau backup Drive yang dibuat/diaktifkan.
+
+
+## 2026-10-20 — Proteksi trafik pemeriksaan nickname (branch PR #7)
+
+- Migration baru: `database/migrations/013_game_username_check_protection.sql` menambah `game_username_check_cache` dan `game_username_check_limits`, menggunakan MySQL/InnoDB sehingga bekerja lintas sesi/proses PHP tanpa Redis.
+- Cache hanya menyimpan hasil nickname sukses, dengan TTL 5 menit dan fingerprint SHA-256 dari slug game + data akun. ID akun mentah tidak disimpan pada tabel cache; cache gagal/tidak-ditemukan tidak dibuat.
+- Batas per IP: 20 request/60 detik; batas fingerprint akun yang sama untuk upstream: 1 request/5 detik; batas upstream global: 50 request/60 detik untuk menyisakan headroom terhadap rate limit provider. Semua cache hit tetap dikenai pembatasan IP.
+- Panggilan eksternal menggunakan HTTPS, validasi TLS, IPv4, connect timeout 5 detik dan total timeout 8 detik. Rate limit dipetakan ke HTTP 429. Pembersihan cache/limit dilakukan opportunistic dalam batch maksimum 100 baris per request.
+- Evo Game Store mendokumentasikan primary source + automatic fallback chain serta cache 10 menit di sisi layanan; cache lokal 5 menit mengurangi request berulang. Ini tidak menjamin semua 20–25 game: endpoint yang dipilih hanya mendokumentasikan 8 game. Perlu sumber checker yang sah/teruji untuk judul lainnya.
+- API isan.eu.org tidak dipasang sebagai fallback produksi pada tahap ini karena repositori publik yang diperiksa menyebut lisensi CC BY-NC-SA 4.0; perlu izin sebelum dipakai pada situs komersial.
+- Verifikasi masih perlu: pastikan workflow CI untuk head branch terbaru, terapkan migration 013 di database pengujian, uji concurrency/cache/rate limit, lalu uji dengan API key resmi. Belum ada API live call. Pembayaran, pemesanan supplier, dan backup Drive tetap nonaktif.
+
+
+## 2026-10-20 — Audit kandidat validasi nickname tambahan
+
+- Audit statis `triyatna/php-valid-game` ditulis di `docs/game-username-check-provider-evaluation.md` pada branch `audit/php-valid-game-provider`.
+- Matriks README upstream mencantumkan 22 game: 6 dengan Codashop + GoPay, 12 Codashop saja, dan 4 GoPay saja. Jumlah judul tidak sama dengan jumlah judul yang memiliki fallback.
+- Paket membutuhkan Guzzle ^7 dan PSR Log; repository PluQ-I tidak memiliki `composer.json` atau `composer.lock` di root. Transport upstream tidak memaksa IPv4, timeout default 15 detik, dan redirect diizinkan.
+- Belum ada request live, install dependency, atau perubahan jalur customer. Temuan dan rencana mitigasi lengkap ada pada dokumen evaluasi. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Adaptor fallback GoPay Games (belum live)
+
+- Pada branch `audit/php-valid-game-provider`, ditambahkan adaptor cURL mandiri di `app/services/game_username_fallback.php` untuk menghindari ketergantungan Guzzle/Composer. Host dan path GoPay ditetapkan konstan; HTTPS/TLS verification aktif, IPv4 dipaksa, redirect nonaktif, timeout koneksi 3 detik dan total 5 detik.
+- Evo tetap primary jika tersedia. GoPay fallback dipanggil hanya saat flag `GAME_CHECK_GOPAY_FALLBACK_ENABLED=true`; default `false`. ID yang dinyatakan tidak valid oleh primary tidak dicoba ulang melalui fallback. Respons GoPay ambigu/HTTP error/network error dianggap provider unavailable, bukan invalid account.
+- GoPay fallback memiliki limit global terpisah 25 request/60 detik dan cooldown fingerprint akun 1 request/5 detik pada judul GoPay-only. Cache sukses dan rate limit pelanggan di route tetap dipakai. Kode provider dipisahkan dari kode supplier.
+- Tes mock `tests/game-username-fallback.php` ditambahkan ke workflow PHP quality. GitHub Actions run #765 (`39355548027`) sukses; PHP lint dan semua tes workflow lulus. Tidak ada request live, dependency install, atau pengujian hosting. Audit izin/ketentuan endpoint GoPay belum selesai, jadi jangan aktifkan flag di produksi. [Run #765](https://github.com/sulistio95/PluQ-I/actions/runs/39355548027).
+- Cakupan ini bukan pengganti penuh paket upstream 22 game: adaptor GoPay hanya memakai pemetaan eksplisit dan tidak mengimplementasikan provider Codashop. Beberapa judul dalam daftar upstream hanya Codashop; mereka tetap bergantung pada Evo atau tidak memiliki pemeriksaan.
+- PR #7, main, dan supplier/payment flow tidak diubah/di-merge. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## 2026-10-20 — Manual nickname validation without Evo registration
+
+- The public account form no longer advertises automatic lookup unless the optional GoPay adapter is explicitly enabled. No Evo API key/account is needed for ordinary local testing.
+- The route now calls the GoPay-only adapter rather than trying Evo first. `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false` remains the safe default, so unsupported games use manual ID entry when their account schema is reviewed, and no external nickname request is made in the default local configuration.
+- This does not make unknown account schemas safe for checkout: unreviewed game/server mappings remain blocked. Nickname verification is optional; account-field validation and server-side product/checkout validation remain separate controls.
+- GoPay endpoint terms and live API response remain unverified. Do not enable the flag in production or claim that automatic nickname lookup works until an authorized staging test is completed. No payment, supplier order, or Drive backup was triggered.
+
+
+## Update — 2026-10-20: hasil pemeriksaan lokal setelah handoff
+
+- Pengguna mengonfirmasi branch lokal `audit/php-valid-game-provider`, HEAD `c494ef0` (`Record manual nickname fallback decision in readiness audit`), sinkron dengan `origin/audit/php-valid-game-provider`.
+- `git status --short` hanya menunjukkan tiga banner JPG baru yang belum dilacak di `public/uploads/banners/`: `3415d24f42be590c29d176df0f32acf6.jpg`, `f1bdb42a7c23d2c0b084d2bffdee282c.jpg`, dan `fe03270365bd04633c47bc8794da2dd6.jpg`. File tersebut harus dipertahankan; jangan menjalankan `git clean`, reset, atau menghapusnya.
+- Pemeriksaan `command -v node`, `nodejs`, `js`, `qjs`, dan `quickjs` tidak menemukan runtime yang tersedia (tidak ada path yang dicetak). Karena itu `node --check public/assets/catalog.js` belum dijalankan dan sintaks JS belum dapat dinyatakan lulus/gagal.
+- Status check GitHub untuk `c494ef0` tidak mengembalikan status, dan pencarian workflow PR-triggered untuk short SHA juga tidak menemukan run. Ini bukan bukti tes gagal maupun lulus; hasil CI head terbaru perlu diperiksa dari GitHub Actions secara langsung.
+- Langkah berikutnya: pertahankan branch dan banner, jalankan ulang pemeriksaan PHP yang tersedia (`php bin/preflight.php`, tes PHP terkait, dan `git diff --check`), lalu lakukan pemeriksaan JS menggunakan runtime/parser yang memang tersedia atau CI yang berjalan pada head branch. Jangan merge ke `main`; `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false` tetap dipertahankan. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: katalog lulus dengan peringatan PHP, perbaikan dibuat
+
+- Hasil lokal pengguna: `php bin/preflight.php` lulus 48/48; tes `game-account-schema`, `game-username-fallback`, dan seluruh 10 kelompok tes regresi yang dijalankan lulus. `tests/catalog-availability.php` lulus 6/6 tetapi menghasilkan tiga warning `Undefined array key "base_price"` dari `app/services/catalog.php` baris 100 karena fixture penawaran tertentu tidak menyertakan field opsional.
+- Perbaikan dibuat pada branch `audit/php-valid-game-provider`, commit `4d61d7c9d8eec675bea0e59876237b9716803e1d`: normalisasi `base_price`, `selling_price`, dan `is_available` memakai nilai default aman agar row yang tidak menyertakan key opsional tidak menimbulkan warning. Belum diverifikasi di mesin lokal pengguna; wajib pull branch dan ulangi tes katalog serta `git diff --check`.
+- JavaScript `public/assets/catalog.js` masih belum diperiksa karena Node.js/alternatif runtime tidak ditemukan di mesin pengguna. Jangan mengklaim JS lint lulus sampai ada CI atau parser yang dapat menjalankannya.
+- Tiga banner lokal tetap tidak terlacak dan harus dipertahankan. Jangan merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Verifikasi lokal regresi katalog
+
+- Pengguna menarik branch audit terbaru dengan fast-forward; `git diff --check` bersih.
+- `php -l app/services/catalog.php` lulus.
+- `php -d error_reporting=E_ALL tests/catalog-availability.php` lulus 6/6 tanpa warning setelah normalisasi field opsional menggunakan nilai default.
+- Masih perlu pemeriksaan regresi lintas tes dan validasi sintaks JavaScript. Node.js belum tersedia di lingkungan lokal yang dilaporkan; jangan menandai validasi JS lokal sebagai lulus tanpa menjalankannya. Tidak ada pembayaran, order supplier, atau backup Drive yang dijalankan.
+
+
+## 2026-10-20 — Preflight dan suite regresi lokal lulus
+
+- Preflight lokal: 48/48 checks passed; database connection, required tables, and listed migrations passed. Payment checkout, supplier ordering, and settlement backup remain disabled.
+- Seluruh 12 tes regresi yang dilaporkan pengguna lulus: Duitku callback state, Duitku transaction status, cooldown regression, checkout fingerprint, fulfillment mapping, provider budget capacity, catalog availability (6/6), hybrid pricing, admin authorization, login throttle cleanup, game account schema, dan username fallback.
+- Belum termasuk bukti transaksi Duitku sandbox, kredensial supplier eksternal, browser end-to-end, atau kesiapan produksi. Validasi JavaScript/CI terbaru masih perlu diperiksa.
+
+
+## 2026-10-20 — GitHub Actions PHP quality
+
+- GitHub Actions `PHP quality checks` pada commit `e9628ffff1ea12221f63c7629f34e7cefbb960ae` selesai dengan kesimpulan `success` (PR #8 / branch audit).
+- Hasil ini mendukung status workflow PHP quality, bukan bukti otomatis validasi JavaScript atau browser end-to-end. Pastikan ada pemeriksaan JS eksplisit sebelum menandai bagian itu selesai.
+- Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+## 2026-10-20 — JavaScript syntax validation added to CI
+
+- Local environment check: `node` and `nodejs` are absent, and `apt-cache policy nodejs` reports that the package cannot be located in the active APT indexes. Local JS syntax validation remains unrun.
+- Workflow commit `d50d8eddb4ec4c19b2127bdf53a1b1c819531497` adds Node.js 22 setup and `node --check public/assets/catalog.js` to the GitHub Actions PHP quality workflow. Node is used by CI only; no Node runtime or package dependency is added to the PHP shared-hosting application.
+- CI outcome for the new workflow commit is pending verification; do not mark JS syntax validation passed until the run finishes successfully.
+- The user's previously reported local checks remain: preflight 48/48 and 12 PHP regression groups passed. These results do not prove browser E2E, live provider checks, Duitku sandbox, or production readiness.
+- Preserve three untracked local banner JPGs. Do not merge to `main`; payment, supplier ordering, GoPay fallback flag (`GAME_CHECK_GOPAY_FALLBACK_ENABLED=false`), and Drive backup remain disabled.
+
+
+## 2026-10-20 — JavaScript syntax CI passed
+
+- GitHub Actions run #788 (`39374900076`) for the current `audit/php-valid-game-provider` branch completed successfully: https://github.com/sulistio95/PluQ-I/actions/runs/39374900076.
+- The workflow now runs `node --check public/assets/catalog.js`; its syntax check therefore passed on the GitHub runner. Node.js is CI-only and is not a runtime requirement for shared hosting.
+- This validates JavaScript parsing, not browser behavior, API provider staging, Duitku sandbox transactions, or deployment readiness. Those checks remain outstanding.
+- Payment checkout, supplier ordering, GoPay fallback, and Google Drive backup remain disabled. Do not merge to `main` as part of this syntax-only change.
+
+
+## 2026-10-20 — Audit legal/teknis endpoint username dan koreksi routing provider
+
+- Public search did not find official API documentation for `https://gopay.co.id/games/v1/order/user-account`; opening the endpoint did not expose a documented API contract. Endpoint behavior, response schema, stability, and commercial-use authorization remain unverified.
+- Official GoPay terms state that access from third-party platforms that are not Official/Authorized Platform Partners may be restricted for security, data protection, or commercial data-collection concerns. This does not itself prove that this particular game endpoint is prohibited, but it does not grant authorization to use an undocumented endpoint. References: https://gopay.co.id/syarat-dan-ketentuan and https://gopay.co.id/terms-and-condition/gopay.
+- Code audit found the username POST route always called the GoPay adapter even when `GAME_CHECK_GOPAY_FALLBACK_ENABLED=false`, and did not use the dedicated checker when `GAME_CHECK_API_KEY` was present.
+- Branch changes: `public/index.php` now prefers the dedicated checker when a supported game code and `GAME_CHECK_API_KEY` are configured; the GoPay adapter is called only when its explicit opt-in flag is true; otherwise the route fails safely when no checker is configured. The fallback receives an empty service code to enforce its existing per-account cooldown. `app/services/game_fields.php` advertises checking only when a matching provider is configured. `.env.example` documents `GAME_CHECK_API_KEY` and keeps GoPay fallback false pending authorization.
+- Commits: `public/index.php` `23508598100b75080f70d61a94a93c097671e525`; `app/services/game_fields.php` `e0ca6bf234cecda1fe3f4653baf67ef994c0278b`; `.env.example` `4bb1c72bce77959be62f7e01e0f853041dbe9e2d`. Regression/CI after these changes still needs verification.
+- User can test locally after pulling, but a real ID lookup requires a valid `GAME_CHECK_API_KEY` for the dedicated service or confirmation that GoPay authorizes this fallback before enabling it. VIPayment credentials do not automatically serve as `GAME_CHECK_API_KEY`. Keep secrets only in local `.env`, never in GitHub or chat.
+- Payment checkout, supplier ordering, GoPay fallback, and Drive backup remain disabled. Do not merge to `main`; preserve three untracked local banner JPGs.
+
+
+## 2026-10-20 — CI after username checker routing fix
+
+- GitHub Actions `PHP quality checks` succeeded for routing commit `23508598100b75080f70d61a94a93c097671e525` (run #791), schema availability commit `e0ca6bf234cecda1fe3f4653baf67ef994c0278b` (run #792), and `.env.example` commit `4bb1c72bce77959be62f7e01e0f853041dbe9e2d` (run #793).
+- This proves the configured workflow checks pass, not that an external nickname API returns real account names. Live verification awaits an authorized provider configuration.
+- After the user pulls, run preflight, `game-account-schema.php`, `game-username-fallback.php`, and `git diff --check`, then test the local endpoint. With `GAME_CHECK_API_KEY` empty and fallback false, safe expected behavior is that username checking is unavailable (and no GoPay request is made). Do not enable fallback before authorization is confirmed.
+
+
+## 2026-10-20 — Keputusan menghapus GoPay/Evo dan kembali ke VIPayment
+
+- Menghapus jalur GoPay yang memakai endpoint tidak terdokumentasi serta jalur Game Check pihak ketiga yang memerlukan API key terpisah.
+- Pengecekan username kembali diarahkan ke dokumentasi VIPayment Game Feature: POST /api/game-feature, type=get-nickname, code, target, additional_target. Respons sukses yang didokumentasikan mengembalikan nickname pada data.
+- Kode lookup yang dipetakan: mobile-legends, mobile-legends-region, free-fire, pubgm, valorant, genshin-impact, honkai-star-rail, pointblank. Honor of Kings dan judul lain di luar daftar tidak diiklankan sebagai auto-check.
+- Menggunakan API ID/key VIPayment yang sudah tersimpan di Pengaturan API. Request lookup tidak memanggil type=order dan tidak membuat transaksi top-up.
+- Ditambahkan tes parameter untuk memastikan type, code, target, dan additional_target benar; tes ini tidak menggantikan uji API live dengan kredensial pemilik.
+- Referensi dokumentasi: https://vip-reseller.co.id/page/api/game-feature. Setelah branch diperbarui, jalankan CI, preflight dan tes PHP lokal. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+
+### Temuan pengujian lokal — deklarasi fungsi ganda
+- Log lokal 20 Oktober 2026 menunjukkan `Cannot redeclare game_username_check()` pada baris 139 setelah deklarasi pertama pada baris 46. Akar masalah: implementasi Game Check lama tertinggal setelah implementasi VIPayment ditambahkan.
+- Dihapus blok implementasi Game Check lama; fungsi `game_username_check()` yang tersisa menggunakan VIPayment `/game-feature` dan `get-nickname`. Rate limit/cache tidak dihapus.
+- Status perbaikan: sudah dikomit ke branch `fix/vipayment-nickname-lookup`; perlu jalankan ulang syntax check, tes regresi, dan tes endpoint lokal sebelum menyatakan lolos.
+
+
+## 2026-10-20 — Perbaikan preflight untuk tabel pemeriksaan username
+- Log uji lokal menunjukkan endpoint `POST /api/games/free-fire/check-username` merespons HTTP 503 karena tabel `game_username_check_limits` tidak ada di database `pluqi_local_test`.
+- Migration yang seharusnya membuat tabel ini sudah tersedia: `database/migrations/013_game_username_check_protection.sql`. Migration tersebut membuat `game_username_check_limits` dan `game_username_check_cache`; kemungkinan database lokal belum menerapkannya.
+- Memperbarui `bin/preflight.php` agar memeriksa kedua tabel serta catatan migration `013_game_username_check_protection`, sehingga kondisi database seperti ini terdeteksi sebelum pengujian endpoint.
+- Tindakan lokal: terapkan SQL migration 013 pada database pengujian yang benar, lalu jalankan preflight dan tes username. Jangan menghapus rate limit/cache. Panggilan API VIPayment live tetap belum terverifikasi; pembayaran dan pemesanan supplier tetap nonaktif.
+
+
+## 2026-10-20 — Navigasi panel admin dipindahkan ke sidebar kiri
+
+- Menambahkan komponen bersama `app/views/admin_sidebar.php` dan stylesheet `public/assets/admin-sidebar.css` agar menu admin konsisten pada Dashboard/Transaksi, Pengaturan API, Game List, Pengaturan Template, Pengaturan Keuntungan, Harga Modal Supplier, dan Rekonsiliasi Duitku.
+- Sidebar berada di sisi kiri pada layar desktop. Pada layar sempit, menu berubah menjadi bar navigasi horizontal yang dapat digulir agar tetap dapat digunakan di ponsel tanpa JavaScript tambahan.
+- Menu aktif diberi penanda `aria-current="page"`; tautan Rekonsiliasi Duitku hanya ditampilkan jika akun lolos `admin_can_manage_settings()`. Kredensial, alur otorisasi, dan endpoint transaksi tidak diubah oleh pekerjaan tata letak ini.
+- Link menu atas yang duplikat di dashboard dan link “kembali ke panel” pada halaman pengaturan dihapus karena navigasi bersama sekarang tersedia melalui sidebar.
+- Perubahan ada pada branch `feature/admin-left-sidebar`, diturunkan dari `fix/vipayment-nickname-lookup`. Belum digabung ke `main`. Lakukan PHP lint, `php bin/preflight.php`, tes regresi terkait admin, dan `git diff --check` setelah branch ditarik. Pemeriksaan visual browser masih diperlukan.
+- Tidak ada perubahan atau aktivasi pembayaran, supplier ordering, maupun backup Google Drive. Pertahankan tiga banner JPG lokal yang belum terlacak; jangan menjalankan perintah reset/clean yang menghapus file lokal.
+
+
+## Update — 2026-10-20: Penggeser horizontal tabel Harga Modal Supplier
+
+- Menambahkan scrollbar horizontal kedua di bagian atas tabel Harga Modal Supplier (`public/admin/supplier-prices.php`), dengan posisi sticky agar tetap mudah dijangkau saat halaman digulir vertikal.
+- Scrollbar atas disinkronkan dua arah dengan tabel utama; pengguna dapat menggeser kolom ke kiri/kanan tanpa harus turun sampai bagian bawah tabel. Tabel mempertahankan scrollbar bawaan sebagai alternatif.
+- Lebar penggeser menyesuaikan lebar tabel saat ukuran layar berubah. Tidak mengubah query harga, filter, urutan harga, otorisasi, atau proses transaksi.
+- Perubahan dikirim ke branch `feature/admin-left-sidebar`; belum di-merge ke `main`. Perlu lint PHP, pemeriksaan CI, dan uji visual desktop/mobile sebelum dinyatakan terverifikasi. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Verifikasi CI — penggeser Harga Modal Supplier (2026-10-20)
+
+- GitHub Actions `PHP quality checks` pada commit `45d9016a8a7216ff12467c03fafc740ec06a38ec` selesai dengan status **success**.
+- Hasil CI tidak menggantikan uji visual browser. Perlu pengguna memeriksa penggeser horizontal atas pada halaman Harga Modal Supplier, termasuk saat halaman digulir vertikal dan pada layar sempit.
+
+
+## Update — 2026-10-20: Perbaikan teks intro yang bertumpuk dengan banner homepage
+
+- Memisahkan area banner promosi dari teks “Top up game lebih praktis” dan “Pilih game dan temukan nominal yang tersedia.”; teks kini berada tepat di bawah banner, bukan di atas gambar.
+- Area banner menggunakan rasio 16:5, tinggi minimum untuk layar kecil dan batas tinggi maksimum agar gambar tidak menutupi konten. Banner tetap dapat diklik jika konfigurasi memiliki target URL; pergantian banner 3 detik tidak diubah.
+- Perubahan pada `public/index.php` dan `public/assets/catalog.css`, branch `feature/admin-left-sidebar`. Catatan handoff dan audit diperbarui. Perlu lint/CI serta pemeriksaan visual desktop dan ponsel; belum merge ke `main`.
+
+
+## Update — 2026-10-20: Banner saja pada form akun dan pemilihan nominal
+
+- Pada tampilan setelah pelanggan memilih game, banner promosi tetap berada di bagian atas. Kolom pencarian game dan teks intro homepage disembunyikan selama form data akun dan nominal ditampilkan.
+- Saat pelanggan menekan **Kembali ke game**, teks intro dan pencarian ditampilkan kembali. Tidak mengubah alur pemuatan form, produk, pergantian banner otomatis 3 detik, atau logika harga.
+- Implementasi pada `public/index.php` dan `public/assets/catalog.js` di branch `feature/admin-left-sidebar`; commit kode: `45d4a5b02042acab0210de60e420e1fd7c1a0ee2` dan `adf7e95db84d3e9af154f23888444a113aa27ee8`.
+- Belum menjalankan lint/CI atau pemeriksaan visual browser untuk perubahan ini. Setelah pull, uji memilih game, pastikan hanya banner yang tersisa di bagian atas form akun/nominal, lalu tekan kembali dan pastikan pencarian serta intro muncul lagi. Belum merge ke `main`; pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-20: Branding footer toko
+
+- Mengganti teks footer halaman storefront dari `PluQ · Katalog shared-hosting` menjadi `PluQ.I Official Store` di `public/index.php`.
+- Commit kode: `8588cd6654ed510c3d58aa55132812224a360f28` pada branch `feature/admin-left-sidebar`.
+- Perubahan hanya teks footer; alur katalog, akun, nominal, banner, dan pembayaran tidak diubah. Belum merge ke `main`; hasil CI dan tampilan browser perlu diverifikasi.
+
+
+## Update — 2026-10-20: Pratinjau katalog dapat memilih supplier
+
+- Panel **Pengaturan API → Pratinjau daftar game dan layanan** kini menyediakan pilihan VIPayment atau Digiflazz. VIPayment menggunakan `vipayment_game_services()`; Digiflazz menggunakan `digiflazz_price_list()` dan menampilkan field produk yang dikembalikan API, termasuk status buyer/seller bila tersedia.
+- Pratinjau tetap baca-saja: tidak menulis katalog database, tidak mengubah pemetaan, dan tidak membuat pesanan. Untuk menyimpan harga ke katalog toko, gunakan tombol **Sinkronkan katalog VIPayment/Digiflazz** setelah mapping aktif di Game List disiapkan.
+- API custom belum bisa dipratinjau secara generik. Profil custom saat ini hanya menyimpan base URL dan kredensial; endpoint katalog, autentikasi spesifik, dan bentuk respons memerlukan adapter terpisah dari dokumentasi resmi provider. UI menjelaskan batasan ini dan tidak mengirim request spekulatif ke endpoint custom.
+- Commit kode: `6415ccc59e62060abffcab86863ad41e6b40d955` pada branch `feature/admin-left-sidebar`; belum merge ke `main`.
+- CI, lint, dan tes browser belum diverifikasi untuk commit ini. Setelah pull, jalankan `php -l public/admin/api-settings.php`, `php bin/preflight.php`, tes regresi terkait, dan `git diff --check`; uji pratinjau kedua supplier dengan kredensial valid. Jangan mengaktifkan pembayaran, supplier ordering, atau backup Google Drive.
+
+
+## Verifikasi CI — pratinjau katalog supplier (2026-10-20)
+
+- GitHub Actions **PHP quality checks** untuk commit `6415ccc59e62060abffcab86863ad41e6b40d955` selesai dengan status **success**, run #819: https://github.com/sulistio95/PluQ-I/actions/runs/39391595762.
+- Ini hanya hasil workflow yang dikonfigurasi; belum membuktikan request API live untuk kedua supplier atau perilaku browser. Uji lokal dengan kredensial valid dan pemeriksaan tampilan masih diperlukan.
+- Dukungan API custom tetap memerlukan adapter katalog berdasarkan dokumentasi provider; tidak ada endpoint custom yang dipanggil. Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.
+
+## 2026-10-20 — Verifikasi lokal halaman Cari Transaksi dan Detail Transaksi
+
+- Branch `feature/admin-left-sidebar`, commit lokal setelah fast-forward: `f2421cb`. Kedua file halaman transaksi lolos `php -l`.
+- Pengujian HTTP tanpa login menghasilkan HTTP 302 menuju `/admin/` untuk halaman pencarian dan detail; ini konsisten dengan gate autentikasi admin.
+- Pengguna mengonfirmasi kedua halaman dapat diuji melalui browser setelah login. Log PHP built-in server menunjukkan HTTP 200 untuk `GET /admin/transaction-detail.php` serta `GET /assets/admin-sidebar.css`.
+- Database saat ini belum berisi transaksi. Oleh sebab itu, keberhasilan akses/tampilan dasar sudah dikonfirmasi, tetapi pencarian transaksi berisi data dan query detail lintas tabel belum terbukti dengan fixture transaksi.
+- Tidak ada transaksi Duitku, pemesanan supplier, atau backup Google Drive yang dipicu. Pertahankan semua fitur operasional tersebut nonaktif sampai staging terkontrol.
+
+
+## Update — 2026-10-20: CLI sinkronisasi membaca kredensial panel admin
+
+- Temuan: `bin/sync-balances.php` dan `bin/sync-catalog.php` sebelumnya memeriksa kredensial hanya melalui `getenv()`, sedangkan `pluqi_api_config_value()` mendahulukan kredensial terenkripsi di `app_settings`. Akibatnya, kredensial yang hanya disimpan melalui Pengaturan API bisa membuat sinkronisasi CLI salah melewati supplier.
+- Kedua skrip kini memeriksa kredensial melalui `pluqi_api_config_value()`, menyamakan sumber konfigurasi dengan panel admin. Supplier tanpa kredensial tetap dilewati; kesalahan pembacaan/dekripsi atau pemanggilan API ditangani sebagai kegagalan, bukan dianggap saldo nol.
+- Perubahan hanya memperbaiki pemilihan sumber kredensial pada CLI. Belum ada bukti uji runtime dengan database/kredensial pengguna dan belum diklaim lint/CI lulus. Setelah menarik commit, jalankan lint, preflight, lalu `php bin/sync-balances.php`; pastikan hasil VIPAY mencatat saldo aktual dan `last_balance_check_at` terisi. Jangan menampilkan API ID/Key di log atau chat.
+- Jika saldo aktual VIPayment Rp1.130, batas pakai pada reserve 50% adalah Rp565 sebelum dikurangi komitmen aktif; harga modal Rp1 dapat tersedia jika seluruh syarat lain lolos. Pembayaran, order supplier, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Perbaikan tampilan katalog berdasarkan ketersediaan supplier
+
+- Aturan katalog pelanggan diklarifikasi: tampilkan hanya SKU yang status katalog supplier-nya `ACTIVE` (VIPayment melaporkan `available`).
+- SKU yang supplier tandai `empty` atau yang ditandai stale saat sinkronisasi tidak ditampilkan sebagai pilihan pelanggan.
+- SKU `ACTIVE` dari supplier tetap dapat ditampilkan dengan label tidak tersedia ketika pemeriksaan saldo/cadangan lokal gagal. Saldo rendah tidak sama dengan status produk `empty`.
+- Checkout tetap wajib memeriksa ketersediaan dan kapasitas supplier di server; perubahan ini hanya menyaring katalog yang ditampilkan.
+- Perlu uji lokal setelah sinkronisasi katalog: produk `available` dengan saldo cukup dapat dipesan; produk `available` dengan saldo tidak cukup terlihat namun tidak dapat dibeli; produk `empty` tidak muncul.
+- Belum menjalankan pengujian lokal atau CI dari perubahan ini. Perubahan hanya pada branch `feature/admin-left-sidebar`; tidak di-merge ke `main`.
+
+
+## 2026-10-20 — UI ikon game berbentuk lingkaran
+- Ditambahkan wrapper `.game-icon-frame` dengan crop lingkaran, bingkai dekoratif bernuansa emas, dan aksen bulan sabit kecil di tepi kanan atas.
+- Rendering ikon tetap menggunakan `icon_url` dari katalog. Tidak ada perubahan pada penyimpanan unggahan, database, API, atau mekanisme admin.
+- Validasi visual desktop/seluler dan placeholder ikon masih perlu dilakukan secara lokal; belum ada klaim pengujian lulus.
+
+## 2026-10-20 — Perataan posisi ikon saat nama game panjang
+
+- Kartu game pada katalog pelanggan kini menggunakan susunan kolom flex dengan lebar penuh dan tinggi minimum yang konsisten. Bingkai ikon tidak ikut bergeser akibat panjang teks nama game.
+- Area nama game memiliki tinggi minimum untuk dua baris, perataan tengah, dan pemenggalan kata panjang agar nama yang panjang tidak mendorong ikon atau membuat tata letak horizontal berantakan. Pada layar sempit, kartu tetap mengikuti grid responsif yang sudah ada.
+- Perubahan hanya pada `public/assets/catalog.css`; bingkai lingkaran dan motif bulan sabit tetap dipertahankan. Tidak mengubah data game, ikon unggahan, database, atau proses checkout.
+- Belum diuji visual di browser atau CI. Setelah pull, periksa beberapa game dengan nama pendek dan panjang di desktop serta ponsel; pastikan semua ikon sejajar, teks tidak terpotong, dan tombol kartu tetap dapat diklik. Belum merge ke `main`.
+
+## 2026-10-20 — Lima kartu per baris desktop dan ikon diperbesar
+
+- Grid katalog game pada desktop kini memakai lima kolom tetap; game berikutnya mengalir ke baris di bawahnya. Pada layar lebih kecil, grid beralih ke tiga kolom, sedangkan aturan layar ponsel yang sudah ada tetap berlaku.
+- Ukuran bingkai ikon dinaikkan dari 70×70 menjadi 92×92 piksel, termasuk penyesuaian jarak dan aksen bulan sabit. Ruang nama game tetap terpisah agar nama panjang tidak menggeser ikon.
+- Perubahan CSS saja pada `public/assets/catalog.css`; tidak mengubah data game, unggahan ikon/banner, database, atau alur checkout.
+- Belum diverifikasi secara visual di browser/CI. Setelah pull, uji desktop lebar, jendela tablet, dan ponsel; pastikan lima kolom tampil pada desktop, ikon lebih besar, dan tidak terjadi overflow. Belum merge ke `main`.
+
+
+## Update 2026-10-20 — Menghapus aksen lingkaran kecil pada ikon game
+
+- Menghapus pseudo-element bulan sabit/lingkaran kecil di pojok kanan atas bingkai ikon melalui `public/assets/catalog.css`, karena tampak mengganggu setelah ukuran ikon diperbesar.
+- Bingkai lingkaran dan warna emas gelap tetap dipertahankan; ukuran ikon 92px, grid desktop lima kolom, dan breakpoint tablet/ponsel tidak diubah.
+- Commit CSS: `8a2cb4ac6efa6e67a97770fb066382dba95c4c90` pada branch `feature/admin-left-sidebar`.
+- Belum diuji visual di browser dan belum merge ke `main`. Setelah pull, lakukan hard refresh dan periksa ikon di desktop serta ponsel.
+
+
+## Update 2026-10-20 — Pengaturan grid dan ukuran icon katalog
+
+- Bagian **Pengaturan Template → Tata letak katalog game** kini menyimpan jumlah kolom desktop (3–6) dan ukuran icon (80–120 px) ke tabel `app_settings`, memakai prepared statement/upsert, pemeriksaan rentang nilai, CSRF dan pembatasan peran admin yang sudah ada. Perubahan dicatat di audit log.
+- Halaman depan membaca pengaturan tersimpan dan mengirimkannya sebagai CSS variables. Nilai default saat belum tersimpan atau database settings tidak dapat dibaca: 5 kolom desktop dan icon 100 px. Tablet tetap 3 kolom dan ponsel 2 kolom.
+- File berubah: `public/admin/template-settings.php`, `public/assets/catalog.css`, dan `public/index.php`. Commits: `d98e1f3210eb8d146f955871763fb19b40679d16`, `dc4c834bdd7a1dc2057662757b8496e67ca0b281`, `175236425db904b07e366096fcfc1991bb483261` pada branch `feature/admin-left-sidebar`.
+- Belum menjalankan PHP lint, `bin/preflight.php`, tes database, CI pascaperubahan, atau verifikasi visual browser. Setelah pull, uji simpan/pemuatan ulang kedua pengaturan, tampilan desktop/tablet/ponsel, dan `git diff --check`. Tidak memerlukan migration baru karena memakai tabel `app_settings` yang sudah ada. Belum merge ke `main`; pertahankan tiga banner JPG lokal yang belum terlacak. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Retensi konteks game saat refresh
+
+- Perbaikan di `public/assets/catalog.js` menyimpan slug game aktif sebagai parameter URL `?game=<slug>`, memulihkan form saat reload, dan menyelaraskan navigasi Back/Forward serta tombol kembali.
+- Commit kode: `8fa78d11455d39dfd3245d0bc795a0dcbb821f14`; catatan handoff diperbarui pada `97e61707b1185750bdf89d98958e60bab56f6bee`, branch `feature/admin-left-sidebar`.
+- Status verifikasi: belum ada hasil uji browser/CI pascaperubahan ini. Pengujian wajib: pilih game → refresh → form game tetap tampil; Back/Forward; tombol kembali; URL game yang tidak valid kembali ke katalog.
+- Nilai ID yang diketik tidak disimpan ke URL atau dipulihkan setelah refresh. Ini disengaja agar data akun pelanggan tidak bocor melalui URL/history. Pengaturan grid desktop (3–6 kolom) dan ukuran ikon (80–120 px) tersedia pada Pengaturan Template; default ikon 100 px, desktop lima kolom.
+- Belum merge ke `main`. Pembayaran, supplier ordering, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-20 — Branding dan alignment halaman awal
+
+- Header brand diubah menjadi `PluQ-i`, footer menjadi `PluQ-i Official Store`.
+- Header diselaraskan secara horizontal dengan banner menggunakan container maksimum 1148 px dan padding 24 px, mengikuti container utama.
+- Commit kode: `9697591a5d02badfe267e1c515952bd99719eadc` dan `4d2f1cc2ebc94f17df6e1f937608cd14957a574a` pada `feature/admin-left-sidebar`.
+- Status: perubahan kode tersimpan; visual desktop/mobile belum diverifikasi. Belum merge ke `main`.
+
+
+## 2026-10-21 — Penyesuaian posisi horizontal banner
+
+- Tangkapan layar pengguna menunjukkan banner tampak tidak berada di tengah terhadap kolom pencarian. Aturan `.hero` pada `public/assets/catalog.css` diberi margin horizontal 12px (commit a52ecee9b9be5daa4497abc8cb50d1b39a13dd5e) agar batas kiri/kanan lebih mendekati input pencarian.
+- Perubahan visual saja; belum diverifikasi dengan browser dan perlu dicek pada desktop/mobile setelah branch ditarik. Tidak ada perubahan pada banner source, katalog, pembayaran, atau supplier ordering.
+
+
+## 2026-10-21 — Koreksi lebar banner agar sejajar dengan input pencarian
+
+- Koreksi sebelumnya dengan margin 12px belum menyamakan tepi banner dan input karena .search-row memiliki padding horizontal 24px pada desktop. .hero kini memakai margin 24px di desktop dan 14px di ponsel, mengikuti padding pencarian pada breakpoint masing-masing.
+- Kode CSS commit 48835eefe64b62babffd5200df55d1e9946c9d44. Perlu hard refresh dan uji visual browser; belum dinyatakan terverifikasi dan belum merge ke main.
+
+
+## 2026-10-21 — Banner memakai lebar yang sama dengan kolom pencarian
+
+- `.hero` memakai `width:100%`, `box-sizing:border-box`, dan tanpa margin horizontal ekstra supaya lebar banner mengikuti area konten utama yang sama dengan input pencarian. Override margin banner pada tampilan ponsel dihapus.
+- Commit CSS: 86483f95cbbc63ee6a281e4caffc2b2abe267735. Perlu hard refresh dan verifikasi visual desktop/mobile; belum merge ke `main`.
+
+
+## 2026-10-21 — Koreksi skema akun game
+
+- Genshin Impact dan Honkai: Star Rail memakai field `user_id` + `server` dengan label Server / Region; bukan Zone ID.
+- Magic Chess GoGo memakai `user_id` + `zone_id`.
+- Tes regresi ditambahkan. Field Server/Region masih input teks pada perubahan ini; dropdown berisi pilihan yang disuplai API belum diimplementasikan. Perlu mengidentifikasi dan memvalidasi sumber daftar server dari API sebelum mengaktifkan dropdown atau checkout.
+- Status: perubahan berada di `feature/admin-left-sidebar`; tes lokal dan CI belum dijalankan untuk commit terbaru. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## Update — 2026-10-21: Audit pemetaan field akun game
+
+- Membuat `docs/game-account-field-mapping.md` untuk mencatat field yang benar: Mobile Legends = User ID + Zone ID; Genshin Impact = User ID + Server/Region; Honkai: Star Rail = User ID + Server/Region; Magic Chess GoGo = User ID + Zone ID; Zenless Zone Zero = User ID + Server/Region.
+- Audit dokumentasi publik VIPayment menemukan `type=services` mengembalikan properti `server` pada tiap record layanan, tetapi dokumentasi tidak menyatakan bahwa nilai itu adalah daftar server akun pelanggan. Endpoint order menerima `data_no` dan `data_zone`; dokumentasi yang ditinjau tidak mendefinisikan endpoint server-list khusus.
+- Karena itu, jangan membangun dropdown dengan menganggap properti SKU `server` sebagai opsi akun. Selanjutnya verifikasi respons katalog nyata yang sudah disanitasi dan format target tiap game, lalu implementasikan opsi dropdown dengan nilai kode yang tervalidasi di sisi server.
+- Saat ini field Server/Region masih berupa teks; dropdown dinamis dan transformasi server/zone ke parameter order belum diverifikasi. Checkout skema yang belum ditinjau harus tetap diblokir. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-21 — Dropdown Server / Region sementara
+
+- Genshin Impact dan Honkai: Star Rail menampilkan dropdown umum Asia, America, Europe, dan TW / HK / MO. Nilai internalnya adalah placeholder UI (`asia`, `america`, `europe`, `tw_hk_mo`), bukan kode supplier terverifikasi.
+- Checkout tetap diblokir karena `game_account_schema_is_supported()` menolak skema akun dengan field `server` yang belum dipetakan. Magic Chess GoGo tetap meminta User ID + Zone ID.
+- Tes schema ditambah untuk field select, opsi, dan gate checkout. Tes lokal/CI belum dijalankan; jangan menyatakan integrasi VIPayment tervalidasi. Pembayaran, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+
+
+## 2026-10-21 — Perbaikan sintaks skema akun
+
+- Pemeriksaan pengguna menemukan PHP parse error di `app/services/game_fields.php` setelah perubahan dropdown server; string `validation_regex` terpotong dan blok field tidak tertutup.
+- Memperbaiki source di commit `ac6704885939a0cf12c64ef96abd9a6619d6b620`. Status verifikasi: belum diuji ulang dengan PHP lokal/CI; jangan menganggap tes lulus sampai hasil aktual tersedia.
+- Pembayaran, supplier ordering, dan backup Drive tetap nonaktif.

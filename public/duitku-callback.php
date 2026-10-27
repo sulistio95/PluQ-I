@@ -26,8 +26,8 @@ try {
     $status=duitku_callback_result_state($resultCode);
     if ($tx['status']!=='PENDING') {
         if ($tx['status'] !== $status) {
-            // Preserve the terminal payment record, but make the contradiction visible for human reconciliation.
-            // A signed late callback must never silently rewrite a previously terminal payment state.
+            // Record the contradiction for human reconciliation. A late success after a failed
+            // callback is recorded as PAID, but the order is never queued automatically.
             $details=json_encode([
                 'gateway'=>'DUITKU',
                 'merchant_order_id'=>$orderId,
@@ -36,8 +36,33 @@ try {
                 'incoming_result_code'=>$resultCode,
                 'amount'=>(string)$amount,
                 'reference'=>(string)($_POST['reference']??''),
-                'resolution'=>'payment state preserved; order requires manual reconciliation',
+                'resolution'=>($tx['status']==='FAILED' && $status==='PAID') ? 'late success recorded as paid; order requires manual reconciliation' : 'payment state preserved; order requires manual reconciliation',
             ],JSON_THROW_ON_ERROR);
+            if ($tx['status']==='FAILED' && $status==='PAID') {
+                // Duitku confirms money was received after an earlier failure callback.
+                // Correct the payment record, but keep fulfillment blocked until an admin reconciles it.
+                $latePayload=json_encode([
+                    'merchantOrderId'=>$orderId,
+                    'amount'=>(string)$amount,
+                    'resultCode'=>$resultCode,
+                    'reference'=>(string)($_POST['reference']??''),
+                    'late_success_manual_review'=>true,
+                ],JSON_THROW_ON_ERROR);
+                $q=$pdo->prepare("UPDATE payment_transactions
+                    SET status='PAID',
+                        gateway_reference=COALESCE(NULLIF(:ref,''),gateway_reference),
+                        callback_payload=:payload,
+                        callback_received_at=NOW()
+                    WHERE id=:id AND status='FAILED'");
+                $q->execute(['ref'=>(string)($_POST['reference']??''),'payload'=>$latePayload,'id'=>$tx['id']]);
+                $q=$pdo->prepare("UPDATE orders
+                    SET payment_status='PAID',
+                        order_status='MANUAL_REVIEW',
+                        paid_at=COALESCE(paid_at,NOW()),
+                        last_error='Late successful Duitku callback after a recorded failure; manual payment and fulfillment reconciliation required'
+                    WHERE id=:id");
+                $q->execute(['id'=>$tx['order_id']]);
+            }
             $q=$pdo->prepare("UPDATE orders SET order_status='MANUAL_REVIEW',last_error='Conflicting terminal Duitku callback; payment state preserved for manual reconciliation' WHERE id=:id AND order_status<>'MANUAL_REVIEW'");
             $q->execute(['id'=>$tx['order_id']]);
             // A contradictory callback moves the order out of automatic fulfillment.

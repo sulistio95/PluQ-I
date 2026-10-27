@@ -21,6 +21,12 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, curl, pdo_mysql
           coverage: none
+      - name: Set up Node.js for JavaScript syntax validation
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check storefront JavaScript syntax
+        run: node --check public/assets/catalog.js
       - name: Lint PHP files
         shell: bash
         run: |
@@ -32,6 +38,8 @@ jobs:
         run: php tests/duitku-callback-result-state.php
       - name: Test Duitku transaction status response validation
         run: php tests/duitku-transaction-status.php
+      - name: Test late successful payment callback requires manual review
+        run: php tests/duitku-late-success-review.php
       - name: Test admin Duitku cooldown regression guard
         run: php tests/reconcile-cooldown-regression.php
       - name: Test checkout request fingerprint
@@ -40,15 +48,23 @@ jobs:
         run: php tests/fulfillment-mapping.php
       - name: Test automatically generated game account fields
         run: php tests/game-account-schema.php
+      - name: Test VIPayment nickname lookup parameters
+        run: php tests/game-username-vipayment.php
       - name: Test provider budget capacity boundaries
         run: php tests/provider-budget-capacity.php
       - name: Test customer catalog supplier availability filtering
         run: php tests/catalog-availability.php
-      - name: Test admin supplier price filtering
-        run: php tests/supplier-prices-filtering.php
       - name: Test hybrid fixed and percentage pricing
         run: php tests/pricing-hybrid.php
       - name: Test admin authorization roles
         run: php tests/admin-authorization.php
       - name: Test admin login throttle cleanup scope
         run: php tests/admin-login-throttle-clear.php
+      - name: Test admin supplier price filtering and pagination
+        run: php tests/supplier-prices-filtering.php
+      - name: Test deployment preflight includes all required schema migrations
+        run: php tests/deployment-preflight-checks.php
+      - name: Test customer order rating rules
+        run: php tests/order-rating-rules.php
+      - name: Test customer order rating CSRF validation
+        run: php tests/order-rating-csrf.php

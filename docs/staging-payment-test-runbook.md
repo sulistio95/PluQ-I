@@ -1,6 +1,8 @@
 # PluQ-I staging and payment-test runbook
 
-Last reviewed: 2026-10-16
+Last reviewed: 2026-10-27
+
+> **Phase 6 safety corrections (2026-10-27):** This runbook is preparation only; no hosting has been deployed and no external payment/provider calls were made. For the combined candidate, use migrations 002–005 and 008–014 in order; migrations 006–007 are needed only for settlement backup. The current sandbox-only callback path with supplier ordering disabled must result in payment `PAID`, order `MANUAL_REVIEW`, and **no** `FULFILL_ORDER` job (not `QUEUED`). On a staging host, set `APP_ENV=staging`, `DUITKU_ENV=sandbox`, and keep `SUPPLIER_ORDERS_ENABLED=false`; only then can the explicitly gated sandbox checkout path be exercised. Never change the live flags as part of this phase.
 
 This is an operational checklist, not a production approval. No live payment or supplier API request has been made from this review.
 
@@ -22,7 +24,7 @@ This is an operational checklist, not a production approval. No live payment or 
 - [ ] Generate unique staging `APP_KEY` and `SCHEDULER_TOKEN`; never reuse production secrets.
 - [ ] Upload private `.env` outside the public document root if possible. Keep `APP_DEBUG=false`.
 - [ ] Keep `CHECKOUT_PAYMENTS_ENABLED=false`, `SUPPLIER_ORDERS_ENABLED=false`, and `SETTLEMENT_BACKUP_ENABLED=false`.
-- [ ] Import `database/schema.mysql.sql`, then apply migrations 002 through 011 in order (migrations 006–007 are required if settlement backup is later enabled; migration 011 is required before the callback or fulfillment code that uses provider budget reservations).
+- [ ] Import `database/schema.mysql.sql`, then apply migrations 002–005 and 008–014 in numerical order. Migrations 006–007 support settlement backup and may remain unapplied while `SETTLEMENT_BACKUP_ENABLED=false`; apply both in order before enabling that feature. Do not skip required migrations 008–014.
 - [ ] Run `php bin/preflight.php` from CLI. Save output without secrets and resolve every failed check.
 - [ ] Verify backup creation and restore to a disposable database before any real transaction.
 
@@ -41,7 +43,7 @@ This is an operational checklist, not a production approval. No live payment or 
 Required acceptance criteria for that change:
 - Sandbox-only mode is explicit and rejects any non-sandbox Duitku endpoint.
 - It can create and receive a sandbox payment without making supplier purchase/status calls.
-- A successful sandbox callback records the payment and routes the order to a safe test/manual-review state, or to a clearly isolated test queue that cannot execute supplier calls.
+- A successful sandbox callback records the payment, routes the order to `MANUAL_REVIEW`, and creates no `FULFILL_ORDER` job while supplier ordering is disabled.
 - Invalid signature, wrong amount, repeated callback, late/conflicting callback, and timeout cases are covered by integration tests.
 - No production credentials are required or logged in test output.
 
@@ -161,3 +163,13 @@ These are GitHub-hosted CI tests using disposable MySQL and mocked/simulated Dui
 ## Go-live gate
 
 No go-live approval until a real sandbox checkout/callback is tested on the intended HTTPS staging domain, supplier calls are validated separately with controlled low-value tests, the hosting cron and database behavior are observed, backup/restore is demonstrated, and all production secrets and flags are reviewed. Production Duitku mode is not supported by the current implementation; do not switch `DUITKU_ENV` to `production`.
+
+
+## Phase 6 — final staging preparation review (2026-10-27)
+
+- Integration candidate: `integration/phase4-combined-2026-10`, reviewed head `5ce9be502c0abd78d84b02dc61fef94a46d73448`.
+- CI on that exact head: [Fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/40467838096), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/40467838058), and [PHP/JavaScript syntax](https://github.com/sulistio95/PluQ-I/actions/runs/40467838014) all completed successfully.
+- Staging environment must use a separate database and unique secrets, `APP_ENV=staging`, `APP_DEBUG=false`, `DUITKU_ENV=sandbox`, `CHECKOUT_PAYMENTS_ENABLED=false` until a separately approved sandbox test window, `SUPPLIER_ORDERS_ENABLED=false`, and `SETTLEMENT_BACKUP_ENABLED=false`.
+- `.env.example` defaults `GITHUB_UPLOAD_BRANCH=feature/admin-left-sidebar`. Before staging, either disable repository-backed uploads/remove its token on staging or explicitly point it at the intended deployment branch; never let staging uploads mutate an unrelated development branch.
+- Do not expose the repository root as document root. Use `public/` as document root and keep `.env`, app code, migrations, tests, logs, and private files outside web access.
+- This review did not deploy to hosting, inspect a live host, apply migrations to a remote database, run browser visual checks, call external Duitku/VIPayment/Digiflazz APIs, or test a real sandbox transaction. These remain blocking acceptance items.

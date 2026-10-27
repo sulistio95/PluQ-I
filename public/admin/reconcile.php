@@ -145,9 +145,11 @@ function reconcile_escape(mixed $value): string {
 :root{color-scheme:dark;--bg:#0c0d10;--panel:#15171d;--line:#292d36;--text:#f3f4f6;--muted:#9ca3af;--accent:#a7f3d0}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:850px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}label{display:grid;gap:6px;color:var(--muted)}input,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.error{padding:10px;background:#3b1d22;border-radius:7px;margin:12px 0}.notice{padding:10px;background:#15352b;border-radius:7px;margin:12px 0}a{color:var(--accent)}.form{display:grid;gap:12px;max-width:600px}.row{display:grid;grid-template-columns:190px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}code{overflow-wrap:anywhere}@media(max-width:600px){main{padding:12px}.panel{padding:12px}.row{grid-template-columns:1fr;gap:3px}}
 </style>
+<link rel="stylesheet" href="/assets/admin-sidebar.css">
 </head>
-<body><main>
-<header><h1>Rekonsiliasi transaksi Duitku</h1><p class="muted">Admin: <?=reconcile_escape($user['username'])?> · <?=reconcile_escape($user['role'])?> · <a href="/admin/">Kembali ke panel</a></p></header>
+<body class="admin-layout">
+<?php require PLUQI_ROOT . '/app/views/admin_sidebar.php'; ?><main>
+<header><h1>Rekonsiliasi transaksi Duitku</h1><p class="muted">Admin: <?=reconcile_escape($user['username'])?> · <?=reconcile_escape($user['role'])?> · </p></header>
 <section class="panel">
 <h2>Cek satu transaksi</h2>
 <p class="muted">Pemeriksaan ini mengirim satu permintaan status ke endpoint sandbox Duitku, mencocokkan ID pesanan dan nominal, lalu mencatat hasilnya di audit log. Tidak ada status pembayaran atau pesanan yang diubah.</p>
