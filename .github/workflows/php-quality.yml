@@ -12,6 +12,19 @@ permissions:
 jobs:
   php-quality:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test-root-password
+          MYSQL_DATABASE: pluqi_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ptest-root-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,6 +65,14 @@ jobs:
         run: php tests/provider-budget-capacity.php
       - name: Test customer catalog supplier availability filtering
         run: php tests/catalog-availability.php
+      - name: Test admin supplier price filtering and pagination
+        run: php tests/supplier-prices-pagination.php
+      - name: Test supplier price queries against isolated MySQL
+        env:
+          TEST_MYSQL_DSN: mysql:host=127.0.0.1;port=3306;dbname=pluqi_test;charset=utf8mb4
+          TEST_MYSQL_USER: root
+          TEST_MYSQL_PASSWORD: test-root-password
+        run: php tests/supplier-prices-mysql-integration.php
       - name: Test hybrid fixed and percentage pricing
         run: php tests/pricing-hybrid.php
       - name: Test admin authorization roles
