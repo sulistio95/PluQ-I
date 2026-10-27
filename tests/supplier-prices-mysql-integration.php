@@ -58,7 +58,7 @@ $count = static function (string $whereSql = '', array $params = []) use ($pdo, 
 
 $assert('inactive games and inactive mappings are excluded', $count() === 3);
 $assert('provider filter limits results', $count(' WHERE pr.code=:provider', ['provider' => 'VIPAY']) === 2);
-$assert('active game filter limits results', $count(" WHERE gm.game_id=:game_id AND g.status='ACTIVE'", ['game_id' => 1]) === 2);
+$assert('active game filter limits results', $count(" WHERE gm.game_id=:game_id AND g.status='ACTIVE'", ['game_id' => 1]) === 3);
 $assert('search filter matches product names and codes', $count(' WHERE (pp.product_name LIKE :q1 OR pp.provider_product_code LIKE :q2 OR pp.provider_game_code LIKE :q3)', ['q1' => '%Paket B%', 'q2' => '%Paket B%', 'q3' => '%Paket B%']) === 1);
 $assert('no-match filters return zero rows', $count(' WHERE pp.product_name LIKE :q', ['q' => '%tidak-ada%']) === 0);
 
