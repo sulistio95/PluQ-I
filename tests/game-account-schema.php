@@ -15,9 +15,15 @@ $mobileLegends = game_account_fields_for_game('mobile-legends', 'Mobile Legends'
 schema_test(array_column($mobileLegends, 'field_key') === ['user_id', 'zone_id'], 'Mobile Legends should request User ID and Zone ID');
 
 $genshin = game_account_fields_for_game('genshin-impact', 'Genshin Impact');
-schema_test(array_column($genshin, 'field_key') === ['user_id', 'zone_id'], 'Genshin Impact should request User ID and Zone/Server');
+schema_test(array_column($genshin, 'field_key') === ['user_id', 'server'], 'Genshin Impact should request User ID and Server/Region');
+schema_test($genshin[1]['field_type'] === 'select', 'Genshin Impact server should be a select field');
+schema_test(array_column($genshin[1]['options'], 'option_value') === ['asia', 'america', 'europe', 'tw_hk_mo'], 'Genshin Impact should show common region choices as UI-only values');
+schema_test(!game_account_schema_is_supported('genshin-impact', 'Genshin Impact', $genshin), 'Genshin Impact checkout must remain blocked until VIPayment server mapping is verified');
 $honkaiStarRail = game_account_fields_for_game('honkai-star-rail', 'Honkai Star Rail');
-schema_test(array_column($honkaiStarRail, 'field_key') === ['user_id', 'zone_id'], 'Honkai Star Rail should request User ID and Zone/Server');
+schema_test(array_column($honkaiStarRail, 'field_key') === ['user_id', 'server'], 'Honkai Star Rail should request User ID and Server/Region');
+schema_test($honkaiStarRail[1]['field_type'] === 'select', 'Honkai Star Rail server should be a select field');
+schema_test(array_column($honkaiStarRail[1]['options'], 'option_value') === ['asia', 'america', 'europe', 'tw_hk_mo'], 'Honkai Star Rail should show common region choices as UI-only values');
+schema_test(!game_account_schema_is_supported('honkai-star-rail', 'Honkai Star Rail', $honkaiStarRail), 'Honkai Star Rail checkout must remain blocked until VIPayment server mapping is verified');
 
 schema_test(game_account_username_check_supported('free-fire', 'Free Fire'), 'Free Fire should be recognized as eligible for VIPayment nickname lookup');
 schema_test(game_account_username_check_code('free-fire', 'Free Fire') === 'free-fire', 'Free Fire nickname code must remain separate from supplier product codes');
@@ -34,6 +40,22 @@ schema_test(game_account_username_check_code('honor-of-kings', 'Honor of Kings')
 $honorOfKings = game_account_fields_for_game('honor-of-kings', 'Honor of Kings');
 schema_test(array_column($honorOfKings, 'field_key') === ['user_id'], 'Honor of Kings should request only User ID');
 schema_test(game_account_schema_is_supported('honor-of-kings', 'Honor of Kings', $honorOfKings), 'Reviewed Honor of Kings schema should allow checkout');
+
+$magicChess = game_account_fields_for_game('magic-chess-go-go', 'Magic Chess GoGo');
+schema_test(array_column($magicChess, 'field_key') === ['user_id', 'zone_id'], 'Magic Chess GoGo should request User ID and Zone ID');
+schema_test(!game_account_schema_is_supported('magic-chess-go-go', 'Magic Chess GoGo', $magicChess), 'Magic Chess GoGo checkout must remain blocked until supplier account mapping is reviewed');
+
+$zenless = game_account_fields_for_game('zenless-zone-zero', 'Zenless Zone Zero');
+schema_test(array_column($zenless, 'field_key') === ['user_id', 'server'], 'Zenless Zone Zero should request User ID and Server/Region');
+schema_test($zenless[1]['label'] === 'Server / Region', 'Zenless Zone Zero server field should be labeled Server / Region');
+schema_test($zenless[1]['field_type'] === 'select', 'Zenless Zone Zero server should be a dropdown');
+schema_test(array_column($zenless[1]['options'], 'option_value') === ['asia', 'america', 'europe', 'tw_hk_mo'], 'Zenless Zone Zero should show common region choices as UI-only values');
+schema_test(!game_account_schema_is_supported('zenless-zone-zero', 'Zenless Zone Zero', $zenless), 'Zenless Zone Zero checkout must remain blocked until supplier account mapping is reviewed');
+
+$activeZenless = game_account_fields_for_game('zenless-zone-zero-zzz', 'Zenless Zone Zero (ZZZ)');
+schema_test(array_column($activeZenless, 'field_key') === ['user_id', 'server'], 'Active Zenless Zone Zero catalog slug should request User ID and Server/Region');
+schema_test($activeZenless[1]['field_type'] === 'select', 'Active Zenless Zone Zero catalog slug should render a server dropdown');
+schema_test(!game_account_schema_is_supported('zenless-zone-zero-zzz', 'Zenless Zone Zero (ZZZ)', $activeZenless), 'Active Zenless Zone Zero checkout must remain blocked until supplier account mapping is reviewed');
 
 $serverTitle = game_account_fields_for_game('example-region-game', 'Example Region Game');
 schema_test(array_column($serverTitle, 'field_key') === ['user_id', 'server'], 'Titles whose metadata names a server/region should show a server field');

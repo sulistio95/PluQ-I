@@ -24,8 +24,9 @@ function game_account_fields_for_game(string $slug, string $name): array
         'validation_regex' => '^[^\\s]{1,190}$',
     ]];
 
-    $needsZone = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail/i', $identity) === 1;
-    $needsServer = !$needsZone && preg_match('/\\b(server|region)\\b/i', $identity) === 1;
+    $needsZone = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|magic[\\s_-]*chess[\\s_-]*go[\\s_-]*go|\\bmcgg\\b/i', $identity) === 1;
+    $isZenlessZoneZero = preg_match('/zenless[\\s_-]*zone[\\s_-]*zero|\\bzzz\\b/i', $identity) === 1;
+    $needsServer = !$needsZone && ($isZenlessZoneZero || preg_match('/genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail|\\b(server|region)\\b/i', $identity) === 1);
 
     if ($needsZone) {
         $fields[] = [
@@ -37,13 +38,23 @@ function game_account_fields_for_game(string $slug, string $name): array
             'validation_regex' => '^[^\\s]{1,190}$',
         ];
     } elseif ($needsServer) {
+        $isGenshinOrHonkai = preg_match('/genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail/i', $identity) === 1;
+        $usesServerDropdown = $isGenshinOrHonkai || $isZenlessZoneZero;
         $fields[] = [
             'field_key' => 'server',
-            'label' => 'Server',
-            'field_type' => 'text',
-            'placeholder' => 'Masukkan server',
+            'label' => ($isZenlessZoneZero || $isGenshinOrHonkai) ? 'Server / Region' : 'Server',
+            // Common UI choices only; values are not confirmed VIPayment order codes.
+            // Checkout remains blocked for all server-based schemas until provider mapping is verified.
+            'field_type' => $usesServerDropdown ? 'select' : 'text',
+            'options' => $usesServerDropdown ? [
+                ['option_label' => 'Asia', 'option_value' => 'asia'],
+                ['option_label' => 'America', 'option_value' => 'america'],
+                ['option_label' => 'Europe', 'option_value' => 'europe'],
+                ['option_label' => 'TW / HK / MO', 'option_value' => 'tw_hk_mo'],
+            ] : [],
+            'placeholder' => 'Pilih server / region akun',
             'is_required' => true,
-            'validation_regex' => '^.{1,190}$',
+            'validation_regex' => '^[a-zA-Z0-9_ -]{1,190}$',
         ];
     }
 
