@@ -97,7 +97,11 @@ function catalog_select_customer_products(array $rows): array
     // The frontend labels these rows "Habis"; checkout must still validate availability server-side.
     $out = array_values($chosen);
     foreach ($out as &$row) {
-        $row['base_price'] = (float) $row['base_price'];
+        // Some unit-test and helper callers provide only the fields needed for selection.
+        // Preserve that input shape rather than emitting an undefined-key warning.
+        if (array_key_exists('base_price', $row)) {
+            $row['base_price'] = (float) $row['base_price'];
+        }
         $row['selling_price'] = (float) $row['selling_price'];
         $row['is_available'] = (bool) $row['is_available'];
     }
