@@ -17,7 +17,7 @@ $checks = [
     'product rows require an active supplier mapping' =>
         preg_match("~JOIN\\s+game_provider_mappings\\s+gm\\s+ON\\s+gm\\.provider_id\\s*=\\s*pp\\.provider_id\\s+AND\\s+gm\\.provider_game_code\\s*=\\s*pp\\.provider_game_code\\s+AND\\s+gm\\.status\\s*=\\s+'ACTIVE'~i", $source) === 1,
     'product rows require an active game' =>
-        preg_match('/JOIN\\s+games\\s+g\\s+ON\\s+g\\.id\\s*=\\s*gm\\.game_id\\s+AND\\s+g\\.status\\s*=\\s*\\'ACTIVE\\'/i', $source) === 1,
+        preg_match("~JOIN\\s+games\\s+g\\s+ON\\s+g\\.id\\s*=\\s*gm\\.game_id\\s+AND\\s+g\\.status\\s*=\\s+'ACTIVE'~i", $source) === 1,
     'game dropdown excludes inactive games and requires an active mapping' =>
         str_contains($source, "WHERE g.status='ACTIVE' AND EXISTS (SELECT 1 FROM game_provider_mappings gm WHERE gm.game_id=g.id AND gm.status='ACTIVE')"),
     'game filter retains the active-game guard' =>
