@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/vipayment.php';
+
 /**
  * Generate customer account inputs from the synchronized game catalog.
  *
@@ -22,8 +24,9 @@ function game_account_fields_for_game(string $slug, string $name): array
         'validation_regex' => '^[^\\s]{1,190}$',
     ]];
 
-    $needsZone = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b/i', $identity) === 1;
-    $needsServer = !$needsZone && preg_match('/\\b(server|region)\\b/i', $identity) === 1;
+    $needsZone = preg_match('/mobile[\\s_-]*legends?|\\bmlbb\\b|magic[\\s_-]*chess[\\s_-]*go[\\s_-]*go|\\bmcgg\\b/i', $identity) === 1;
+    $isZenlessZoneZero = preg_match('/zenless[\\s_-]*zone[\\s_-]*zero|\\bzzz\\b/i', $identity) === 1;
+    $needsServer = !$needsZone && ($isZenlessZoneZero || preg_match('/genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail|\\b(server|region)\\b/i', $identity) === 1);
 
     if ($needsZone) {
         $fields[] = [
@@ -35,13 +38,23 @@ function game_account_fields_for_game(string $slug, string $name): array
             'validation_regex' => '^[^\\s]{1,190}$',
         ];
     } elseif ($needsServer) {
+        $isGenshinOrHonkai = preg_match('/genshin[\\s_-]*impact|honkai[\\s_-]*star[\\s_-]*rail/i', $identity) === 1;
+        $usesServerDropdown = $isGenshinOrHonkai || $isZenlessZoneZero;
         $fields[] = [
             'field_key' => 'server',
-            'label' => 'Server',
-            'field_type' => 'text',
-            'placeholder' => 'Masukkan server',
+            'label' => ($isZenlessZoneZero || $isGenshinOrHonkai) ? 'Server / Region' : 'Server',
+            // Common UI choices only; values are not confirmed VIPayment order codes.
+            // Checkout remains blocked for all server-based schemas until provider mapping is verified.
+            'field_type' => $usesServerDropdown ? 'select' : 'text',
+            'options' => $usesServerDropdown ? [
+                ['option_label' => 'Asia', 'option_value' => 'asia'],
+                ['option_label' => 'America', 'option_value' => 'america'],
+                ['option_label' => 'Europe', 'option_value' => 'europe'],
+                ['option_label' => 'TW / HK / MO', 'option_value' => 'tw_hk_mo'],
+            ] : [],
+            'placeholder' => 'Pilih server / region akun',
             'is_required' => true,
-            'validation_regex' => '^.{1,190}$',
+            'validation_regex' => '^[a-zA-Z0-9_ -]{1,190}$',
         ];
     }
 
@@ -58,25 +71,46 @@ function game_account_schema_is_supported(string $slug, string $name, array $fie
 }
 
 /**
- * Only allow nickname lookup when support for that game has been explicitly
- * reviewed. A top-up product code is not proof that get-nickname supports it.
+ * Return the VIPayment Game Feature nickname code, separate from supplier product codes.
  */
-function game_account_username_check_supported(string $slug, string $name): bool
+function game_account_username_check_code(string $slug, string $name): ?string
 {
     $identity = strtolower(trim($slug . ' ' . $name));
 
-    // VIPayment rejected the FF top-up code ff5-s13 with:
-    // "Provider for game code ... is not available." Do not guess another
-    // product code; keep lookup optional until VIPayment confirms a lookup code.
-    $isFreeFire = preg_match('/free[\\s_-]*fire/i', $identity) === 1;
-
-    // HOK nickname lookup was not available in the user's VIPayment app.
-    $isHonorOfKings = preg_match('/honor[\\s_-]*of[\\s_-]*kings?|\\bhok\\b/i', $identity) === 1;
-
-    return !$isFreeFire && !$isHonorOfKings;
+    // Codes from VIPayment's documented Game Feature > Get Nickname list.
+    if (preg_match('/mobile[\s_-]*legends?.*region|region.*mobile[\s_-]*legends?/i', $identity) === 1) {
+        return 'mobile-legends-region';
+    }
+    if (preg_match('/mobile[\s_-]*legends?|\bmlbb\b/i', $identity) === 1) {
+        return 'mobile-legends';
+    }
+    if (preg_match('/free[\s_-]*fire(?:[\s_-]*max)?/i', $identity) === 1) {
+        return 'free-fire';
+    }
+    if (preg_match('/pubg[\s_-]*mobile|\bpubgm\b/i', $identity) === 1) {
+        return 'pubgm';
+    }
+    if (preg_match('/genshin[\s_-]*impact/i', $identity) === 1) {
+        return 'genshin-impact';
+    }
+    if (preg_match('/honkai[\s_-]*star[\s_-]*rail/i', $identity) === 1) {
+        return 'honkai-star-rail';
+    }
+    if (preg_match('/valorant/i', $identity) === 1) {
+        return 'valorant';
+    }
+    if (preg_match('/point[\s_-]*blank|\bpointblank\b/i', $identity) === 1) {
+        return 'pointblank';
+    }
+    return null;
 }
 
-/** Return generated fields and whether a reviewed VIPayment nickname lookup is available. */
+function game_account_username_check_supported(string $slug, string $name): bool
+{
+    return game_account_username_check_code($slug, $name) !== null;
+}
+
+/** Return generated fields and whether VIPayment nickname lookup is configured. */
 function catalog_game_account_schema(PDO $pdo, string $slug): array
 {
     $stmt = $pdo->prepare("SELECT id,slug,name FROM games WHERE slug=:slug AND status='ACTIVE' LIMIT 1");
@@ -88,24 +122,22 @@ function catalog_game_account_schema(PDO $pdo, string $slug): array
 
     $fields = game_account_fields_for_game((string)$game['slug'], (string)$game['name']);
     $checkoutSupported = game_account_schema_is_supported((string)$game['slug'], (string)$game['name'], $fields);
-    $check = $pdo->prepare("SELECT 1
-        FROM products p
-        INNER JOIN providers pr ON pr.id=p.provider_id
-        WHERE p.game_id=:game_id AND p.status='ACTIVE' AND pr.code='VIPAY'
-          AND pr.status IN ('ACTIVE','LOW_BALANCE') AND p.provider_product_code IS NOT NULL
-          AND TRIM(p.provider_product_code)<>'' 
-          AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%joki%'
-          AND LOWER(CONCAT(p.name,' ',p.provider_product_code)) NOT LIKE '%vilog%'
-        LIMIT 1");
-    $check->execute(['game_id' => $game['id']]);
-
-    $usernameCheckSupported = game_account_username_check_supported((string)$game['slug'], (string)$game['name']);
+    $lookupCode = game_account_username_check_code((string)$game['slug'], (string)$game['name']);
+    $vipaymentConfigured = false;
+    if ($lookupCode !== null) {
+        try {
+            vipayment_config();
+            $vipaymentConfigured = true;
+        } catch (Throwable) {
+            $vipaymentConfigured = false;
+        }
+    }
 
     return [
         'game' => ['slug' => (string)$game['slug'], 'name' => (string)$game['name']],
         'fields' => $fields,
         'checkout_supported' => $checkoutSupported,
-        'username_check_available' => $usernameCheckSupported && (bool)$check->fetchColumn(),
+        'username_check_available' => $lookupCode !== null && $vipaymentConfigured,
     ];
 }
 
