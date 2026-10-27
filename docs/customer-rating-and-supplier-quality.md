@@ -1,0 +1,52 @@
+# Rating pelanggan dan kualitas supplier PluQ-I
+
+## Status implementasi
+
+Pekerjaan tersedia pada branch `feature/customer-supplier-rating`. CI GitHub pada commit `56c097344baac49449b40662d5428c7808a121cc` telah lulus untuk PHP quality, PHP tests, fulfillment safety, dan integrasi callback MySQL. Runtime browser serta verifikasi pada database MariaDB target tetap belum dilakukan; fitur belum dinyatakan siap produksi.
+
+## Rating pelanggan
+
+- Halaman status pesanan menampilkan form rating hanya bila pembayaran berstatus `PAID` dan status pesanan sudah final: `SUCCESS`, `FAILED`, atau `REFUNDED`.
+- Pelanggan memilih 1–5 bintang, alasan, dan komentar opsional maksimal 1000 byte.
+- Satu rating per pesanan ditegakkan oleh unique key `order_ratings.order_id`; percobaan ganda ditolak.
+- Validasi input dipusatkan di `app/services/order_rating.php` dan diuji oleh `tests/order-rating-rules.php`.
+- Pesanan yang masih menunggu, berjalan, atau pemeriksaan manual tidak dapat dinilai.
+- Akses formulir bergantung pada ID pesanan acak 26 karakter yang juga digunakan halaman status. Jangan menambahkan ID berurutan atau data pribadi ke URL.
+
+## Kualitas supplier
+
+Panel admin `/admin/supplier-quality.php` menampilkan:
+- jumlah pesanan berbayar sukses;
+- jumlah pesanan berbayar gagal/refund;
+- tingkat keberhasilan untuk pesanan berbayar yang sudah final;
+- rata-rata waktu dari pembuatan pesanan sampai pemenuhan untuk pesanan sukses;
+- rata-rata rating pelanggan dan jumlah sampelnya;
+- rekap alasan rating.
+
+**Pemisahan wajib:** rating pelanggan adalah umpan balik pengalaman pelanggan, bukan bukti langsung supplier yang bersalah. Kesalahan ID, pemetaan region/server, masalah gateway, dan masalah pelanggan harus diklasifikasikan sebelum statistik digunakan untuk menilai supplier. Data rating saat ini hanya dikaitkan dengan supplier yang tercatat pada pesanan; itu tidak sama dengan rating Digiflazz.
+
+## Database dan pengujian
+
+- Jalankan migration `database/migrations/014_order_ratings_and_supplier_quality.sql` setelah migration `012_pricing_rules_hybrid.sql`.
+- CI quality workflow menjalankan `php tests/order-rating-rules.php`.
+- Workflow MySQL mengimpor migration `013_game_username_check_protection.sql` lalu migration `014_order_ratings_and_supplier_quality.sql` setelah migration 012.
+- Setelah pull, jalankan:
+  ```sh
+  php -l app/services/order_rating.php
+  php -l public/order-status.php
+  php -l public/admin/supplier-quality.php
+  php tests/order-rating-rules.php
+  git diff --check
+  ```
+- Uji integrasi MySQL harus memastikan insert rating, penolakan rating duplikat, dan query panel admin setelah seluruh migration diterapkan.
+- Uji browser untuk pesanan sukses/gagal dan status yang belum final masih diperlukan.
+- Jangan mengubah algoritme pemilihan supplier berdasarkan statistik ini sampai data nyata memadai, alasan kegagalan terklasifikasi, dan perubahan diuji.
+- Pembayaran live, supplier fulfillment, dan backup Google Drive tetap nonaktif; fitur rating tidak mengubah toggle tersebut.
+
+
+## Verifikasi lanjutan — 2026-10-27
+
+- Commit `cd3fced729a7762fe0c103cadf6e16be7067c841` memperbaiki ID pesanan publik pada fixture integrasi; PHP quality dan fulfillment safety/MySQL integration lulus.
+- Commit `56c097344baac49449b40662d5428c7808a121cc` memperketat INSERT rating dengan memeriksa kembali status pesanan di pernyataan SQL. Pemeriksaan status tidak hanya bergantung pada pembacaan awal halaman.
+- CI untuk commit `56c097344baac49449b40662d5428c7808a121cc`: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/40434416451) dan [fulfillment safety / integrasi MySQL](https://github.com/sulistio95/PluQ-I/actions/runs/40434416449) lulus.
+- PR #14 tetap draft dan belum digabung. Sebelum merge, masih diperlukan tinjauan final diff/CI pada head PR, uji browser untuk status final dan non-final, serta verifikasi pada MariaDB target. Jangan mengaktifkan pembayaran live, supplier fulfillment, atau backup Google Drive.

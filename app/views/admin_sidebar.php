@@ -8,6 +8,7 @@ $currentPage = basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'index.php'));
 $adminNavItems = [
     ['file' => 'index.php', 'href' => '/admin/', 'label' => 'Transaksi & Ringkasan'],
     ['file' => 'transaction-search.php', 'href' => '/admin/transaction-search.php', 'label' => 'Cari Transaksi'],
+    ['file' => 'supplier-quality.php', 'href' => '/admin/supplier-quality.php', 'label' => 'Kualitas Supplier'],
     ['file' => 'api-settings.php', 'href' => '/admin/api-settings.php', 'label' => 'Pengaturan API'],
     ['file' => 'game-mappings.php', 'href' => '/admin/game-mappings.php', 'label' => 'Game List'],
     ['file' => 'template-settings.php', 'href' => '/admin/template-settings.php', 'label' => 'Pengaturan Template'],
