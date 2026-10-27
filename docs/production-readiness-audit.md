@@ -1,11 +1,10 @@
-## 2026-10-23 — Rating pelanggan dan kualitas supplier (implementasi awal)
+## 2026-10-27 — Audit rating pelanggan dan kualitas supplier
 
-- Ditambahkan migration 013 `order_ratings`, validasi aturan rating, form rating di halaman status order, dan panel admin kualitas supplier.
-- Form hanya muncul untuk pembayaran PAID dengan order status SUCCESS/FAILED/REFUNDED; satu rating per order dijaga unique constraint. Rating pelanggan tidak dianggap sebagai bukti otomatis kesalahan supplier.
-- Panel admin memakai status transaksi dan waktu fulfillment dari database serta menampilkan rata-rata rating pelanggan dan jumlah sampel. Data belum boleh memengaruhi pemilihan supplier otomatis.
-- Tes aturan rating ditambahkan ke PHP quality workflow; migration 013 ditambahkan ke workflow MySQL.
-- Belum ada hasil lint/CI/database/browser pascaperubahan. Terapkan migration 013 setelah migration 012, lalu verifikasi input invalid, duplicate rating, status yang belum final, agregasi dashboard, dan responsif browser.
-- Pembayaran live, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+- Migration yang benar adalah `014_order_ratings_and_supplier_quality.sql`; migration 013 tetap digunakan untuk perlindungan pemeriksaan nickname game. Migration 014 membuat satu rating per pesanan melalui unique key dan foreign key ke pesanan, supplier, serta game.
+- Form rating memerlukan pembayaran PAID, status pesanan final SUCCESS/FAILED/REFUNDED, dan token CSRF khusus sesi pelanggan. Penulisan ulang status dicek kembali pada INSERT; duplikasi ditolak oleh unique key.
+- CI terbaru pada commit `c02ec23639eab47b0c3deb918ad01d62ff5ce052` meluluskan PHP quality dan fulfillment safety. Workflow PHP quality kini juga menjalankan tes validasi CSRF agar tes tersebut tidak hanya tersedia tetapi benar-benar dijalankan otomatis.
+- Dashboard kualitas supplier menampilkan statistik operasional dan rating terpisah. Angka ini tidak boleh mengubah pemilihan supplier otomatis.
+- Runtime browser, penerapan migration pada database MariaDB target, dan alur rating dengan pesanan nyata masih belum diverifikasi. Pembayaran live, pemesanan supplier, dan backup Google Drive tetap nonaktif.
 
 ## 2026-10-21 — Dropdown Server / Region Zenless Zone Zero (perbaikan)
 
