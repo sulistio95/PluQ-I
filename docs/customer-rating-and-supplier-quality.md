@@ -2,7 +2,7 @@
 
 ## Status implementasi
 
-Pekerjaan awal tersedia pada branch `feature/customer-supplier-rating`. Ini belum berarti siap produksi: migration, PHP lint, tes lokal/CI, database MySQL, dan browser masih harus diverifikasi.
+Pekerjaan tersedia pada branch `feature/customer-supplier-rating`. CI GitHub pada commit `56c097344baac49449b40662d5428c7808a121cc` telah lulus untuk PHP quality, PHP tests, fulfillment safety, dan integrasi callback MySQL. Runtime browser serta verifikasi pada database MariaDB target tetap belum dilakukan; fitur belum dinyatakan siap produksi.
 
 ## Rating pelanggan
 
@@ -42,3 +42,11 @@ Panel admin `/admin/supplier-quality.php` menampilkan:
 - Uji browser untuk pesanan sukses/gagal dan status yang belum final masih diperlukan.
 - Jangan mengubah algoritme pemilihan supplier berdasarkan statistik ini sampai data nyata memadai, alasan kegagalan terklasifikasi, dan perubahan diuji.
 - Pembayaran live, supplier fulfillment, dan backup Google Drive tetap nonaktif; fitur rating tidak mengubah toggle tersebut.
+
+
+## Verifikasi lanjutan — 2026-10-27
+
+- Commit `cd3fced729a7762fe0c103cadf6e16be7067c841` memperbaiki ID pesanan publik pada fixture integrasi; PHP quality dan fulfillment safety/MySQL integration lulus.
+- Commit `56c097344baac49449b40662d5428c7808a121cc` memperketat INSERT rating dengan memeriksa kembali status pesanan di pernyataan SQL. Pemeriksaan status tidak hanya bergantung pada pembacaan awal halaman.
+- CI untuk commit `56c097344baac49449b40662d5428c7808a121cc`: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/40434416451) dan [fulfillment safety / integrasi MySQL](https://github.com/sulistio95/PluQ-I/actions/runs/40434416449) lulus.
+- PR #14 tetap draft dan belum digabung. Sebelum merge, masih diperlukan tinjauan final diff/CI pada head PR, uji browser untuk status final dan non-final, serta verifikasi pada MariaDB target. Jangan mengaktifkan pembayaran live, supplier fulfillment, atau backup Google Drive.
