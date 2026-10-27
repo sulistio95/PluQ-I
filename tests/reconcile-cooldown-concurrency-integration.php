@@ -29,7 +29,7 @@ $connect = static fn(): PDO => new PDO($dsn, getenv('DB_USERNAME') ?: '', getenv
     PDO::ATTR_EMULATE_PREPARES => false,
 ]);
 $pdo = $connect();
-$merchantOrderId = 'abcdef0123456789abcdef0123';
+$merchantOrderId = 'PAYCALL20261027abcdef12345';
 $stmt = $pdo->prepare("SELECT pt.id,pt.amount,pt.status AS payment_status,o.payment_status AS order_payment_status,o.order_status
     FROM payment_transactions pt JOIN orders o ON o.id=pt.order_id
     WHERE pt.merchant_order_id=:merchant_order_id AND pt.gateway='DUITKU' LIMIT 1");
