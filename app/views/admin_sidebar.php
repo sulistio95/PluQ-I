@@ -13,6 +13,7 @@ $adminNavItems = [
     ['file' => 'template-settings.php', 'href' => '/admin/template-settings.php', 'label' => 'Pengaturan Template'],
     ['file' => 'pricing-settings.php', 'href' => '/admin/pricing-settings.php', 'label' => 'Pengaturan Keuntungan'],
     ['file' => 'supplier-prices.php', 'href' => '/admin/supplier-prices.php', 'label' => 'Harga Modal Supplier'],
+    ['file' => 'supplier-quality.php', 'href' => '/admin/supplier-quality.php', 'label' => 'Kualitas Supplier'],
 ];
 if (function_exists('admin_can_manage_settings') && admin_can_manage_settings($user)) {
     $adminNavItems[] = ['file' => 'reconcile.php', 'href' => '/admin/reconcile.php', 'label' => 'Rekonsiliasi Duitku'];
