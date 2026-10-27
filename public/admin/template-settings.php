@@ -129,6 +129,284 @@ function game_icon_remove_local_file(string $url): bool
     return $path === null || !is_file($path) || @unlink($path);
 }
 
+function brand_logo_local_path(string $url): ?string
+{
+    if (!preg_match('~^/uploads/brand-logos/([a-f0-9]{32})\\.(jpg|png|webp)$~D', $url, $matches)) {
+        return null;
+    }
+    return PLUQI_ROOT . '/public/uploads/brand-logos/' . $matches[1] . '.' . $matches[2];
+}
+
+function brand_logo_store_upload(array $file): string
+{
+    if (!isset($file['error'], $file['tmp_name'], $file['size'])
+        || is_array($file['error']) || (int) $file['error'] !== UPLOAD_ERR_OK) {
+        throw new InvalidArgumentException('Unggahan logo gagal. Pilih gambar kembali.');
+    }
+    if ((int) $file['size'] < 1 || (int) $file['size'] > 5 * 1024 * 1024
+        || !is_uploaded_file((string) $file['tmp_name'])) {
+        throw new InvalidArgumentException('Ukuran logo maksimal 5 MB.');
+    }
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file((string) $file['tmp_name']);
+    $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+    if (!is_string($mime) || !isset($extensions[$mime])) {
+        throw new InvalidArgumentException('Format logo harus JPG, PNG, atau WebP. SVG dan format lain tidak diizinkan.');
+    }
+    $imageInfo = @getimagesize((string) $file['tmp_name']);
+    if (!is_array($imageInfo) || (int) $imageInfo[0] < 1 || (int) $imageInfo[1] < 1
+        || (int) $imageInfo[0] > 8000 || (int) $imageInfo[1] > 8000
+        || (int) $imageInfo[0] * (int) $imageInfo[1] > 25000000) {
+        throw new InvalidArgumentException('Dimensi logo tidak valid atau terlalu besar.');
+    }
+    $directory = PLUQI_ROOT . '/public/uploads/brand-logos';
+    if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+        throw new RuntimeException('Direktori logo tidak dapat dibuat.');
+    }
+    $filename = bin2hex(random_bytes(16)) . '.' . $extensions[$mime];
+    if (!move_uploaded_file((string) $file['tmp_name'], $directory . '/' . $filename)) {
+        throw new RuntimeException('Server tidak dapat menyimpan logo. Periksa izin folder uploads.');
+    }
+    return '/uploads/brand-logos/' . $filename;
+}
+
+function brand_logo_remove_local_file(string $url): bool
+{
+    $path = brand_logo_local_path($url);
+    return $path === null || !is_file($path) || @unlink($path);
+}
+
+/**
+ * Commit an uploaded game icon or brand logo to the configured GitHub repository.
+ * Credentials must come from the server environment/private .env, never from request data.
+ */
+function game_icon_commit_to_github(string $localPath, string $publicUrl): void
+{
+    $token = trim((string) (getenv('GITHUB_UPLOAD_TOKEN') ?: ''));
+    $repository = trim((string) (getenv('GITHUB_UPLOAD_REPOSITORY') ?: ''));
+    $branch = trim((string) (getenv('GITHUB_UPLOAD_BRANCH') ?: ''));
+
+    if ($token === '' || $repository === '' || $branch === '') {
+        throw new RuntimeException('Sinkronisasi GitHub belum dikonfigurasi. Atur GITHUB_UPLOAD_TOKEN, GITHUB_UPLOAD_REPOSITORY, dan GITHUB_UPLOAD_BRANCH pada konfigurasi privat server.');
+    }
+    if (!preg_match('~^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$~D', $repository)
+        || $branch === '' || str_contains($branch, '..')
+        || !preg_match('~^[A-Za-z0-9._/-]+$~D', $branch)) {
+        throw new RuntimeException('Konfigurasi repositori atau branch GitHub tidak valid.');
+    }
+    $path = parse_url($publicUrl, PHP_URL_PATH);
+    if (!is_string($path) || !preg_match('~^/uploads/(?:game-icons|brand-logos)/([a-f0-9]{32}\\.(?:jpg|png|webp))$~D', $path, $matches)) {
+        throw new RuntimeException('Path gambar tidak valid untuk sinkronisasi GitHub.');
+    }
+    $repoPath = 'public' . $path;
+    $isBrandLogo = str_starts_with($path, '/uploads/brand-logos/');
+    $bytes = @file_get_contents($localPath);
+    if (!is_string($bytes) || $bytes === '') {
+        throw new RuntimeException('File gambar lokal tidak dapat dibaca untuk dikirim ke GitHub.');
+    }
+
+    $payload = json_encode([
+        'message' => 'Add ' . ($isBrandLogo ? 'brand logo ' : 'game icon ') . $matches[1],
+        'content' => base64_encode($bytes),
+        'branch' => $branch,
+    ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
+    $url = 'https://api.github.com/repos/' . $repository . '/contents/' . implode('/', array_map('rawurlencode', explode('/', $repoPath)));
+    $curl = curl_init($url);
+    if ($curl === false) {
+        throw new RuntimeException('Tidak dapat memulai koneksi GitHub API.');
+    }
+    curl_setopt_array($curl, [
+        CURLOPT_CUSTOMREQUEST => 'PUT',
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/vnd.github+json',
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json',
+            'X-GitHub-Api-Version: 2022-11-28',
+            'User-Agent: PluQ-I-Admin',
+        ],
+    ]);
+    $response = curl_exec($curl);
+    $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($curl);
+    curl_close($curl);
+
+    if (!is_string($response) || $status < 200 || $status >= 300) {
+        // Do not include the authorization token or raw response body in the error.
+        throw new RuntimeException(
+            'GitHub gagal menyimpan icon (HTTP ' . $status . '). '
+            . ($curlError !== '' ? 'Periksa koneksi HTTPS server. ' : '')
+            . 'Periksa izin Contents: Read and write, nama repositori, dan branch.'
+        );
+    }
+}
+
+
+/**
+ * Delete an obsolete brand logo from the configured GitHub branch.
+ * Only the strict brand-logo upload path is accepted; game icons are never touched.
+ * A 404 on the initial lookup means the file is already absent and is safe to ignore.
+ */
+function brand_logo_delete_from_github(string $publicUrl): void
+{
+    $token = trim((string) (getenv('GITHUB_UPLOAD_TOKEN') ?: ''));
+    $repository = trim((string) (getenv('GITHUB_UPLOAD_REPOSITORY') ?: ''));
+    $branch = trim((string) (getenv('GITHUB_UPLOAD_BRANCH') ?: ''));
+
+    if ($token === '' || $repository === '' || $branch === '') {
+        throw new RuntimeException('Penghapusan logo GitHub belum dikonfigurasi.');
+    }
+    if (!preg_match('~^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$~D', $repository)
+        || str_contains($branch, '..')
+        || !preg_match('~^[A-Za-z0-9._/-]+$~D', $branch)) {
+        throw new RuntimeException('Konfigurasi repositori atau branch GitHub tidak valid.');
+    }
+    $path = parse_url($publicUrl, PHP_URL_PATH);
+    if (!is_string($path) || !preg_match('~^/uploads/brand-logos/([a-f0-9]{32}\.(?:jpg|png|webp))$~D', $path, $matches)) {
+        // External URLs and unrelated paths must never trigger repository deletion.
+        return;
+    }
+
+    $repoPath = 'public' . $path;
+    $url = 'https://api.github.com/repos/' . $repository . '/contents/' . implode('/', array_map('rawurlencode', explode('/', $repoPath)));
+    $headers = [
+        'Accept: application/vnd.github+json',
+        'Authorization: Bearer ' . $token,
+        'X-GitHub-Api-Version: 2022-11-28',
+        'User-Agent: PluQ-I-Admin',
+    ];
+
+    $curl = curl_init($url . '?ref=' . rawurlencode($branch));
+    if ($curl === false) {
+        throw new RuntimeException('Tidak dapat memulai koneksi GitHub API.');
+    }
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_HTTPHEADER => $headers,
+    ]);
+    $response = curl_exec($curl);
+    $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($curl);
+    curl_close($curl);
+
+    if ($status === 404) {
+        return;
+    }
+    if (!is_string($response) || $status < 200 || $status >= 300) {
+        throw new RuntimeException('GitHub gagal memeriksa logo lama (HTTP ' . $status . ').' . ($curlError !== '' ? ' Periksa koneksi HTTPS server.' : ''));
+    }
+    $file = json_decode($response, true);
+    $fileSha = is_array($file) ? (string) ($file['sha'] ?? '') : '';
+    if (!preg_match('~^[a-f0-9]{40}$~D', $fileSha)) {
+        throw new RuntimeException('GitHub tidak mengembalikan SHA file logo yang valid.');
+    }
+
+    $payload = json_encode([
+        'message' => 'Remove obsolete brand logo ' . $matches[1],
+        'sha' => $fileSha,
+        'branch' => $branch,
+    ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    $curl = curl_init($url);
+    if ($curl === false) {
+        throw new RuntimeException('Tidak dapat memulai koneksi penghapusan GitHub.');
+    }
+    curl_setopt_array($curl, [
+        CURLOPT_CUSTOMREQUEST => 'DELETE',
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_HTTPHEADER => array_merge($headers, ['Content-Type: application/json']),
+    ]);
+    $deleteResponse = curl_exec($curl);
+    $deleteStatus = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $deleteError = curl_error($curl);
+    curl_close($curl);
+
+    if (!is_string($deleteResponse) || $deleteStatus < 200 || $deleteStatus >= 300) {
+        throw new RuntimeException('GitHub gagal menghapus logo lama (HTTP ' . $deleteStatus . ').' . ($deleteError !== '' ? ' Periksa koneksi HTTPS server.' : ' Periksa izin Contents: Read and write dan branch.'));
+    }
+}
+
+
+/**
+ * Remove every orphaned brand-logo file from the configured GitHub branch.
+ * The currently active URL is preserved; only strict generated filenames in
+ * public/uploads/brand-logos are eligible for deletion.
+ */
+function brand_logo_cleanup_unused_from_github(string $activeLogoUrl): void
+{
+    $token = trim((string) (getenv('GITHUB_UPLOAD_TOKEN') ?: ''));
+    $repository = trim((string) (getenv('GITHUB_UPLOAD_REPOSITORY') ?: ''));
+    $branch = trim((string) (getenv('GITHUB_UPLOAD_BRANCH') ?: ''));
+
+    if ($token === '' || $repository === '' || $branch === '') {
+        throw new RuntimeException('Pembersihan logo GitHub belum dikonfigurasi.');
+    }
+    if (!preg_match('~^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$~D', $repository)
+        || str_contains($branch, '..')
+        || !preg_match('~^[A-Za-z0-9._/-]+$~D', $branch)) {
+        throw new RuntimeException('Konfigurasi repositori atau branch GitHub tidak valid.');
+    }
+
+    $activePath = parse_url($activeLogoUrl, PHP_URL_PATH);
+    $activeFilename = '';
+    if (is_string($activePath)
+        && preg_match('~^/uploads/brand-logos/([a-f0-9]{32}\\.(?:jpg|png|webp))$~D', $activePath, $activeMatch)) {
+        $activeFilename = $activeMatch[1];
+    }
+
+    $url = 'https://api.github.com/repos/' . $repository . '/contents/public/uploads/brand-logos?ref=' . rawurlencode($branch);
+    $curl = curl_init($url);
+    if ($curl === false) {
+        throw new RuntimeException('Tidak dapat memulai koneksi pemeriksaan logo GitHub.');
+    }
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/vnd.github+json',
+            'Authorization: Bearer ' . $token,
+            'X-GitHub-Api-Version: 2022-11-28',
+            'User-Agent: PluQ-I-Admin',
+        ],
+    ]);
+    $response = curl_exec($curl);
+    $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($curl);
+    curl_close($curl);
+
+    if (!is_string($response) || $status < 200 || $status >= 300) {
+        throw new RuntimeException('GitHub gagal membuat daftar logo (HTTP ' . $status . ').' . ($curlError !== '' ? ' Periksa koneksi HTTPS server.' : ''));
+    }
+    $entries = json_decode($response, true);
+    if (!is_array($entries) || ($entries !== [] && !array_is_list($entries))) {
+        throw new RuntimeException('GitHub mengembalikan daftar logo yang tidak valid.');
+    }
+
+    foreach ($entries as $entry) {
+        if (!is_array($entry) || ($entry['type'] ?? '') !== 'file') {
+            continue;
+        }
+        $name = (string) ($entry['name'] ?? '');
+        if (!preg_match('~^[a-f0-9]{32}\\.(?:jpg|png|webp)$~D', $name)) {
+            continue;
+        }
+        if ($name === $activeFilename) {
+            continue;
+        }
+        // The strict path guard inside this function prevents touching game icons.
+        brand_logo_delete_from_github('/uploads/brand-logos/' . $name);
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!admin_csrf_valid($_POST['csrf'] ?? null)) {
         http_response_code(403);
@@ -235,6 +513,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
+            if ($action === 'save_catalog_layout') {
+                $columns = filter_var($_POST['grid_columns'] ?? null, FILTER_VALIDATE_INT);
+                $mobileColumns = filter_var($_POST['mobile_grid_columns'] ?? null, FILTER_VALIDATE_INT);
+                $desktopIconSize = filter_var($_POST['desktop_icon_size'] ?? null, FILTER_VALIDATE_INT);
+                $mobileIconSize = filter_var($_POST['mobile_icon_size'] ?? null, FILTER_VALIDATE_INT);
+                $validIconSizes = [64,68,72,76,80,84,88,92,96,100,104,108,112,116,120];
+                if (!in_array($columns,[3,4,5,6],true) || !in_array($mobileColumns,[2,3,4],true) || !in_array($desktopIconSize,$validIconSizes,true) || !in_array($mobileIconSize,$validIconSizes,true)) throw new InvalidArgumentException('Pengaturan kolom atau ukuran icon tidak valid.');
+                $pdo->beginTransaction();
+                try {
+                    $save = $pdo->prepare('INSERT INTO app_settings (setting_key,setting_value,updated_by) VALUES (:k,:v,:admin) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),updated_by=VALUES(updated_by)');
+                    foreach (['catalog_grid_columns_desktop'=>(string)$columns,'catalog_grid_columns_mobile'=>(string)$mobileColumns,'catalog_icon_size_desktop'=>(string)$desktopIconSize,'catalog_icon_size_mobile'=>(string)$mobileIconSize,'catalog_icon_size'=>(string)$desktopIconSize] as $k=>$v) $save->execute(['k'=>$k,'v'=>$v,'admin'=>$user['id']]);
+                    $audit=$pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,details,ip_address) VALUES ('ADMIN',:actor,'CATALOG_LAYOUT_UPDATED','SETTING','catalog_layout',:details,:ip)");
+                    $audit->execute(['actor'=>$user['id'],'details'=>json_encode(['desktop_columns'=>$columns,'mobile_columns'=>$mobileColumns,'desktop_icon_size'=>$desktopIconSize,'mobile_icon_size'=>$mobileIconSize]),'ip'=>substr((string)($_SERVER['REMOTE_ADDR']??''),0,45)]);
+                    $pdo->commit();
+                } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $e; }
+                header('Location: /admin/template-settings.php?layout_saved=1'); exit;
+            }
+            if ($action === 'save_brand_logo') {
+                $uploadError = (int) ($_FILES['brand_logo_file']['error'] ?? UPLOAD_ERR_NO_FILE);
+                if ($uploadError === UPLOAD_ERR_NO_FILE) throw new InvalidArgumentException('Pilih file logo dari komputer terlebih dahulu.');
+                $oldStmt = $pdo->prepare("SELECT setting_value FROM app_settings WHERE setting_key='brand_logo_url' LIMIT 1");
+                $oldStmt->execute();
+                $oldLogoUrl = (string) ($oldStmt->fetchColumn() ?: '');
+                $newLogoUrl = brand_logo_store_upload($_FILES['brand_logo_file']);
+                try {
+                    $newLogoPath = brand_logo_local_path($newLogoUrl);
+                    if ($newLogoPath === null) throw new RuntimeException('Path logo lokal tidak valid.');
+                    game_icon_commit_to_github($newLogoPath, $newLogoUrl);
+                    $pdo->beginTransaction();
+                    $saveLogo = $pdo->prepare("INSERT INTO app_settings (setting_key,setting_value,updated_by) VALUES ('brand_logo_url',:url,:admin) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),updated_by=VALUES(updated_by)");
+                    $saveLogo->execute(['url'=>$newLogoUrl,'admin'=>$user['id']]);
+                    $audit = $pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,details,ip_address) VALUES ('ADMIN',:actor,'BRAND_LOGO_UPDATED','APP_SETTING','brand_logo_url',:details,:ip)");
+                    $audit->execute([
+                        'actor'=>$user['id'],
+                        'details'=>json_encode(['image_source'=>'LOCAL_UPLOAD'], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
+                        'ip'=>substr((string)($_SERVER['REMOTE_ADDR'] ?? ''),0,45),
+                    ]);
+                    $pdo->commit();
+                } catch (Throwable $saveError) {
+                    if ($pdo->inTransaction()) $pdo->rollBack();
+                    brand_logo_remove_local_file($newLogoUrl);
+                    throw $saveError;
+                }
+                $oldLogoCleanupFailed = false;
+                try {
+                    // Preserve the current setting and remove every unused logo in the GitHub folder.
+                    $activeLogo = (string) ($pdo->query("SELECT setting_value FROM app_settings WHERE setting_key='brand_logo_url' LIMIT 1")->fetchColumn() ?: '');
+                    brand_logo_cleanup_unused_from_github($activeLogo);
+                    if ($oldLogoUrl !== '' && $oldLogoUrl !== $newLogoUrl && $oldLogoUrl !== $activeLogo) {
+                        brand_logo_remove_local_file($oldLogoUrl);
+                    }
+                } catch (Throwable $cleanupError) {
+                    error_log('PluQ-I brand logo cleanup failed: ' . $cleanupError->getMessage());
+                    $oldLogoCleanupFailed = true;
+                }
+                header('Location: /admin/template-settings.php?brand_logo_saved=1' . ($oldLogoCleanupFailed ? '&old_logo_cleanup=failed' : ''));
+                exit;
+            }
+            if ($action === 'delete_brand_logo') {
+                $oldStmt = $pdo->prepare("SELECT setting_value FROM app_settings WHERE setting_key='brand_logo_url' LIMIT 1");
+                $oldStmt->execute();
+                $oldLogoUrl = (string) ($oldStmt->fetchColumn() ?: '');
+                if ($oldLogoUrl === '') throw new InvalidArgumentException('Logo belum diatur.');
+                $pdo->beginTransaction();
+                $saveLogo = $pdo->prepare("INSERT INTO app_settings (setting_key,setting_value,updated_by) VALUES ('brand_logo_url','',:admin) ON DUPLICATE KEY UPDATE setting_value='',updated_by=VALUES(updated_by)");
+                $saveLogo->execute(['admin'=>$user['id']]);
+                $audit = $pdo->prepare("INSERT INTO audit_logs (actor_type,actor_id,action,entity_type,entity_id,details,ip_address) VALUES ('ADMIN',:actor,'BRAND_LOGO_REMOVED','APP_SETTING','brand_logo_url',:details,:ip)");
+                $audit->execute([
+                    'actor'=>$user['id'],
+                    'details'=>json_encode(['previous_logo_present'=>true], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
+                    'ip'=>substr((string)($_SERVER['REMOTE_ADDR'] ?? ''),0,45),
+                ]);
+                $pdo->commit();
+                $oldLogoCleanupFailed = false;
+                try {
+                    // No logo is active now; sweep all obsolete logo files from GitHub.
+                    $activeLogo = (string) ($pdo->query("SELECT setting_value FROM app_settings WHERE setting_key='brand_logo_url' LIMIT 1")->fetchColumn() ?: '');
+                    brand_logo_cleanup_unused_from_github($activeLogo);
+                    brand_logo_remove_local_file($oldLogoUrl);
+                } catch (Throwable $cleanupError) {
+                    error_log('PluQ-I brand logo cleanup failed: ' . $cleanupError->getMessage());
+                    $oldLogoCleanupFailed = true;
+                }
+                header('Location: /admin/template-settings.php?brand_logo_deleted=1' . ($oldLogoCleanupFailed ? '&old_logo_cleanup=failed' : ''));
+                exit;
+            }
             if ($action === 'save_game_icon') {
                 $gameId = filter_var($_POST['game_id'] ?? null, FILTER_VALIDATE_INT);
                 if (!$gameId || $gameId < 1) throw new InvalidArgumentException('Game yang dipilih tidak valid.');
@@ -315,6 +679,26 @@ if (isset($_GET['edit'])) {
     }
 }
 $banners = $pdo->query('SELECT id,title,image_url,target_url,sort_order,status FROM banners ORDER BY sort_order,id DESC')->fetchAll(PDO::FETCH_ASSOC);
+$layoutSettings=['catalog_grid_columns_desktop'=>'5','catalog_grid_columns_mobile'=>'3','catalog_icon_size'=>'100','catalog_icon_size_desktop'=>'','catalog_icon_size_mobile'=>''];
+if (($_GET['brand_logo_saved'] ?? '') === '1') $notice = 'Logo header berhasil disimpan ke GitHub dan diterapkan pada halaman depan.';
+if (($_GET['brand_logo_deleted'] ?? '') === '1') $notice = 'Logo header dihapus. Tulisan PluQ-i ditampilkan kembali.';
+$brandLogoUrl = '';
+$layoutQuery=$pdo->prepare("SELECT setting_key,setting_value FROM app_settings WHERE setting_key IN ('catalog_grid_columns_desktop','catalog_grid_columns_mobile','catalog_icon_size','catalog_icon_size_desktop','catalog_icon_size_mobile','brand_logo_url')");
+$layoutQuery->execute();
+foreach($layoutQuery->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    if ($row['setting_key'] === 'brand_logo_url') {
+        $candidateLogoUrl = trim((string)$row['setting_value']);
+        if (preg_match('~^/uploads/brand-logos/[a-f0-9]{32}\\.(?:jpg|png|webp)$~D', $candidateLogoUrl)) $brandLogoUrl = $candidateLogoUrl;
+        continue;
+    }
+    if(isset($layoutSettings[$row['setting_key']])) $layoutSettings[$row['setting_key']]=(string)$row['setting_value'];
+}
+$gridColumns=in_array((int)$layoutSettings['catalog_grid_columns_desktop'],[3,4,5,6],true)?(int)$layoutSettings['catalog_grid_columns_desktop']:5;
+$mobileGridColumns=in_array((int)$layoutSettings['catalog_grid_columns_mobile'],[2,3,4],true)?(int)$layoutSettings['catalog_grid_columns_mobile']:3;
+$validIconSizes=[64,68,72,76,80,84,88,92,96,100,104,108,112,116,120];
+$legacyIconSize=in_array((int)$layoutSettings['catalog_icon_size'],$validIconSizes,true)?(int)$layoutSettings['catalog_icon_size']:100;
+$desktopIconSize=in_array((int)$layoutSettings['catalog_icon_size_desktop'],$validIconSizes,true)?(int)$layoutSettings['catalog_icon_size_desktop']:$legacyIconSize;
+$mobileIconSize=in_array((int)$layoutSettings['catalog_icon_size_mobile'],$validIconSizes,true)?(int)$layoutSettings['catalog_icon_size_mobile']:$legacyIconSize;
 $activeGames = $pdo->query("SELECT id,slug,name,icon_url FROM games WHERE status='ACTIVE' ORDER BY sort_order,name")->fetchAll(PDO::FETCH_ASSOC);
 
 $csrf = admin_csrf_token();
@@ -324,7 +708,7 @@ $csrf = admin_csrf_token();
 <title>Pengaturan Template · PluQ-I</title>
 <style>
 :root{color-scheme:dark;--bg:#0c0d10;--panel:#15171d;--line:#292d36;--text:#f3f4f6;--muted:#9ca3af;--accent:#a7f3d0}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1150px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}label{display:grid;gap:6px;color:var(--muted)}input,select,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{width:auto}.notice,.error{padding:10px;border-radius:7px;margin:12px 0}.notice{background:#15352b}.error{background:#3b1d22}a{color:var(--accent)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted)}.thumb{width:140px;max-height:70px;object-fit:cover;border-radius:6px;background:#08090b}.game-icon-thumb{width:72px;height:72px;object-fit:contain;border-radius:10px;background:#08090b;padding:4px}.icon-matrix{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.icon-card{min-width:0;border:1px solid var(--line);border-radius:10px;background:#101217;padding:12px;display:flex;flex-direction:column;gap:10px}.icon-card-head{display:flex;align-items:center;gap:10px;min-width:0}.icon-card-head>div{min-width:0;overflow-wrap:anywhere}.icon-card form{margin-top:auto}.icon-card .actions{margin-top:8px}.dimension-hint{display:block;font-size:12px;line-height:1.45;color:var(--muted)}.small{font-size:12px;overflow-wrap:anywhere;max-width:260px}.inline{display:inline}.inline button{padding:6px 9px;width:auto}@media(max-width:600px){main{padding:12px}.panel{padding:12px}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}main{max-width:1150px;margin:auto;padding:24px}h1,h2{margin:0 0 12px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}label{display:grid;gap:6px;color:var(--muted)}input,select,button{width:100%;border:1px solid var(--line);background:#0d0f13;color:var(--text);padding:10px;border-radius:7px;font:inherit}button{cursor:pointer;background:#d1fae5;color:#111827;font-weight:700}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{width:auto}.notice,.error{padding:10px;border-radius:7px;margin:12px 0}.notice{background:#15352b}.error{background:#3b1d22}a{color:var(--accent)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted)}.thumb{width:140px;max-height:70px;object-fit:cover;border-radius:6px;background:#08090b}.brand-logo-preview{display:block;width:auto;max-width:180px;height:auto;max-height:80px;object-fit:contain;border:1px solid var(--line);border-radius:8px;padding:8px;background:#08090b}.game-icon-thumb{width:72px;height:72px;object-fit:contain;border-radius:10px;background:#08090b;padding:4px}.icon-matrix{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.icon-card{min-width:0;border:1px solid var(--line);border-radius:10px;background:#101217;padding:12px;display:flex;flex-direction:column;gap:10px}.icon-card-head{display:flex;align-items:center;gap:10px;min-width:0}.icon-card-head>div{min-width:0;overflow-wrap:anywhere}.icon-card form{margin-top:auto}.icon-card .actions{margin-top:8px}.dimension-hint{display:block;font-size:12px;line-height:1.45;color:var(--muted)}.small{font-size:12px;overflow-wrap:anywhere;max-width:260px}.inline{display:inline}.inline button{padding:6px 9px;width:auto}@media(max-width:600px){main{padding:12px}.panel{padding:12px}}
 </style></head><body><main>
 <header class="bar"><div><h1>Pengaturan Template</h1><div class="muted">Kelola banner slider di halaman depan PluQ-I.</div></div><a href="/admin/">Kembali ke panel admin</a></header>
 <?php if ($error !== ''): ?><div class="error"><?=admin_escape($error)?></div><?php endif; ?>
@@ -347,8 +731,15 @@ $csrf = admin_csrf_token();
 <?php if (!$banners): ?><tr><td colspan="5" class="muted">Belum ada banner tersimpan.</td></tr><?php endif; ?>
 <?php foreach ($banners as $banner): ?><tr><td><img class="thumb" src="<?=admin_escape($banner['image_url'])?>" alt="<?=admin_escape($banner['title'])?>" loading="lazy"></td><td><?=admin_escape($banner['title'])?><div class="muted small"><?=admin_escape($banner['image_url'])?></div><div class="muted small">Tujuan: <?=admin_escape($banner['target_url'] ?: 'Tidak ada')?></div></td><td><?=number_format((int)$banner['sort_order'])?></td><td><?=admin_escape($banner['status'])?></td><td><div class="actions"><a href="/admin/template-settings.php?edit=<?=(int)$banner['id']?>">Edit</a><?php if ($canManage): ?><?php if ($banner['status']==='ACTIVE'): ?><form class="inline" method="post" onsubmit="return confirm('Nonaktifkan banner ini?')"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="deactivate"><input type="hidden" name="id" value="<?=(int)$banner['id']?>"><button type="submit">Nonaktifkan</button></form><?php endif; ?><form class="inline" method="post" onsubmit="return confirm('Hapus banner ini secara permanen? File lokal yang terkait juga akan dihapus.')"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?=(int)$banner['id']?>"><button type="submit">Hapus</button></form><?php endif; ?></div></td></tr><?php endforeach; ?>
 </tbody></table></div></section>
+<section class="panel"><h2>Logo Header Halaman Depan</h2>
+<p class="muted">Ganti tulisan PluQ-i di pojok kiri atas halaman depan dengan gambar logo pilihanmu. Format JPG/PNG/WebP, maksimal 5 MB. Logo akan disimpan ke GitHub pada branch yang dikonfigurasi server agar dapat ikut saat deployment.</p>
+<?php if ($brandLogoUrl !== ''): ?><p><img class="brand-logo-preview" src="<?=admin_escape($brandLogoUrl)?>" alt="Pratinjau logo header"></p><?php else: ?><p class="muted">Belum ada logo. Halaman depan masih menampilkan tulisan PluQ-i.</p><?php endif; ?>
+<?php if ($canManage): ?>
+<form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="save_brand_logo"><label>File logo (JPG/PNG/WebP, maks. 5 MB)<input type="file" name="brand_logo_file" accept="image/jpeg,image/png,image/webp" required></label><div class="actions"><button type="submit">Unggah/Ganti logo</button></div></form>
+<?php if ($brandLogoUrl !== ''): ?><form method="post" onsubmit="return confirm('Hapus logo header dan kembalikan tulisan PluQ-i?')"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="delete_brand_logo"><div class="actions"><button type="submit">Hapus logo dan gunakan tulisan</button></div></form><?php endif; ?>
+<?php else: ?><p class="muted">Akun ini hanya dapat melihat pengaturan. ADMIN atau SUPER_ADMIN diperlukan untuk mengganti logo.</p><?php endif; ?></section>
 <section class="panel"><h2>Icon Game List</h2>
-<p class="muted">Hanya game yang dicentang dan tersimpan aktif pada menu <a href="/admin/game-mappings.php">Game List</a> yang tampil di sini. Unggah icon untuk mengisi kolom <code>games.icon_url</code> yang dipakai katalog halaman depan. Format JPG/PNG/WebP, maksimal 5 MB. Hapus hanya menghapus icon, bukan game atau mapping supplier.</p>
+<p class="muted">Hanya game yang dicentang dan tersimpan aktif pada menu <a href="/admin/game-mappings.php">Game List</a> yang tampil di sini. Unggah icon untuk mengisi kolom <code>games.icon_url</code> yang dipakai katalog halaman depan. Format JPG/PNG/WebP, maksimal 5 MB. Setiap icon baru akan disimpan lokal dan dikomit ke repositori GitHub/branch yang dikonfigurasi server. Sinkronisasi GitHub harus dikonfigurasi sebelum unggahan dapat disimpan. Hapus hanya menghapus icon dari katalog; file yang sudah dikomit ke GitHub tidak dihapus otomatis.</p>
 <p class="dimension-hint"><strong>Saran ukuran icon: 512 × 512 px (persegi/1:1).</strong> Gunakan gambar yang fokus pada logo game, dengan sedikit ruang kosong di sekelilingnya agar tidak terpotong saat ditampilkan. Ukuran ini adalah rekomendasi, bukan batas wajib.</p>
 <?php if (!$activeGames): ?><p class="muted">Belum ada game aktif. Pilih dan simpan game terlebih dahulu di Game List.</p><?php else: ?>
 <div class="icon-matrix">
@@ -360,5 +751,13 @@ $csrf = admin_csrf_token();
 <?php else: ?><span class="muted">Hanya lihat</span><?php endif; ?>
 </article><?php endforeach; ?>
 </div><?php endif; ?></section>
+<section class="panel"><h2>Tata letak katalog game</h2>
+<p class="muted">Atur jumlah kolom dan ukuran icon desktop serta ponsel. Tablet menggunakan 3 kolom.</p>
+<?php if ($canManage): ?><form method="post"><input type="hidden" name="csrf" value="<?=admin_escape($csrf)?>"><input type="hidden" name="action" value="save_catalog_layout"><div class="grid">
+<label>Kolom desktop<select name="grid_columns"><?php foreach ([3,4,5,6] as $v): ?><option value="<?=$v?>" <?=$gridColumns===$v?'selected':''?>><?=$v?> kolom</option><?php endforeach; ?></select></label>
+<label>Kolom ponsel<select name="mobile_grid_columns"><?php foreach ([2,3,4] as $v): ?><option value="<?=$v?>" <?=$mobileGridColumns===$v?'selected':''?>><?=$v?> kolom</option><?php endforeach; ?></select></label>
+<label>Ukuran icon desktop<select name="desktop_icon_size"><?php foreach ([64,68,72,76,80,84,88,92,96,100,104,108,112,116,120] as $v): ?><option value="<?=$v?>" <?=$desktopIconSize===$v?'selected':''?>><?=$v?> × <?=$v?> px</option><?php endforeach; ?></select></label>
+<label>Ukuran icon ponsel<select name="mobile_icon_size"><?php foreach ([64,68,72,76,80,84,88,92,96,100,104,108,112,116,120] as $v): ?><option value="<?=$v?>" <?=$mobileIconSize===$v?'selected':''?>><?=$v?> × <?=$v?> px</option><?php endforeach; ?></select></label>
+</div><div class="actions"><button type="submit">Simpan tata letak</button></div></form><?php else: ?><p class="muted">Akun hanya dapat melihat pengaturan.</p><?php endif; ?></section>
 <section class="panel"><h2>Catatan tampilan</h2><ul><li>Gunakan gambar landscape yang responsif untuk banner Mobile Legends, HOK, Free Fire, PUBG, atau promosi lain.</li><li>Slider publik harus menampilkan banner aktif, dengan tombol sebelumnya/berikutnya, indikator slide, perulangan, jeda saat kursor berada di atas slider, dan dukungan geser pada ponsel.</li><li>Unggahan dibatasi ke JPG/PNG/WebP, maksimal 5 MB dan pemeriksaan dimensi; file diberi nama acak dan disimpan di public/uploads/banners.</li><li>Nonaktifkan hanya menyembunyikan banner. Hapus menghapus baris banner dan file lokal yang cocok; gambar pada URL eksternal tidak dihapus dari situs asalnya.</li><li>Game yang dicentang/aktif pada Game List muncul pada bagian Icon Game List. Menghapus icon mengosongkan icon_url tanpa menghapus game.</li><li>Icon lokal berada di public/uploads/game-icons; pastikan PHP dapat menulis folder tersebut. Pengujian visual slider dan icon di browser masih perlu dilakukan.</li></ul></section>
 </main></body></html>

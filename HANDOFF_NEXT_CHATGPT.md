@@ -1,3 +1,30 @@
+## Update 2026-10-24 — Ukuran pratinjau logo
+- Commit kode: `489f892870ead0929881f39ea1098b3cb3058d80`.
+- Pratinjau logo di Pengaturan Template dibatasi dengan CSS: lebar maksimum 180 px dan tinggi maksimum 80 px; rasio gambar tetap dipertahankan (`object-fit: contain`).
+- Belum diuji dengan PHP lint atau browser lokal. PR #13 tetap terbuka dan belum digabung.
+
+## Update — 2026-10-24: Pratinjau logo dan duplikasi Icon Game List
+
+- Commit pada branch PR #13: `21b3a3d4c054d08809a8bbcb98f9d917f7b9f22c`.
+- Memperbaiki pembacaan `brand_logo_url` pada `public/admin/template-settings.php`, sehingga pratinjau logo Template mengambil nilai dari `app_settings` dan hanya menerima path unggahan logo lokal dengan format yang diizinkan.
+- Menghapus bagian **Icon Game List** yang terduplikasi di Pengaturan Template; tersisa satu bagian untuk mengelola icon.
+- Verifikasi lewat pembacaan file GitHub: query memuat `brand_logo_url` dan judul `Icon Game List` hanya muncul sekali. Lint PHP dan pemeriksaan browser belum dijalankan; pengguna perlu pull branch dan menjalankan `php -l public/admin/template-settings.php`, lalu memeriksa pratinjau logo serta memastikan bagian Icon Game List tampil sekali.
+- PR #13 tetap terbuka dan belum digabung. Pembayaran, pesanan supplier, dan backup Drive tetap nonaktif.
+
+## Update — 2026-10-24: Pemulihan logo homepage pada PR #13
+
+- Homepage membaca `brand_logo_url` dari `app_settings` dan menampilkan gambar logo dengan fallback teks `PluQ-I`.
+- Menu **Template → Logo Header Halaman Depan** memulihkan unggah, pratinjau, ganti, hapus, validasi format, dan sinkronisasi GitHub sesuai implementasi sebelumnya.
+- Pengaturan grid katalog dan ukuran ikon katalog tetap dipertahankan.
+- PR #13 tetap terbuka dan belum digabung. Validasi sintaks PHP, tes, serta GitHub Actions perlu diperiksa setelah commit.
+
+## Update — 2026-10-23: Pemulihan bingkai ikon pada PR #13
+
+- Pada branch `feature/supplier-price-pagination-fix-catalog-assets`, memperbaiki render kartu game di `public/assets/catalog.js` agar gambar icon dibungkus elemen `.game-icon-frame`; mempertahankan pemuatan game/banner independen berbasis `Promise.allSettled` yang sudah ada di branch ini.
+- Memulihkan gaya bingkai lingkaran emas dan tata letak kartu pada `public/assets/catalog.css`. Ukuran bingkai saat ini 100 × 100 px; pengaturan ukuran dari panel admin belum dipindahkan pada perubahan ini.
+- Tidak menggabungkan keseluruhan `feature/admin-left-sidebar`; hanya port perubahan markup/style yang terkait langsung dengan bingkai ikon. Aset gambar sudah dipulihkan dalam commit sebelumnya `874aeb09e62c1186ed8842b34e589496153e4fe2`.
+- Validasi browser dan uji visual lokal belum dilakukan. Periksa workflow GitHub Actions setelah commit ini, lalu tarik branch dan pastikan icon game tampil dalam bingkai emas di browser.
+
 ## Update — 2026-10-19: Sinkronisasi katalog dari panel admin
 
 - Menambahkan tombol **Sinkronkan katalog VIPayment** dan **Sinkronkan katalog Digiflazz** pada Pengaturan API. Berbeda dari tombol pratinjau VIPayment, tombol sinkronisasi memanggil service katalog dan menyimpan produk/harga yang cocok dengan pemetaan game aktif ke database.
@@ -1435,3 +1462,20 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Workflow `.github/workflows/php-quality.yml` kini menjalankan tes tersebut.
 - Tes ini tidak memakai database atau `.env` dan tidak mengubah katalog supplier. Karena sifatnya pemeriksaan sumber, tes ini bukan pengganti tes integrasi SQL dengan database MySQL sementara atau uji browser.
 - Perubahan berada di branch `feature/filter-supplier-prices-to-active-games`. Status lint dan GitHub Actions setelah perubahan ini masih harus diverifikasi; jangan merge ke `main` sebelum hasil workflow terbaru diperiksa.
+
+
+## Update — 2026-10-23: Pagination harga supplier dan ketahanan pemuatan katalog
+
+- Menambahkan pagination bernomor pada **Harga Modal Supplier**, ukuran halaman dapat dipilih 25/50/100/200 item, dan jumlah halaman mengikuti hasil filter. Filter serta urutan tetap dipertahankan saat berpindah halaman.
+- Menghapus batas tetap 200 baris; query memakai `LIMIT/OFFSET` sesuai halaman. Katalog supplier tetap hanya dibaca.
+- Memperbaiki inisialisasi frontend agar `/api/games` dan `/api/banners` dimuat secara independen memakai `Promise.allSettled`. Kegagalan endpoint banner tidak lagi membatalkan render daftar game/icon, dan sebaliknya.
+- Perubahan berada pada `public/admin/supplier-prices.php` dan `public/assets/catalog.js`. Wajib menjalankan lint PHP, tes regresi, syntax JavaScript, dan uji browser. Jika URL endpoint atau file gambar sendiri gagal, penyebab backend/berkasnya masih perlu diperiksa melalui Network/console.
+- Branch kerja: `feature/supplier-price-pagination-fix-catalog-assets`. Jangan gabungkan sebelum pemeriksaan lokal dan GitHub Actions selesai.
+
+
+## Pengaturan grid dan ukuran icon katalog (PR #13)
+- Panel admin `Tata letak katalog game` memungkinkan pengaturan kolom desktop 3–6, kolom ponsel 2–4, dan ukuran icon desktop/ponsel 64–120 px.
+- Nilai disimpan di `app_settings` menggunakan transaksi dan audit log; `catalog_icon_size` tetap disinkronkan untuk kompatibilitas.
+- Homepage membaca konfigurasi database dan memakai default bila belum tersedia. Tablet 561–900 px tetap menggunakan 3 kolom.
+- CSS katalog memakai variabel konfigurasi untuk grid dan ukuran bingkai icon.
+- Perubahan sudah dikirim ke branch PR #13, tetapi lint PHP, tes lokal, dan GitHub Actions pada commit terbaru masih harus diperiksa sebelum merge.
