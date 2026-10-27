@@ -52,6 +52,8 @@ jobs:
         run: php tests/provider-budget-capacity.php
       - name: Test customer catalog supplier availability filtering
         run: php tests/catalog-availability.php
+      - name: Test admin supplier price filtering and pagination
+        run: php tests/supplier-prices-pagination.php
       - name: Test hybrid fixed and percentage pricing
         run: php tests/pricing-hybrid.php
       - name: Test admin authorization roles
