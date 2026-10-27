@@ -2,9 +2,9 @@
 
 - Migration yang benar adalah `014_order_ratings_and_supplier_quality.sql`; migration 013 tetap digunakan untuk perlindungan pemeriksaan nickname game. Migration 014 membuat satu rating per pesanan melalui unique key dan foreign key ke pesanan, supplier, serta game.
 - Form rating memerlukan pembayaran PAID, status pesanan final SUCCESS/FAILED/REFUNDED, dan token CSRF khusus sesi pelanggan. Penulisan ulang status dicek kembali pada INSERT; duplikasi ditolak oleh unique key.
-- CI terbaru pada commit `c02ec23639eab47b0c3deb918ad01d62ff5ce052` meluluskan PHP quality dan fulfillment safety. Workflow PHP quality kini juga menjalankan tes validasi CSRF agar tes tersebut tidak hanya tersedia tetapi benar-benar dijalankan otomatis.
+- CI pada commit `56c097344baac49449b40662d5428c7808a121cc` meluluskan PHP quality dan fulfillment safety/integrasi MySQL. Setelah pembaruan catatan ini, CI pada head PR `21edf972901f54f596db8822c615b758ce08f4e2` juga lulus: [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/40434598042), [fulfillment safety dan integrasi MySQL](https://github.com/sulistio95/PluQ-I/actions/runs/40434598107). Workflow PHP quality menjalankan tes aturan rating dan CSRF; integrasi MySQL membuktikan insert rating serta penolakan duplikat.
 - Dashboard kualitas supplier menampilkan statistik operasional dan rating terpisah. Angka ini tidak boleh mengubah pemilihan supplier otomatis.
-- Runtime browser, penerapan migration pada database MariaDB target, dan alur rating dengan pesanan nyata masih belum diverifikasi. Pembayaran live, pemesanan supplier, dan backup Google Drive tetap nonaktif.
+- PR #14 masih draft menuju `integration/pre-main-2026-10`; belum digabung. Runtime browser, penerapan migration pada database MariaDB target, dan alur rating dengan pesanan nyata masih belum diverifikasi. Pembayaran live, pemesanan supplier, dan backup Google Drive tetap nonaktif.
 
 ## 2026-10-21 — Dropdown Server / Region Zenless Zone Zero (perbaikan)
 
