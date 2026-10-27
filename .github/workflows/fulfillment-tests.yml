@@ -129,10 +129,10 @@ jobs:
           SELECT g.id, pr.id, 'integration-sku', 'Integration Product', 1000, 1500, 'ACTIVE'
           FROM games g JOIN providers pr ON pr.code = 'DIGI' WHERE g.slug = 'integration-game';
           INSERT INTO orders (public_id, game_id, product_id, provider_id, customer_game_data, base_price, selling_price, admin_fee, payment_status, order_status)
-          SELECT 'PAYCALL20261027abcdef12345', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','123'), 1000, 1500, 1000, 'PENDING', 'PENDING'
+          SELECT 'cafebabefeedface0123456789', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','123'), 1000, 1500, 1000, 'PENDING', 'PENDING'
           FROM games g JOIN products p ON p.game_id = g.id WHERE g.slug = 'integration-game' AND p.provider_product_code = 'integration-sku';
           INSERT INTO payment_transactions (order_id, gateway, merchant_order_id, amount, status)
-          SELECT id, 'DUITKU', public_id, 2500, 'PENDING' FROM orders WHERE public_id = 'PAYCALL20261027abcdef12345';
+          SELECT id, 'DUITKU', public_id, 2500, 'PENDING' FROM orders WHERE public_id = 'cafebabefeedface0123456789';
           INSERT INTO orders (public_id, game_id, product_id, provider_id, customer_game_data, base_price, selling_price, admin_fee, payment_status, order_status)
           SELECT 'fedcba9876543210fedcba9876', g.id, p.id, p.provider_id, JSON_OBJECT('user_id','789'), 1000, 1500, 1000, 'PENDING', 'PENDING'
           FROM games g JOIN products p ON p.game_id = g.id WHERE g.slug = 'integration-game' AND p.provider_product_code = 'integration-sku';
