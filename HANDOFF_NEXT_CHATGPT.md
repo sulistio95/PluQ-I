@@ -1503,3 +1503,14 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - CI commit `9105ccbe14f498bf7d4edea062dd7f99f0b0229e`: `php-quality`, `php-tests`, `lint`, dan `mysql-callback-integration` semuanya SUCCESS.
 - PR #24 masih draft; jangan merge ke `main` sebelum review manual dan staging/shared-hosting validation. Pembayaran, supplier ordering, dan backup Drive tetap disabled.
 - Belum dilakukan browser visual test, deployment shared hosting, atau panggilan API live.
+
+
+## Fase 6 selesai — review akhir dan persiapan staging (2026-10-27)
+
+- Branch kandidat: `integration/phase4-combined-2026-10`; PR #24 tetap draft/open dan belum digabung ke `main`.
+- Laporan: [docs/phase6-staging-preparation-report.md](docs/phase6-staging-preparation-report.md).
+- Runbook staging diperbarui: [docs/staging-payment-test-runbook.md](docs/staging-payment-test-runbook.md). Koreksi penting: migrasi wajib setelah schema adalah 002–005 dan 008–014 berurutan; 006–007 diperlukan sebelum settlement backup diaktifkan. Callback sandbox saat `SUPPLIER_ORDERS_ENABLED=false` harus berakhir dengan payment `PAID`, order `MANUAL_REVIEW`, dan tanpa job `FULFILL_ORDER`.
+- CI pada head sebelum perubahan dokumentasi Fase 6 `5ce9be502c0abd78d84b02dc61fef94a46d73448` lulus: [fulfillment safety](https://github.com/sulistio95/PluQ-I/actions/runs/40467838096), [PHP quality](https://github.com/sulistio95/PluQ-I/actions/runs/40467838058), [PHP/JS syntax](https://github.com/sulistio95/PluQ-I/actions/runs/40467838014). Wajib cek CI lagi pada head dokumentasi terbaru sebelum menyatakan commit terbaru lulus.
+- Perhatian staging: `.env.example` mengarahkan `GITHUB_UPLOAD_BRANCH=feature/admin-left-sidebar`. Nonaktifkan token upload repo di staging atau set branch target dengan sengaja supaya unggahan staging tidak mengubah cabang yang salah.
+- Belum ada deployment hosting, migrasi database remote, pemeriksaan UI browser di hosting, transaksi Duitku sandbox eksternal, panggilan API provider, backup/restore hosting, atau go-live. Tidak ada pembayaran, order supplier, backup Drive, atau queue recovery manual yang dijalankan.
+- Pertahankan `SUPPLIER_ORDERS_ENABLED=false` dan `SETTLEMENT_BACKUP_ENABLED=false`. Pembayaran tetap nonaktif sampai sesi uji sandbox staging disetujui terpisah; kode saat ini menolak `DUITKU_ENV=production`.
