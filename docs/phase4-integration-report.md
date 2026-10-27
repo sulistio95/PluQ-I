@@ -26,7 +26,7 @@ Implementasi provider budget dari `main` dipertahankan (`provider_budget_reserva
 
 - PHP quality: lint PHP, pemeriksaan sintaks JavaScript, tes mapping field akun, parameter nickname, kapasitas provider, filter harga supplier, rating rules dan CSRF.
 - Fulfillment safety: tes integrasi MySQL untuk migrasi, idempotensi checkout, deadlock/concurrency, callback ganda, antrean supplier, dan sandbox yang tidak boleh memicu fulfillment.
-- Tes late-success ditambahkan pada callback dan script integrasi MySQL. Status CI akhir harus dilihat pada PR #24 karena perubahan tes memicu workflow ulang.
+- Tes late-success ditambahkan pada callback dan script integrasi MySQL. CI akhir commit fase ini lulus: PHP quality, PHP tests, lint, dan MySQL callback integration.
 
 ## Batasan
 

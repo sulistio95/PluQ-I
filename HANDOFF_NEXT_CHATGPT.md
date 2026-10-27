@@ -1491,3 +1491,15 @@ Next: run safe local regression tests only after confirming the local `.env` tar
 - Provider-budget architecture tetap memakai implementasi `main`: `provider_budget_reservations` (migration 011) dan `provider_budget.php`; tidak mengimpor migration 009/ `provider_balance_reservations` secara massal karena skema/statusnya berbeda. Implementasi saat ini mengunci baris provider dan mengecek kapasitas lagi sebelum order masuk antrean supplier. Bila kapasitas tidak tersedia setelah pembayaran, pesanan masuk `MANUAL_REVIEW`; hal ini menghindari pemenuhan tanpa cadangan, tetapi dapat membutuhkan rekonsiliasi manual.
 - Mem-port perbaikan callback terlambat: callback sukses Duitku yang datang setelah status gagal kini memperbarui transaksi/pesanan menjadi `PAID`, menempatkan order pada `MANUAL_REVIEW`, mencatat konflik di audit log, dan tidak memasukkan order ke antrean supplier otomatis. Tes integrasi MySQL pada `tests/duitku_callback_integration.sh` disesuaikan untuk memverifikasi perilaku ini.
 - Status keselamatan: jangan aktifkan pembayaran, supplier ordering, atau backup Google Drive. CI menggunakan database MySQL sementara; tidak ada pemanggilan Duitku/VIPayment/Digiflazz live, transaksi nyata, migrasi database hosting, atau uji browser/ponsel dalam fase ini. Uji visual dan hosting tetap menjadi langkah terpisah sebelum deployment.
+
+
+## Fase 5 — Pemeriksaan kesiapan deployment (2026-10-27)
+
+- Branch kerja tetap `integration/phase4-combined-2026-10`; `main` tidak diubah.
+- Perbaikan: `bin/preflight.php` sekarang mensyaratkan tabel `order_ratings` dan migration `014_order_ratings_and_supplier_quality`, selain tabel/cache dan migration 013.
+- Job integrasi MySQL kini menerapkan migration 013 dan 014 setelah migration 012, sehingga fitur nickname-check dan rating benar-benar hadir pada skema uji integrasi, bukan hanya pada tes unit.
+- Halaman `/admin/supplier-quality.php` ditambahkan ke sidebar admin.
+- Tes regresi baru `tests/deployment-preflight-checks.php` memverifikasi persyaratan preflight, urutan migration, dan tautan sidebar.
+- CI commit `9105ccbe14f498bf7d4edea062dd7f99f0b0229e`: `php-quality`, `php-tests`, `lint`, dan `mysql-callback-integration` semuanya SUCCESS.
+- PR #24 masih draft; jangan merge ke `main` sebelum review manual dan staging/shared-hosting validation. Pembayaran, supplier ordering, dan backup Drive tetap disabled.
+- Belum dilakukan browser visual test, deployment shared hosting, atau panggilan API live.
