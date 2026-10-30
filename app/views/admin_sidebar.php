@@ -11,6 +11,7 @@ $adminNavItems = [
     ['file' => 'api-settings.php', 'href' => '/admin/api-settings.php', 'label' => 'Pengaturan API'],
     ['file' => 'game-mappings.php', 'href' => '/admin/game-mappings.php', 'label' => 'Game List'],
     ['file' => 'template-settings.php', 'href' => '/admin/template-settings.php', 'label' => 'Pengaturan Template'],
+    ['file' => 'announcements.php', 'href' => '/admin/announcements.php', 'label' => 'Pengumuman Halaman Awal'],
     ['file' => 'pricing-settings.php', 'href' => '/admin/pricing-settings.php', 'label' => 'Pengaturan Keuntungan'],
     ['file' => 'supplier-prices.php', 'href' => '/admin/supplier-prices.php', 'label' => 'Harga Modal Supplier'],
 ];
