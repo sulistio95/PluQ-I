@@ -111,12 +111,12 @@ if ($path==='/' && $method==='GET') {
    if ($layoutRow['setting_key']==='catalog_icon_size_desktop' && in_array((int)$layoutRow['setting_value'],[64,68,72,76,80,84,88,92,96,100,104,108,112,116,120],true)) $desktopIconSize=(int)$layoutRow['setting_value'];
    if ($layoutRow['setting_key']==='catalog_icon_size_mobile' && in_array((int)$layoutRow['setting_value'],[64,68,72,76,80,84,88,92,96,100,104,108,112,116,120],true)) $mobileIconSize=(int)$layoutRow['setting_value'];
    if ($layoutRow['setting_key']==='brand_logo_url') $brandLogoUrl=trim((string)$layoutRow['setting_value']);
+  }
   $announcementStmt=database()->prepare("SELECT setting_value FROM settings WHERE setting_key='homepage_announcements' LIMIT 1");
   $announcementStmt->execute();
   $announcementJson=$announcementStmt->fetchColumn();
   $announcementData=is_string($announcementJson) ? json_decode($announcementJson,true) : null;
   if (is_array($announcementData)) $homepageAnnouncements=array_values(array_filter($announcementData,static fn($item)=>is_array($item) && !empty($item['active']) && isset($item['message']) && is_string($item['message'])));
-  }
   if ($desktopIconSize===null) $desktopIconSize=$legacyIconSize;
   if ($mobileIconSize===null) $mobileIconSize=$legacyIconSize;
  } catch (Throwable $e) {
