@@ -61,6 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $type = (string)($_POST['type'] ?? 'info');
             if ($message === '' || mb_strlen($message, 'UTF-8') > 300) {
                 $error = 'Isi pengumuman wajib diisi dan maksimal 300 karakter.';
+            } elseif ($id === '' && count($items) >= 20) {
+                $error = 'Maksimal 20 pengumuman dapat disimpan. Hapus pengumuman lama terlebih dahulu.';
             } elseif (!in_array($type, ['info', 'maintenance', 'warning', 'promo'], true)) {
                 $error = 'Jenis pengumuman tidak valid.';
             } else {
