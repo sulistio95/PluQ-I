@@ -15,6 +15,7 @@ $adminNavItems = [
     ['file' => 'supplier-prices.php', 'href' => '/admin/supplier-prices.php', 'label' => 'Harga Modal Supplier'],
 ];
 if (function_exists('admin_can_manage_settings') && admin_can_manage_settings($user)) {
+    $adminNavItems[] = ['file' => 'announcements.php', 'href' => '/admin/announcements.php', 'label' => 'Pengumuman Halaman Awal'];
     $adminNavItems[] = ['file' => 'reconcile.php', 'href' => '/admin/reconcile.php', 'label' => 'Rekonsiliasi Duitku'];
 }
 ?>
